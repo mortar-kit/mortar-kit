@@ -95,7 +95,12 @@
   background: var(--mortar-panel);
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
 }
-.blocked p {
+.blockedHead {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+}
+.blockedHead p {
   margin: 0 0 0.5rem;
 }
 .blocked ul {

@@ -224,7 +224,12 @@ export function Admin(props: AdminProps) {
         <main class={styles.main}>
           <Show when={blocked().length > 0}>
             <div role="alert" class={styles.blocked}>
-              <p class={common.issue}>Can't delete: other documents use this one. Change or remove these references first:</p>
+              <div class={styles.blockedHead}>
+                <p class={common.issue}>Can't delete: other documents use this one. Change or remove these references first:</p>
+                <button type="button" class={common.button} aria-label="Dismiss" onClick={() => setBlocked([])}>
+                  ✕
+                </button>
+              </div>
               <ul>
                 <For each={blocked()}>
                   {(r) => (

@@ -49,6 +49,23 @@
           }
         ]
       }
+    },
+    {
+      "brick": "latest-posts",
+      "id": "latest-1",
+      "data": {
+        "heading": "Latest posts",
+        "limit": 3
+      }
+    },
+    {
+      "brick": "product-grid",
+      "id": "products-1",
+      "data": {
+        "heading": "From the shop",
+        "category": "",
+        "limit": 6
+      }
     }
   ]
 }

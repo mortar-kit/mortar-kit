@@ -1,0 +1,13 @@
+{
+  "id": "red-mug",
+  "fields": {
+    "name": "Red mug",
+    "price": 14,
+    "category": "cat-mugs",
+    "image": {
+      "src": "",
+      "alt": ""
+    },
+    "description": "Brick red, of course. Holds 350 ml."
+  }
+}

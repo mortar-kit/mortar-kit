@@ -1,0 +1,25 @@
+{
+  "id": "hello-mortar",
+  "fields": {
+    "title": "Hello, Mortar",
+    "date": "2026-11-20",
+    "excerpt": "Why we built a small framework for pages made of bricks.",
+    "cover": {
+      "src": "",
+      "alt": ""
+    }
+  },
+  "entries": [
+    {
+      "brick": "hero",
+      "id": "hello-hero",
+      "data": {
+        "heading": "Pages from bricks",
+        "intro": "A brick is a section with a schema. Pages, posts and anything else with a body are made of them, and the editor is generated from the same schema.",
+        "ctaLabel": "",
+        "ctaHref": "",
+        "align": "left"
+      }
+    }
+  ]
+}

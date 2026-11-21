@@ -1,0 +1,13 @@
+{
+  "id": "blue-mug",
+  "fields": {
+    "name": "Blue mug",
+    "price": 14,
+    "category": "cat-mugs",
+    "image": {
+      "src": "",
+      "alt": ""
+    },
+    "description": "A deep blue glaze over speckled stoneware. Holds 350 ml."
+  }
+}

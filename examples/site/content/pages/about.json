@@ -1,0 +1,20 @@
+{
+  "id": "about",
+  "fields": {
+    "title": "About",
+    "description": "What Mortar is and why it exists."
+  },
+  "entries": [
+    {
+      "brick": "hero",
+      "id": "about-hero",
+      "data": {
+        "heading": "About Mortar",
+        "intro": "Mortar is a small website framework on Solid 2. You define bricks and collections; it renders pages and gives you an editor with a live preview.",
+        "ctaLabel": "Read the posts",
+        "ctaHref": "/posts",
+        "align": "left"
+      }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "collections",
+  "fields": {
+    "title": "Collections are here",
+    "date": "2026-11-22",
+    "excerpt": "Posts, products and categories: reusable content with typed fields, references and lists.",
+    "cover": {
+      "src": "",
+      "alt": ""
+    }
+  },
+  "entries": [
+    {
+      "brick": "feature-grid",
+      "id": "collections-features",
+      "data": {
+        "heading": "What you get",
+        "columns": 3,
+        "features": [
+          {
+            "title": "Typed fields",
+            "body": "Each collection declares its fields with the same helpers as bricks.",
+            "image": {
+              "src": "",
+              "alt": ""
+            }
+          },
+          {
+            "title": "References",
+            "body": "A product points at its category by id, so renaming never breaks links.",
+            "image": {
+              "src": "",
+              "alt": ""
+            }
+          },
+          {
+            "title": "Lists",
+            "body": "Bricks can load documents, like the latest posts on the home page.",
+            "image": {
+              "src": "",
+              "alt": ""
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
