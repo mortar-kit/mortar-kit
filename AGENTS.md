@@ -1,28 +1,47 @@
 # Mortar
 
 Mortar is a small website framework on **Solid 2**. Developers define **bricks**
-(UI sections + a schema); Mortar renders pages (ordered `{ brick, id, data }`
-entries) and generates a live-preview admin panel. Keep it small: this is a
-lightweight framework, not a CMS. Use "brick" for developer-defined sections;
-keep every other name plain and conventional (no further construction puns).
+(UI sections + a schema) and **collections** (sets of documents sharing a
+schema: pages, posts, products); Mortar renders bodies (ordered
+`{ brick, id, data }` entries) and generates a live-preview admin panel. Keep
+it small: this is a lightweight framework, not a CMS. Use "brick" for
+developer-defined sections; keep every other name plain and conventional (no
+further construction puns).
 
-## Decisions (2026-11-21)
+## Decisions (2026-11-21, collections 2026-11-22)
 
 - **Schema**: `fields.*` helpers that build **Valibot** schemas; UI hints live in
-  `v.metadata({ mortar: FieldInfo })`. Validation is Valibot's.
-- **Page format**: `Page = { entries: PageEntry[]; meta?: Record<string, unknown> }`
-  (wrapped, not a bare array, so page-level data such as a title fits).
-  A site declares its metadata with `definePageMeta(fields)` (same `fields.*`
-  as bricks; keys outside the schema are kept) and passes it as `meta` to
-  `loadPage`/`savePage` and `<Editor>` ("Page settings"). Rendering it into
-  the head (e.g. `@solidjs/meta`) is the app's job.
-- **Storage**: swappable load/save adapter; default adapter is **JSON files**
-  (read on the server for SSR, saved through a server function).
-- **Packages**: `@mortar-kit/core` (fields, defineBrick, page model, `PageView`,
-  adapter interface) and `@mortar-kit/admin` (editor). Admin code never reaches
-  the public site bundle.
+  `v.metadata({ mortar: FieldInfo })`. Validation is Valibot's. `fields.date`
+  stores `YYYY-MM-DD`; `fields.reference({ collection })` stores the target
+  document's **id** (never its slug), so renames keep links.
+- **Collections**: `defineCollection({ name, label, fields, body?, title?, sort?, reservedSlugs? })`.
+  A document (type `Doc`, not `Document`) is `{ id, slug, fields, entries? }`:
+  `entries` is its body when the collection has `body: true`. Pages are not
+  built in: a site declares its own `pages` collection (Mortar ships no
+  collections, like no bricks). Keys of `fields` outside the schema are kept;
+  so are stored entries of a collection whose body is off (never rendered).
+- **Storage**: a dumb `ContentStore` adapter (`list/get/put/remove` raw
+  documents by collection and slug) behind `createContent`, which applies
+  every rule: normalize on read, validate on save, unique slugs, renames move
+  the file and keep the id, list `where/sort/limit`, and delete refused while
+  other documents reference the document. Writes through one `createContent`
+  run one at a time (per process). Default adapter: **JSON files**
+  `content/<collection>/<slug>.json` (the slug is the file name, not stored
+  inside); listing reads the whole folder (fine for small sites).
+- **Loading data**: a brick may declare `load(data, content)`; it reads
+  through a typed `ContentReader` from the `ContentSource` the app provides
+  with `ContentContext` (`useContent()` in layouts). It runs on the server
+  (pages without JavaScript included) and in the admin preview (saved
+  content, again after each save via `ContentSource.track`). Detail page
+  layouts are the app's code; Mortar stays out of routing.
+- **Packages**: `@mortar-kit/core` (fields, bricks, collections, documents,
+  storage rules, `PageView`, content context) and `@mortar-kit/admin`
+  (`<Admin>`, `<Editor>`). Admin code never reaches the public site bundle.
 - **Admin mount**: a route in the consuming app (e.g. `/admin`) rendering
-  `<Editor>`; the preview is a same-origin iframe rendering the real bricks.
+  `<Admin>` (collections and their documents) or a single `<Editor>`; the
+  preview is a same-origin iframe rendering the real bricks inside the app's
+  layouts (`PreviewPage` `layouts`). The admin's location can live in the
+  app's URL (`location` + `onNavigate`).
 
 ## Layout
 
@@ -30,21 +49,23 @@ keep every other name plain and conventional (no further construction puns).
   workspace, `exports` point at `src/` (the `solid` condition) so no build is
   needed for dev/tests; `publishConfig.exports` points at `dist/`.
 - `@mortar-kit/core/server`: node-only entry (`createJsonFileStore`), kept
-  out of the main entry so `node:fs` never reaches a client bundle. Storage
-  helpers (`PageStore`, `loadPage` normalizes, `savePage` validates) are in
-  the main entry.
+  out of the main entry so `node:fs` never reaches a client bundle. The
+  storage rules (`createContent`, `createMemoryStore`) are in the main entry.
 - `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR with
-  `renderMode: 'async'`, so pages and head tags are in the HTML) with
-  example bricks and page metadata (`src/page-meta.ts`). Mortar ships no bricks of its own.
-  Its entries are authored (`src/entry-server.tsx`, `src/entry-client.tsx`,
-  shared tree in `src/Root.tsx`) so public pages ship **no JavaScript**:
-  `src/client.ts` picks the pages that hydrate (the admin); the rest render
-  under `<NoHydration>` with `noScripts` and a CSS-only manifest
-  (`src/styles-only.ts`). Islands (hydrating single bricks) are planned;
-  `client.ts` notes what they will need. Pages are JSON files in
-  `examples/site/content/pages/`, read and written by the `'use server'`
-  module `src/server/pages.ts`.
-- No auth: `/admin` and the save function are unprotected. Guarding them is
+  `renderMode: 'async'`, so pages and head tags are in the HTML). Mortar ships
+  no bricks or collections of its own; the example declares pages, posts,
+  products and categories (`src/collections.ts`), bricks (two load data:
+  latest posts, a product grid), and layouts (`src/layouts/`) shared by its
+  routes and the admin preview. Its entries are authored (`src/entry-server.tsx`,
+  `src/entry-client.tsx`, shared tree in `src/Root.tsx`) so public pages ship
+  **no JavaScript**: `src/client.ts` picks the pages that hydrate (the admin);
+  the rest render under `<NoHydration>` with `noScripts` and a CSS-only
+  manifest (`src/styles-only.ts`). Islands (hydrating single bricks) are
+  planned; `client.ts` notes what they will need. Content is JSON files in
+  `examples/site/content/<collection>/`, read and written by the
+  `'use server'` module `src/server/content.ts`; `src/content.ts` wraps it
+  (GET reads: cached router queries for routes, fresh for the admin).
+- No auth: `/admin` and the save/delete functions are unprotected. Guarding them is
   the consuming app's job (e.g. `start.middleware`).
 
 ## Tooling
