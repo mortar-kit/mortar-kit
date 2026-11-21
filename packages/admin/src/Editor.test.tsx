@@ -1,7 +1,7 @@
 // <Editor>: generated forms write to the page, validation shows per field,
 // entries can be added, moved, duplicated and removed, and the preview
 // iframe receives the page after its ready handshake.
-import type { Page } from '@mortar-kit/core';
+import { defineBrick, fields, type Page } from '@mortar-kit/core';
 import { fireEvent, render, screen, within } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
@@ -223,5 +223,31 @@ describe('<Editor>', () => {
     click('Heading');
     expect(screen.queryByRole('region', { name: 'Edit page settings' })).toBeNull();
     expect(input('Text').value).toBe('Welcome');
+  });
+});
+
+describe('date and reference fields', () => {
+  const event = defineBrick({
+    name: 'event',
+    label: 'Event',
+    schema: {
+      day: fields.date({ label: 'Day' }),
+      venue: fields.reference({ label: 'Venue', collection: 'venues' }),
+    },
+    component: () => null,
+  });
+
+  it('edits a date with the date picker and shows a reference id', () => {
+    const onChange = vi.fn<(page: Page) => void>();
+    render(() => (
+      <Editor bricks={[event]} page={{ entries: [{ brick: 'event', id: 'e', data: { venue: 'v1' } }] }} previewUrl="/preview" onChange={onChange} />
+    ));
+    const day = input('Day');
+    expect(day.type).toBe('date');
+    fireEvent.input(day, { target: { value: '2026-11-22' } });
+    flush();
+    expect(onChange.mock.lastCall?.[0].entries[0]?.data).toEqual({ day: '2026-11-22', venue: 'v1' });
+    expect(input('Venue').value).toBe('v1');
+    expect(input('Venue').readOnly).toBe(true);
   });
 });

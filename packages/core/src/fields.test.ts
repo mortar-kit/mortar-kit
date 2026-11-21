@@ -1,8 +1,9 @@
 // Unit tests for fields.* and defineBrick: defaults, validation, UI metadata.
+import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
 
 import { defineBrick } from './brick.ts';
-import { defaultsOf, fieldInfo, fields } from './fields.ts';
+import { defaultOf, defaultsOf, fieldInfo, fields, referencedCollections, referencesIn } from './fields.ts';
 
 const card = fields.object({
   label: 'Card',
@@ -158,5 +159,57 @@ describe('normalize', () => {
 
   it('copes with non-object data', () => {
     expect(brick.normalize(null)).toEqual(brick.defaults());
+  });
+});
+
+describe('date', () => {
+  const day = fields.date({ label: 'Day', required: true });
+  const optional = fields.date({ label: 'Day' });
+  const check = (f: typeof day, value: unknown) => v.safeParse(f, value).success;
+
+  it('accepts real YYYY-MM-DD dates and rejects the rest', () => {
+    expect(check(day, '2026-02-28')).toBe(true);
+    expect(check(day, '2024-02-29')).toBe(true);
+    expect(check(day, '2026-02-29')).toBe(false);
+    expect(check(day, '2026-13-01')).toBe(false);
+    expect(check(day, '2026-1-1')).toBe(false);
+    expect(check(day, '1 Jan 2026')).toBe(false);
+  });
+
+  it("defaults to '' and is required only when asked", () => {
+    expect(defaultOf(optional)).toBe('');
+    expect(check(optional, '')).toBe(true);
+    expect(check(day, '')).toBe(false);
+    expect(fieldInfo(day)).toMatchObject({ kind: 'date', required: true });
+  });
+});
+
+describe('reference', () => {
+  const category = fields.reference({ label: 'Category', collection: 'categories', required: true });
+
+  it("stores an id, defaults to '' and records its collection", () => {
+    expect(defaultOf(category)).toBe('');
+    expect(fieldInfo(category)).toMatchObject({ kind: 'reference', collection: 'categories', required: true });
+    expect(v.safeParse(category, 'cat-mugs').success).toBe(true);
+    const missing = v.safeParse(category, '');
+    expect(!missing.success && missing.issues[0]?.message).toBe('Category is required');
+  });
+
+  it('finds references through objects and lists, and lists their collections', () => {
+    const schema = {
+      main: fields.reference({ label: 'Main', collection: 'categories' }),
+      related: fields.list({ label: 'Related', of: fields.reference({ label: 'Post', collection: 'posts' }) }),
+      extra: fields.object({ label: 'Extra', fields: { author: fields.reference({ label: 'Author', collection: 'people' }) } }),
+      title: fields.text({ label: 'Title' }),
+    };
+    const data = { main: 'c1', related: ['p1', '', 'p2'], extra: { author: 'a1' }, title: 'x' };
+    expect(referencesIn(schema, data)).toEqual([
+      { path: ['main'], collection: 'categories', id: 'c1' },
+      { path: ['related', 0], collection: 'posts', id: 'p1' },
+      { path: ['related', 2], collection: 'posts', id: 'p2' },
+      { path: ['extra', 'author'], collection: 'people', id: 'a1' },
+    ]);
+    expect(referencesIn(schema, null)).toEqual([]);
+    expect([...referencedCollections(schema)].sort()).toEqual(['categories', 'people', 'posts']);
   });
 });

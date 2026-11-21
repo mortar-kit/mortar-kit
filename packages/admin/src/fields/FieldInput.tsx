@@ -38,6 +38,12 @@ export function FieldInput(props: FieldInputProps) {
           <Match when={i().kind === 'select'}>
             <SelectInput info={i()} path={props.path} value={props.value} />
           </Match>
+          <Match when={i().kind === 'date'}>
+            <DateInput info={i()} path={props.path} value={props.value} />
+          </Match>
+          <Match when={i().kind === 'reference'}>
+            <ReferenceInput info={i()} path={props.path} value={props.value} />
+          </Match>
           <Match when={i().kind === 'image'}>
             <ImageInput info={i()} path={props.path} value={props.value} />
           </Match>
@@ -146,6 +152,31 @@ function NumberInput(props: InputProps) {
           if (text.trim() !== '' && Number.isFinite(n)) form.setValue(props.path, n);
         }}
       />
+    </Labelled>
+  );
+}
+
+/** The browser's date picker; its value is already YYYY-MM-DD ('' when cleared). */
+function DateInput(props: InputProps) {
+  const form = useForm();
+  return (
+    <Labelled info={props.info} path={props.path}>
+      <input
+        type="date"
+        class={styles.input}
+        value={asString(props.value)}
+        aria-invalid={form.issue(props.path) ? 'true' : undefined}
+        onInput={(e) => form.setValue(props.path, e.currentTarget.value)}
+      />
+    </Labelled>
+  );
+}
+
+/** The referenced document's id, read-only until the picker lands. */
+function ReferenceInput(props: InputProps) {
+  return (
+    <Labelled info={props.info} path={props.path}>
+      <input type="text" class={styles.input} value={asString(props.value)} readonly />
     </Labelled>
   );
 }

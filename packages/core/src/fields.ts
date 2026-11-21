@@ -1,4 +1,4 @@
-// Field helpers for brick schemas. Each helper returns a Valibot schema that
+// Field helpers for brick and collection schemas. Each helper returns a Valibot schema that
 // (1) validates the value, (2) fills in a default when the value is missing,
 // and (3) carries a `FieldInfo` in its metadata so the admin panel can render
 // a form widget for it. The set of kinds is deliberately closed and small.
@@ -14,7 +14,9 @@ export type FieldKind =
   | 'url'
   | 'image'
   | 'list'
-  | 'object';
+  | 'object'
+  | 'date'
+  | 'reference';
 
 /** UI description of a field, stored in its Valibot metadata under `mortar`. */
 export interface FieldInfo {
@@ -36,6 +38,8 @@ export interface FieldInfo {
   readonly item?: AnyField;
   /** `object`: the nested fields. */
   readonly fields?: Fields;
+  /** `reference`: the name of the collection whose documents it points to. */
+  readonly collection?: string;
 }
 
 /**
@@ -197,6 +201,85 @@ function object<const F extends Fields>(o: Common<InferFields<F>> & { fields: F 
   return field(s, fallback, { kind: 'object', label: o.label, help: o.help, fields: o.fields });
 }
 
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** True for '' or a real calendar date written YYYY-MM-DD. */
+function isDate(s: string): boolean {
+  const match = DATE.exec(s);
+  if (!match) return s === '';
+  const [, y, m, d] = match.map(Number) as [number, number, number, number];
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+/** A calendar date, stored as `YYYY-MM-DD` (so dates sort as strings), or '' for none. */
+function date(o: Common<string> & { required?: boolean }): Field<string> {
+  const s = v.pipe(stringSchema(o), v.check(isDate, `${o.label} must be a date (YYYY-MM-DD)`));
+  return field(s, o.default ?? '', { kind: 'date', label: o.label, help: o.help, required: o.required });
+}
+
+/**
+ * A link to a document of another collection, by its stable id (renaming
+ * the document's slug keeps the link). '' means none. Whether the id still
+ * exists isn't checked here: a deleted target reads as missing.
+ */
+function reference(o: Common<string> & { collection: string; required?: boolean }): Field<string> {
+  return field(stringSchema(o), o.default ?? '', {
+    kind: 'reference',
+    label: o.label,
+    help: o.help,
+    required: o.required,
+    collection: o.collection,
+  });
+}
+
+/** A reference found in some data: where it is, which collection, and the id it holds. */
+export interface FoundReference {
+  path: (string | number)[];
+  collection: string;
+  id: string;
+}
+
+/**
+ * Every non-empty reference in `data`, following `object` and `list` fields,
+ * so a list of references (`fields.list({ of: fields.reference(...) })`) is
+ * found item by item.
+ */
+export function referencesIn(schema: Fields, data: unknown): FoundReference[] {
+  const found: FoundReference[] = [];
+  const walk = (f: AnyField, value: unknown, path: (string | number)[]) => {
+    const info = fieldInfo(f);
+    if (!info) return;
+    if (info.kind === 'reference' && info.collection && typeof value === 'string' && value !== '') {
+      found.push({ path, collection: info.collection, id: value });
+    } else if (info.kind === 'object' && info.fields) {
+      walkFields(info.fields, value, path);
+    } else if (info.kind === 'list' && info.item && Array.isArray(value)) {
+      const item = info.item;
+      value.forEach((each, index) => walk(item, each, [...path, index]));
+    }
+  };
+  const walkFields = (fs: Fields, value: unknown, path: (string | number)[]) => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return;
+    for (const [key, f] of Object.entries(fs)) walk(f, (value as Record<string, unknown>)[key], [...path, key]);
+  };
+  walkFields(schema, data, []);
+  return found;
+}
+
+/** The collections that references in `schema` point to (following objects and lists). */
+export function referencedCollections(schema: Fields): Set<string> {
+  const names = new Set<string>();
+  const walk = (f: AnyField) => {
+    const info = fieldInfo(f);
+    if (info?.kind === 'reference' && info.collection) names.add(info.collection);
+    if (info?.kind === 'object' && info.fields) Object.values(info.fields).forEach(walk);
+    if (info?.kind === 'list' && info.item) walk(info.item);
+  };
+  Object.values(schema).forEach(walk);
+  return names;
+}
+
 /** A fresh default value for one field. */
 export function defaultOf<T>(f: Field<T>): T {
   return v.getDefault(f as never) as T;
@@ -207,5 +290,5 @@ export function defaultsOf<F extends Fields>(f: F): InferFields<F> {
   return v.getDefaults(v.object(f)) as InferFields<F>;
 }
 
-/** Field helpers used to declare a brick's schema. */
-export const fields = { text, textarea, number, boolean, select, url, image, list, object };
+/** Field helpers used to declare the schema of a brick or a collection. */
+export const fields = { text, textarea, number, boolean, select, url, image, list, object, date, reference };
