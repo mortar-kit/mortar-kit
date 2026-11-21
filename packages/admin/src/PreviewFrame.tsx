@@ -1,10 +1,12 @@
 // The editor's side of the live preview: an iframe on the same origin that
 // loads the app's preview route. When the preview reports ready, and after
-// every change, the whole page is posted to it.
+// every change, the whole page is posted to it. Either side may load first:
+// the preview announces itself when it mounts, and the editor says hello
+// once it is listening, which the preview answers.
 import type { Page } from '@mortar-kit/core';
 import { createEffect, createSignal, deep, onSettled, snapshot } from 'solid-js';
 
-import { isReadyMessage, type PageMessage } from './protocol.ts';
+import { isReadyMessage, type HelloMessage, type PageMessage } from './protocol.ts';
 
 export interface PreviewFrameProps {
   /** URL of the app route that renders `<PreviewPage>`. */
@@ -23,6 +25,8 @@ export function PreviewFrame(props: PreviewFrameProps) {
       if (isReadyMessage(event.data)) setHandshakes((n) => n + 1);
     };
     window.addEventListener('message', onMessage);
+    const hello: HelloMessage = { type: 'mortar:hello' };
+    frame?.contentWindow?.postMessage(hello, location.origin);
     return () => window.removeEventListener('message', onMessage);
   });
 

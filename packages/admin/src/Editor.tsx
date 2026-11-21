@@ -29,7 +29,10 @@ export function Editor(props: EditorProps) {
 
   createEffect(
     () => deep(editor.state.page),
-    (page) => props.onChange?.(snapshot(page)),
+    // Braces: a returned value would be taken as the effect's cleanup (e.g. a signal setter's result).
+    (page) => {
+      props.onChange?.(snapshot(page));
+    },
     { defer: true },
   );
 

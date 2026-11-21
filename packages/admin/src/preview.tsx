@@ -5,7 +5,7 @@
 import { PageView, type AnyBrick, type Page } from '@mortar-kit/core';
 import { createStore, onSettled, reconcile } from 'solid-js';
 
-import { isPageMessage, type ReadyMessage } from './protocol.ts';
+import { isHelloMessage, isPageMessage, type ReadyMessage } from './protocol.ts';
 
 export interface PreviewPageProps {
   /** The same bricks the editor uses. */
@@ -17,8 +17,10 @@ export function PreviewPage(props: PreviewPageProps) {
   const [state, setState] = createStore<{ page: Page }>({ page: [] });
 
   onSettled(() => {
+    const ready: ReadyMessage = { type: 'mortar:ready' };
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== location.origin || event.source !== window.parent) return;
+      if (isHelloMessage(event.data)) window.parent.postMessage(ready, location.origin);
       if (!isPageMessage(event.data)) return;
       const page = event.data.page;
       setState((s) => {
@@ -26,7 +28,6 @@ export function PreviewPage(props: PreviewPageProps) {
       });
     };
     window.addEventListener('message', onMessage);
-    const ready: ReadyMessage = { type: 'mortar:ready' };
     window.parent.postMessage(ready, location.origin);
     return () => window.removeEventListener('message', onMessage);
   });
@@ -34,4 +35,4 @@ export function PreviewPage(props: PreviewPageProps) {
   return <PageView bricks={props.bricks} page={state.page} />;
 }
 
-export type { PageMessage, ReadyMessage } from './protocol.ts';
+export type { HelloMessage, PageMessage, ReadyMessage } from './protocol.ts';
