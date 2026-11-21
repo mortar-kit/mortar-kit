@@ -32,3 +32,34 @@ body {
   color: white;
   text-decoration: none;
 }
+.features {
+  padding: 4rem 1.5rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.features h2 {
+  font-size: 2rem;
+  text-align: center;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 3), minmax(0, 1fr));
+  gap: 1.5rem;
+}
+.feature {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.feature img {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+.feature h3 {
+  margin: 0 0 0.5rem;
+}
+.feature p {
+  margin: 0;
+  color: #57534e;
+}

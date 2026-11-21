@@ -1,14 +1,9 @@
 // Root component (start mode renders it inside Document.tsx).
-import { PageView } from '@mortar-kit/core';
+import { Loading } from 'solid-js';
 
-import { bricks } from './bricks/index.ts';
-import { home } from './content/home.ts';
+import { Router } from './router.ts';
 import './styles.css';
 
 export default function App() {
-  return (
-    <main>
-      <PageView bricks={bricks} page={home} />
-    </main>
-  );
+  return <Router>{(props) => <Loading>{props.children}</Loading>}</Router>;
 }
