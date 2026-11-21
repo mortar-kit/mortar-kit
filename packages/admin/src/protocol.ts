@@ -16,10 +16,11 @@ export interface HelloMessage {
   type: 'mortar:hello';
 }
 
-/** Editor → preview: the full document to render, and its collection's name (sent on every change). */
+/** Editor → preview: the full document to render, its collection's name and whether that collection has a body (sent on every change). */
 export interface DocMessage {
   type: 'mortar:doc';
   collection: string;
+  body: boolean;
   doc: Doc;
 }
 
@@ -45,6 +46,7 @@ export function isDocMessage(data: unknown): data is DocMessage {
   return (
     hasType(data, 'mortar:doc') &&
     typeof message.collection === 'string' &&
+    typeof message.body === 'boolean' &&
     typeof message.doc === 'object' &&
     message.doc !== null &&
     typeof message.doc.id === 'string'

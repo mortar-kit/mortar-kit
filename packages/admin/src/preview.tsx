@@ -32,17 +32,14 @@ export interface PreviewPageProps {
 
 /** Renders the document the parent editor posts; empty until the first message. */
 export function PreviewPage(props: PreviewPageProps) {
-  const [state, setState] = createStore<{ collection: string; doc: Doc | null }>({ collection: '', doc: null });
+  const [state, setState] = createStore<{ collection: string; body: boolean; doc: Doc | null }>({ collection: '', body: false, doc: null });
   // Bumped on every save: loaders read it, so they load again.
   const [version, setVersion] = createSignal(0);
   const versioned: ContentSource = {
-    list: (collection, options) => {
+    list: (collection, options) => props.content!.list(collection, options),
+    get: (collection, ref) => props.content!.get(collection, ref),
+    track: () => {
       version();
-      return props.content!.list(collection, options);
-    },
-    get: (collection, ref) => {
-      version();
-      return props.content!.get(collection, ref);
     },
   };
 
@@ -53,8 +50,9 @@ export function PreviewPage(props: PreviewPageProps) {
       if (isHelloMessage(event.data)) window.parent.postMessage(ready, location.origin);
       if (isRefreshMessage(event.data)) setVersion((v) => v + 1);
       if (!isDocMessage(event.data)) return;
-      const { collection, doc } = event.data;
+      const { collection, body, doc } = event.data;
       setState((s) => {
+        s.body = body;
         if (s.doc && s.doc.id === doc.id && s.collection === collection) reconcile(doc, 'id')(s.doc);
         else {
           s.collection = collection;
@@ -75,7 +73,7 @@ export function PreviewPage(props: PreviewPageProps) {
           const body = (
             <PageView
               bricks={props.bricks}
-              entries={doc.entries ?? []}
+              entries={state.body ? (doc.entries ?? []) : []}
               fallback={(entry) => <MissingBrick name={entry.brick} />}
               loadingFallback={() => <div class={styles.note}>Loading…</div>}
               errorFallback={(entry, error) => <BrickError name={entry.brick} error={error} />}
@@ -86,7 +84,7 @@ export function PreviewPage(props: PreviewPageProps) {
               <Show
                 when={props.layouts?.[state.collection]}
                 fallback={
-                  <Show when={Array.isArray(doc.entries)} fallback={<p role="note" class={styles.note}>There is no preview for this collection.</p>}>
+                  <Show when={state.body} fallback={<p role="note" class={styles.note}>There is no preview for this collection.</p>}>
                     {body}
                   </Show>
                 }

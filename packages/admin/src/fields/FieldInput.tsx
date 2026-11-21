@@ -240,9 +240,12 @@ function ReferencePicker(props: InputProps & { admin: AdminApi }) {
           </span>
         </Loading>
       </Labelled>
-      <Show when={missing()}>
-        <small class={common.issue}>The selected document no longer exists. Pick another, or None.</small>
-      </Show>
+      {/* Its own boundary: while the list loads, nothing here holds up the rest of the form. */}
+      <Loading fallback={null}>
+        <Show when={missing()}>
+          <small class={common.issue}>The selected document no longer exists. Pick another, or None.</small>
+        </Show>
+      </Loading>
     </div>
   );
 }

@@ -7,15 +7,15 @@ import { flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PreviewPage } from './preview.tsx';
-import { bricks, doc } from './test/bricks.tsx';
+import { author, bricks, doc } from './test/bricks.tsx';
 
 function postMessage(data: unknown, origin = location.origin) {
   window.dispatchEvent(new MessageEvent('message', { data, origin, source: window.parent }));
   flush();
 }
 
-function post(d: Doc, origin = location.origin, collection = 'pages') {
-  postMessage({ type: 'mortar:doc', collection, doc: d }, origin);
+function post(d: Doc, origin = location.origin, collection = 'pages', body = collection !== 'authors') {
+  postMessage({ type: 'mortar:doc', collection, body, doc: d }, origin);
 }
 
 /** The fixture document with other entries. */
@@ -140,7 +140,7 @@ describe('<PreviewPage> layouts and loading bricks', () => {
     component: (props) => <p class="roster">{props.loaded.map((p) => p.fields.name).join(', ')}</p>,
   });
   const settle = async () => {
-    for (let i = 0; i < 5; i++) await Promise.resolve();
+    for (let i = 0; i < 30; i++) await Promise.resolve();
     flush();
   };
 
@@ -203,5 +203,45 @@ describe('<PreviewPage> layouts and loading bricks', () => {
     post({ ...doc(), entries: [{ brick: 'roster', id: 'r', data: {} }] });
     await settle();
     expect(container.querySelector('[role="alert"]')).toHaveTextContent('The "roster" brick couldn\'t load its data: Error: offline');
+  });
+});
+
+describe('<PreviewPage> review fixes', () => {
+  const settle = async () => {
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    flush();
+  };
+
+  it('ignores stored entries when the collection has no body', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    post({ ...author(), entries: doc().entries }, location.origin, 'authors', false);
+    expect(container.querySelector('h2')).toBeNull();
+    expect(container.querySelector('[role="note"]')).toHaveTextContent('There is no preview for this collection.');
+  });
+
+  it('loads again on refresh even when the loader awaits before reading content', async () => {
+    const people = defineCollection({ name: 'people', fields: { name: fields.text({ label: 'Name' }) } });
+    const late = defineBrick({
+      name: 'late',
+      schema: {},
+      load: async (_data, content) => {
+        await Promise.resolve();
+        return content.list(people);
+      },
+      component: (props) => <p class="late">{props.loaded.length}</p>,
+    });
+    const docs = [{ id: 'a', slug: 'a', fields: { name: 'A' } }];
+    const list = vi.fn(async () => [...docs]);
+    render(() => <PreviewPage bricks={[late]} content={{ list, get: async () => null }} />);
+    flush();
+    post({ ...doc(), entries: [{ brick: 'late', id: 'l', data: {} }] });
+    await settle();
+    expect(document.querySelector('.late')).toHaveTextContent('1');
+    docs.push({ id: 'b', slug: 'b', fields: { name: 'B' } });
+    postMessage({ type: 'mortar:refresh' });
+    await settle();
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('.late')).toHaveTextContent('2');
   });
 });

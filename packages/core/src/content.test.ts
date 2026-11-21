@@ -178,3 +178,52 @@ describe('remove', () => {
     expect(await store.get('categories', 'mugs')).toBeDefined();
   });
 });
+
+describe('writes at the same time', () => {
+  /** A store whose writes yield, so overlapping calls interleave like real I/O. */
+  const slowStore = () => {
+    const store = createMemoryStore(seed());
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 1));
+    return {
+      ...store,
+      get: async (c: string, s: string) => (await tick(), store.get(c, s)),
+      put: async (c: string, d: Doc) => (await tick(), store.put(c, d)),
+    } satisfies ContentStore;
+  };
+
+  it('lets only one of two documents take a slug', async () => {
+    const { content, store } = setup(slowStore());
+    const results = await Promise.all([
+      content.save('categories', { id: 'c-a', slug: 'cups', fields: { name: 'A' } }),
+      content.save('categories', { id: 'c-b', slug: 'cups', fields: { name: 'B' } }),
+    ]);
+    expect(results.map((r) => r.ok)).toEqual([true, false]);
+    expect(((await store.get('categories', 'cups')) as Doc).id).toBe('c-a');
+  });
+
+  it('does not delete a document a save is about to reference', async () => {
+    const { content, store } = setup(slowStore());
+    const [removed, saved] = await Promise.all([
+      content.save('products', { id: 'x9', slug: 'mug-9', fields: { name: 'Mug 9', category: 'c-empty' } }),
+      content.remove('categories', 'c-empty'),
+    ]).then(([s, r]) => [r, s]);
+    expect(saved).toEqual({ ok: true });
+    expect(removed).toMatchObject({ ok: false, referencedBy: [{ id: 'x9' }] });
+    expect(await store.get('categories', 'empty')).toBeDefined();
+  });
+});
+
+describe('copies left by a rename cut short', () => {
+  it('are removed by the next save or delete of the document', async () => {
+    const store = createMemoryStore(seed());
+    await store.put('categories', { id: 'c-mugs', slug: 'cups', fields: { name: 'Cups' } });
+    const { content } = setup(store);
+    expect(await content.save('categories', { id: 'c-mugs', slug: 'mugs', fields: { name: 'Mugs again' } })).toEqual({ ok: true });
+    expect(await store.get('categories', 'cups')).toBeUndefined();
+
+    await store.put('categories', { id: 'c-empty', slug: 'void', fields: { name: 'Void' } });
+    expect(await content.remove('categories', 'c-empty')).toEqual({ ok: true });
+    expect(await store.get('categories', 'empty')).toBeUndefined();
+    expect(await store.get('categories', 'void')).toBeUndefined();
+  });
+});

@@ -180,7 +180,7 @@ export function Editor(props: EditorProps) {
           )}
         </Show>
       </aside>
-      <PreviewFrame url={props.previewUrl} collection={props.collection.name} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
+      <PreviewFrame url={props.previewUrl} collection={props.collection.name} body={props.collection.body} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
     </div>
   );
 }

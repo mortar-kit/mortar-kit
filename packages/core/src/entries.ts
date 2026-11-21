@@ -1,5 +1,5 @@
 // Brick entries: the ordered `{ brick, id, data }` list that makes up a
-// page or a document's body, with the two checks every list goes through:
+// document's body, with the two checks every list goes through:
 // normalize when loading (be forgiving, never crash) and validate when
 // saving (be strict, report every problem). Also the plain-JSON copy used
 // for data Mortar keeps without understanding it.
@@ -7,7 +7,7 @@ import { snapshot } from 'solid-js';
 
 import { brickMap, type AnyBrick } from './brick.ts';
 
-/** One brick instance on a page. */
+/** One brick instance in a body. */
 export interface PageEntry {
   /** The `name` of the brick that renders this entry. */
   brick: string;

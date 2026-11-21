@@ -60,6 +60,11 @@ export default function AdminRoute() {
       const target = leaving;
       leaving = undefined;
       if (!target) return;
+      // A save that finished meanwhile may have left nothing unsaved.
+      if (!dirty()) {
+        target.retry(true);
+        return;
+      }
       const inAdmin = typeof target.to === 'string' && target.to.startsWith('/admin');
       const question = inAdmin ? 'Discard your unsaved changes to this document?' : 'Leave the editor? Your unsaved changes will be lost.';
       if (window.confirm(question)) target.retry(true);

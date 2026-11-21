@@ -4,6 +4,8 @@
 // `createContent` puts every document through the rules whichever store is
 // used: normalize on read, validate and keep slugs unique on save, list
 // with filters and order, and refuse to delete a document others reference.
+// Writes through one `createContent` run one at a time, so those checks
+// hold; several server processes sharing one store need it to lock.
 import { brickMap, type AnyBrick } from './brick.ts';
 import { collectionMap, type AnyCollection, type SortOrder } from './collection.ts';
 import { isValidSlug, normalizeDoc, validateDoc, type Doc, type DocIssue, type DocRef, type DocSummary } from './doc.ts';
@@ -41,6 +43,12 @@ export interface ContentSource {
   list(collection: string, options?: ListOptions): Promise<DocSummary[]>;
   /** One document, or null if there is none. */
   get(collection: string, ref: DocRef): Promise<Doc | null>;
+  /**
+   * Called before each brick load, where reads are tracked: read a signal
+   * here to make every load run again when it changes (the admin preview
+   * does, after each save).
+   */
+  track?(): void;
 }
 
 /** Result of `Content.save`. */
@@ -61,7 +69,11 @@ export type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] 
 
 /** Reading and writing documents: what the admin needs. */
 export interface Content extends ContentSource {
-  /** Validates a document (from an untrusted client) and stores it. Problems are returned, not thrown. Renaming its slug moves it. */
+  /**
+   * Validates a document (from an untrusted client) and stores it. Problems
+   * are returned, not thrown. Renaming its slug moves it. Writes through one
+   * `Content` run one at a time.
+   */
   save(collection: string, doc: unknown): Promise<SaveResult>;
   /** Deletes a document by id, unless other documents reference it (then they are returned). */
   remove(collection: string, id: string): Promise<RemoveResult>;
@@ -124,12 +136,31 @@ export function createContent(options: ContentOptions): Content {
     return c;
   };
 
-  /** Every document, normalized; of two with the same id (a rename cut short), the first by slug wins. */
-  async function all(c: AnyCollection): Promise<Doc[]> {
-    const docs = (await store.list(c.name)).map((raw) => normalizeDoc(c, bricks, raw)).sort((a, b) => compare(a.slug, b.slug));
-    const seen = new Set<string>();
-    return docs.filter((doc) => !seen.has(doc.id) && seen.add(doc.id));
+  /** Every stored copy of every document, normalized, by slug. */
+  async function copies(c: AnyCollection): Promise<Doc[]> {
+    return (await store.list(c.name)).map((raw) => normalizeDoc(c, bricks, raw)).sort((a, b) => compare(a.slug, b.slug));
   }
+
+  /**
+   * Every document, normalized. Two copies share an id only after a rename
+   * was cut short (a crash between writing the new file and removing the
+   * old one): until the next save or delete of that document removes the
+   * other copy, the first by slug is listed, which may be the older one.
+   */
+  async function all(c: AnyCollection): Promise<Doc[]> {
+    const seen = new Set<string>();
+    return (await copies(c)).filter((doc) => !seen.has(doc.id) && seen.add(doc.id));
+  }
+
+  // Writes run one at a time, so each check (a free slug, no references)
+  // still holds when its write lands. Within this process only: several
+  // processes sharing one store need the store to lock.
+  let writes: Promise<unknown> = Promise.resolve();
+  const oneAtATime = <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = writes.then(fn, fn);
+    writes = run.catch(() => {});
+    return run;
+  };
 
   return {
     async list(name, listOptions = {}) {
@@ -156,47 +187,53 @@ export function createContent(options: ContentOptions): Content {
       const result = validateDoc(c, bricks, raw);
       if (!result.success) return { ok: false, issues: result.issues };
       const doc = result.doc;
-      const stored = (await all(c)).find((d) => d.id === doc.id);
-      // Read the target slug itself, so an unreadable file there fails the save instead of being overwritten.
-      const occupant = await store.get(c.name, doc.slug);
-      if (occupant !== undefined && normalizeDoc(c, bricks, occupant).id !== doc.id) {
-        return { ok: false, issues: [{ path: ['slug'], message: `Another document in ${c.label} already uses the slug "${doc.slug}"` }] };
-      }
-      await store.put(c.name, doc);
-      if (stored && stored.slug !== doc.slug) await store.remove(c.name, stored.slug);
-      return { ok: true };
+      return oneAtATime(async (): Promise<SaveResult> => {
+        // Read the target slug itself, so an unreadable file there fails the save instead of being overwritten.
+        const occupant = await store.get(c.name, doc.slug);
+        if (occupant !== undefined && normalizeDoc(c, bricks, occupant).id !== doc.id) {
+          return { ok: false, issues: [{ path: ['slug'], message: `Another document in ${c.label} already uses the slug "${doc.slug}"` }] };
+        }
+        await store.put(c.name, doc);
+        // A rename moves the document: remove its old copy (and any a cut-short rename left).
+        for (const old of await copies(c)) if (old.id === doc.id && old.slug !== doc.slug) await store.remove(c.name, old.slug);
+        return { ok: true };
+      });
     },
 
-    async remove(name, id) {
+    remove(name, id) {
       const c = need(name);
-      const target = (await all(c)).find((doc) => doc.id === id);
-      if (!target) return { ok: true };
-      const referencedBy: Referrer[] = [];
-      const bodyRefs = bricks.some((b) => referencedCollections(b.schema).has(c.name));
-      for (const k of collections.values()) {
-        const inFields = referencedCollections(k.fields).has(c.name);
-        if (!inFields && !(k.body && bodyRefs)) continue;
-        for (const doc of await all(k)) {
-          if (k === c && doc.id === id) continue;
-          const at = { collection: k.name, id: doc.id, slug: doc.slug, title: k.titleOf(doc) };
-          for (const ref of referencesIn(k.fields, doc.fields)) {
-            if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, path: ['fields', ...ref.path] });
-          }
-          if (!k.body) continue;
-          for (const entry of doc.entries ?? []) {
-            const brick = byBrick.get(entry.brick);
-            if (!brick) continue;
-            for (const ref of referencesIn(brick.schema, entry.data)) {
-              if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, entryId: entry.id, path: ref.path });
-            }
+      return oneAtATime(() => removeNow(c, id));
+    },
+  };
+
+  async function removeNow(c: AnyCollection, id: string): Promise<RemoveResult> {
+    const target = (await all(c)).find((doc) => doc.id === id);
+    if (!target) return { ok: true };
+    const referencedBy: Referrer[] = [];
+    const bodyRefs = bricks.some((b) => referencedCollections(b.schema).has(c.name));
+    for (const k of collections.values()) {
+      const inFields = referencedCollections(k.fields).has(c.name);
+      if (!inFields && !(k.body && bodyRefs)) continue;
+      for (const doc of await all(k)) {
+        if (k === c && doc.id === id) continue;
+        const at = { collection: k.name, id: doc.id, slug: doc.slug, title: k.titleOf(doc) };
+        for (const ref of referencesIn(k.fields, doc.fields)) {
+          if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, path: ['fields', ...ref.path] });
+        }
+        if (!k.body) continue;
+        for (const entry of doc.entries ?? []) {
+          const brick = byBrick.get(entry.brick);
+          if (!brick) continue;
+          for (const ref of referencesIn(brick.schema, entry.data)) {
+            if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, entryId: entry.id, path: ref.path });
           }
         }
       }
-      if (referencedBy.length > 0) return { ok: false, referencedBy };
-      await store.remove(c.name, target.slug);
-      return { ok: true };
-    },
-  };
+    }
+    if (referencedBy.length > 0) return { ok: false, referencedBy };
+    for (const copy of await copies(c)) if (copy.id === id) await store.remove(c.name, copy.slug);
+    return { ok: true };
+  }
 }
 
 /** Checks list options from an untrusted caller and fills in the defaults. Throws on bad options. */
