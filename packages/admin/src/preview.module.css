@@ -1,9 +1,16 @@
-/* Placeholder the preview shows for an entry whose brick isn't defined. The
+/* Placeholders the preview shows (an undefined brick, a failed load). The
    preview carries only the site's CSS, so this sets everything it needs. */
 .missing {
   margin: 1rem;
   padding: 1rem;
   border: 2px dashed #b91c1c;
   color: #b91c1c;
+  font: 14px/1.4 system-ui, sans-serif;
+}
+/* Quiet notes: a brick loading, or a collection with nothing to preview. */
+.note {
+  margin: 1rem;
+  padding: 1rem;
+  color: #78716c;
   font: 14px/1.4 system-ui, sans-serif;
 }

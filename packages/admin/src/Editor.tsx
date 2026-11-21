@@ -24,6 +24,8 @@ export interface EditorProps {
   isNew?: boolean;
   /** URL of the app route that renders `<PreviewPage>` from `@mortar-kit/admin/preview`. */
   previewUrl: string;
+  /** Bump it after saved content changes elsewhere, so bricks in the preview load again. Saves here do it already. */
+  refresh?: number;
   /** Called with a plain copy of the document after every change. */
   onChange?: (doc: Doc) => void;
   /**
@@ -54,6 +56,8 @@ export function Editor(props: EditorProps) {
   let slugInput: HTMLInputElement | undefined;
   // The slug as last saved, and whether the document exists yet. Reset when the app passes another document.
   const [saved, setSaved] = createSignal(() => ({ slug: props.doc.slug, exists: props.isNew !== true }));
+  // Successful saves, so the preview reloads what bricks loaded.
+  const [saves, setSaves] = createSignal(0);
 
   createEffect(
     () => deep(editor.state.doc),
@@ -108,7 +112,10 @@ export function Editor(props: EditorProps) {
               isNew={props.isNew}
               onSave={onSave()}
               onSlugIssue={() => slugInput?.focus()}
-              onSaved={(doc) => setSaved({ slug: doc.slug, exists: true })}
+              onSaved={(doc) => {
+                setSaved({ slug: doc.slug, exists: true });
+                setSaves((n) => n + 1);
+              }}
               onDirtyChange={props.onDirtyChange}
             />
           )}
@@ -162,7 +169,7 @@ export function Editor(props: EditorProps) {
           )}
         </Show>
       </aside>
-      <PreviewFrame url={props.previewUrl} collection={props.collection.name} doc={editor.state.doc} />
+      <PreviewFrame url={props.previewUrl} collection={props.collection.name} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
     </div>
   );
 }
