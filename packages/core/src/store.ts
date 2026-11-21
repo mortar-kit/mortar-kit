@@ -4,8 +4,11 @@
 // JSON-file store lives in `@mortar-kit/core/server` so `node:fs` never
 // reaches a client bundle.
 import type { AnyBrick } from './brick.ts';
+import { isValidSlug } from './doc.ts';
 import type { PageMeta } from './meta.ts';
 import { normalizePage, validatePage, type Page, type PageIssue } from './page.ts';
+
+export { isValidSlug } from './doc.ts';
 
 /** Where pages live. Implement this to store pages anywhere (files, a database, a CMS API). */
 export interface PageStore {
@@ -24,13 +27,6 @@ export type SaveResult = { ok: true } | { ok: false; issues: PageIssue[] };
 export interface PageOptions {
   /** The site's page metadata schema, if it declares one (`definePageMeta`). */
   meta?: PageMeta;
-}
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/** Whether `slug` is a valid page slug: lowercase letters and digits, single dashes between (`home`, `about-us`). */
-export function isValidSlug(slug: string): boolean {
-  return SLUG.test(slug);
 }
 
 /** A store that keeps pages in memory. Pages are copied in and out, so callers can't mutate stored pages. */
