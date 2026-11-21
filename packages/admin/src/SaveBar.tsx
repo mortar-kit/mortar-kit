@@ -1,9 +1,10 @@
 // The editor's save controls: whether there are unsaved changes, a Save
 // button (also Ctrl/Cmd+S), a saving state, and the problems that stopped a
 // save, each linking to its entry. Warns before the tab is closed with
-// unsaved changes.
+// unsaved changes, and reports changes in that state so the app can guard
+// its own navigation (the editor doesn't depend on a router).
 import { brickMap, normalizePage, validatePage, type AnyBrick, type Page, type PageIssue, type SaveResult } from '@mortar-kit/core';
-import { action, createMemo, createOptimistic, createSignal, For, onSettled, Show, snapshot } from 'solid-js';
+import { action, createEffect, createMemo, createOptimistic, createSignal, For, onSettled, Show, snapshot } from 'solid-js';
 
 import type { EditorStore } from './state.ts';
 
@@ -13,6 +14,7 @@ export interface SaveBarProps {
   /** The page as last loaded; the baseline for "unsaved changes" until the first save. */
   source: Page;
   onSave: (page: Page) => Promise<SaveResult | void>;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function SaveBar(props: SaveBarProps) {
@@ -45,6 +47,16 @@ export function SaveBar(props: SaveBarProps) {
 
   const canSave = () => dirty() && !saving();
 
+  // Last value reported, so unmounting while dirty can report false.
+  let reported = false;
+  createEffect(
+    () => dirty(),
+    (value) => {
+      reported = value;
+      props.onDirtyChange?.(value);
+    },
+  );
+
   onSettled(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (dirty()) event.preventDefault();
@@ -60,6 +72,8 @@ export function SaveBar(props: SaveBarProps) {
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('keydown', onKeyDown);
+      // Without save controls there is nothing unsaved to guard.
+      if (reported) props.onDirtyChange?.(false);
     };
   });
 

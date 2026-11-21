@@ -26,17 +26,24 @@ Solid APIs against the installed sources, not memory.
    router `query` over a `'use server'` function and saves through another
    that returns `respond(result, { revalidate: '' })`, so a save never
    refetches and re-seeds the editor.
+5. Leave guard: Editor `onDirtyChange` (false again if the save controls
+   unmount); the admin route blocks router navigation while dirty with
+   `useBeforeLeave`, and waits for an in-flight save before leaving. The
+   app's `saveEditedPage` (`src/pages.ts`) drops the cached page after a
+   save (`query.delete`, not `revalidate`, which would re-seed the editor),
+   so back/forward never shows or edits the pre-save page.
 
 Verified in a browser on the production build: live preview, entry
 operations with keyed DOM reuse in the preview, save to disk, public SSR
 of the saved page, typing during an in-flight save (kept, stays dirty),
-local validation messages. 83 tests; typecheck, lint, build clean.
+local validation messages, leave guard (links, back/forward, leaving
+during a save, a failed save). 85 tests; typecheck, lint, build clean.
 
 ## Open / not built
 
 - Click-to-select in the preview (optional in the brief; skipped).
-- In-app navigation guard: the editor warns on tab close only. A router
-  `useBeforeLeave` in the app's admin route would cover in-app links.
+- Two quick navigations while dirty show two confirms (the router's
+  documented `useBeforeLeave` pattern); harmless, but could be debounced.
 - `meta` has no editing UI, and `Document.tsx`'s title ignores it.
 - The server-side rejection path of a save is unit-tested only (the editor
   validates first, so it is hard to reach from the UI).

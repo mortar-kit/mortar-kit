@@ -26,6 +26,14 @@ export interface EditorProps {
    * reject if saving failed. The editor validates before calling it too.
    */
   onSave?: (page: Page) => Promise<SaveResult | void>;
+  /**
+   * Called with whether there are unsaved changes, initially and whenever
+   * that changes (only with `onSave`), and with false if the save controls
+   * go away while dirty (the editor unmounts or `onSave` is removed). Use it
+   * to guard in-app navigation, e.g. with the router's `useBeforeLeave`;
+   * closing the tab is already guarded.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function Editor(props: EditorProps) {
@@ -59,7 +67,7 @@ export function Editor(props: EditorProps) {
           <AddMenu bricks={props.bricks} onAdd={add} />
         </div>
         <Show when={props.onSave}>
-          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} source={props.page} onSave={onSave()} />}
+          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} source={props.page} onSave={onSave()} onDirtyChange={props.onDirtyChange} />}
         </Show>
         <Show when={editor.state.page.entries.length > 0} fallback={<p class="mortar-help mortar-empty">This page is empty. Add a brick to start.</p>}>
           <ol class="mortar-entries">
