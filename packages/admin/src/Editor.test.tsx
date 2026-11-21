@@ -38,7 +38,7 @@ describe('<Editor>', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'loud' } });
     fireEvent.change(input('Shown'), { target: { checked: false } });
     flush();
-    expect(last()?.[0]?.data).toEqual({ text: 'Changed', size: 2, tone: 'loud', shown: false });
+    expect(last()?.entries[0]?.data).toEqual({ text: 'Changed', size: 2, tone: 'loud', shown: false });
   });
 
   it('keeps partial numbers in the input and commits complete ones', () => {
@@ -46,11 +46,11 @@ describe('<Editor>', () => {
     const size = input('Size');
     fireEvent.input(size, { target: { value: '4' } });
     flush();
-    expect(last()?.[0]?.data.size).toBe(4);
+    expect(last()?.entries[0]?.data.size).toBe(4);
     fireEvent.input(size, { target: { value: '' } });
     flush();
     expect(size.value).toBe('');
-    expect(last()?.[0]?.data.size).toBe(4);
+    expect(last()?.entries[0]?.data.size).toBe(4);
   });
 
   it('commits any finite number and keeps the typed text', () => {
@@ -59,7 +59,7 @@ describe('<Editor>', () => {
     for (const [text, n] of [['0.50', 0.5], ['1e1', 10], ['3.0', 3]] as const) {
       fireEvent.input(size, { target: { value: text } });
       flush();
-      expect(last()?.[0]?.data.size).toBe(n);
+      expect(last()?.entries[0]?.data.size).toBe(n);
       expect(size.value).toBe(text);
     }
   });
@@ -78,7 +78,7 @@ describe('<Editor>', () => {
     render(() => (
       <>
         <Editor bricks={bricks} page={page()} previewUrl="/preview" onChange={setLatest} />
-        <output data-testid="latest">{latest()?.[0]?.data.text as string}</output>
+        <output data-testid="latest">{latest()?.entries[0]?.data.text as string}</output>
       </>
     ));
     fireEvent.input(input('Text'), { target: { value: 'Set' } });
@@ -114,7 +114,7 @@ describe('<Editor>', () => {
     flush();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Tag 1' }));
     flush();
-    expect(last()?.[1]?.data.items).toEqual([{ name: 'new' }, { name: 'b' }]);
+    expect(last()?.entries[1]?.data.items).toEqual([{ name: 'new' }, { name: 'b' }]);
     expect(names().map((i) => i.value)).toEqual(['new', 'b']);
   });
 
@@ -123,7 +123,7 @@ describe('<Editor>', () => {
     click('Add Tags');
     expect(entries()).toEqual(['Heading', 'Tags', 'Tags']);
     expect(screen.getByRole('button', { name: 'Tags', current: true })).toBe(document.querySelectorAll('.mortar-entry')[1]);
-    expect(last()?.[1]?.data).toEqual({ items: [] });
+    expect(last()?.entries[1]?.data).toEqual({ items: [] });
     expect(screen.getByRole('button', { name: 'Add Tag' })).toBeInTheDocument();
     expect((document.querySelector('.mortar-add-menu') as HTMLDetailsElement).open).toBe(false);
   });
@@ -136,12 +136,12 @@ describe('<Editor>', () => {
     expect(entries()).toEqual(['Tags', 'Heading']);
     click('Duplicate Heading 2');
     expect(entries()).toEqual(['Tags', 'Heading', 'Heading']);
-    expect(last()?.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Welcome']);
-    expect(last()?.[2]?.id).not.toBe('h');
+    expect(last()?.entries.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Welcome']);
+    expect(last()?.entries[2]?.id).not.toBe('h');
     // The duplicate is selected: editing it leaves the original alone.
     fireEvent.input(input('Text'), { target: { value: 'Copy' } });
     flush();
-    expect(last()?.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Copy']);
+    expect(last()?.entries.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Copy']);
   });
 
   it('removes an entry only after confirmation', () => {
@@ -153,7 +153,7 @@ describe('<Editor>', () => {
     confirm.mockReturnValue(true);
     click('Remove Heading 1');
     expect(entries()).toEqual(['Tags']);
-    expect(last()?.map((e) => e.id)).toEqual(['t']);
+    expect(last()?.entries.map((e) => e.id)).toEqual(['t']);
     expect(screen.getByRole('button', { name: 'Tags', current: true })).toBeInTheDocument();
     click('Remove Tags 1');
     expect(screen.getByText('This page is empty. Add a brick to start.')).toBeInTheDocument();
@@ -162,7 +162,7 @@ describe('<Editor>', () => {
 
   it('lists an unknown brick with a warning and lets it be removed', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    setup([{ brick: 'gone', id: 'g', data: { a: 1 } }, ...page()]);
+    setup({ entries: [{ brick: 'gone', id: 'g', data: { a: 1 } }, ...page().entries] });
     expect(entries()).toEqual(['⚠ Unknown brick "gone"', 'Heading', 'Tags']);
     expect(screen.getByText(/No brick named "gone" is defined/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Duplicate Unknown brick "gone" 1' })).toBeDisabled();
@@ -185,13 +185,13 @@ describe('<Editor>', () => {
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:ready' }, origin: location.origin, source: frame.contentWindow }));
     flush();
     expect(post).toHaveBeenCalledTimes(1);
-    expect(post.mock.lastCall?.[0]).toMatchObject({ type: 'mortar:page', page: [{ id: 'h' }, { id: 't' }] });
+    expect(post.mock.lastCall?.[0]).toMatchObject({ type: 'mortar:page', page: { entries: [{ id: 'h' }, { id: 't' }] } });
     expect(post.mock.lastCall?.[1]).toBe(location.origin);
 
     fireEvent.input(input('Text'), { target: { value: 'Live' } });
     flush();
     expect(post).toHaveBeenCalledTimes(2);
     const sent = post.mock.lastCall?.[0] as { page: Page } | undefined;
-    expect(sent?.page[0]?.data.text).toBe('Live');
+    expect(sent?.page.entries[0]?.data.text).toBe('Live');
   });
 });

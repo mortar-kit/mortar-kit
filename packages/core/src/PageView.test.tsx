@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defineBrick } from './brick.ts';
 import { fields } from './fields.ts';
-import type { Page } from './page.ts';
+import type { Page, PageEntry } from './page.ts';
 import { PageView } from './PageView.tsx';
 
 const heading = defineBrick({
@@ -25,10 +25,11 @@ const tags = defineBrick({
   ),
 });
 
-const page = (): Page => [
+const entries = (): PageEntry[] => [
   { brick: 'heading', id: 'a', data: { text: 'First' } },
   { brick: 'heading', id: 'b', data: { text: 'Second' } },
 ];
+const page = (): Page => ({ entries: entries() });
 
 const texts = (root: Element, selector: string) => [...root.querySelectorAll(selector)].map((el) => el.textContent);
 
@@ -40,7 +41,7 @@ describe('<PageView>', () => {
 
   it('renders nothing for an unknown brick', () => {
     const { container } = render(() => (
-      <PageView bricks={[heading]} page={[{ brick: 'missing', id: 'x', data: {} }, ...page()]} />
+      <PageView bricks={[heading]} page={{ entries: [{ brick: 'missing', id: 'x', data: {} }, ...entries()] }} />
     ));
     expect(container.querySelectorAll('h2')).toHaveLength(2);
   });
@@ -49,7 +50,7 @@ describe('<PageView>', () => {
     const { container } = render(() => (
       <PageView
         bricks={[heading]}
-        page={[{ brick: 'missing', id: 'x', data: {} }, ...page()]}
+        page={{ entries: [{ brick: 'missing', id: 'x', data: {} }, ...entries()] }}
         fallback={(entry) => <p class="missing">{entry.brick}</p>}
       />
     ));
@@ -61,10 +62,12 @@ describe('<PageView>', () => {
     const { container } = render(() => (
       <PageView
         bricks={[heading, tags]}
-        page={[
+        page={{
+          entries: [
           { brick: 'heading', id: 'a', data: {} },
           { brick: 'tags', id: 'b', data: { items: 'not a list' } },
-        ]}
+          ],
+        }}
       />
     ));
     expect(texts(container, 'h2')).toEqual(['Default heading']);
@@ -77,13 +80,13 @@ describe('<PageView>', () => {
     const [first, second] = container.querySelectorAll('h2');
 
     setState((s) => {
-      s.page[0]!.data.text = 'Edited';
+      s.page.entries[0]!.data.text = 'Edited';
     });
     flush();
     expect(first).toHaveTextContent('Edited');
 
     setState((s) => {
-      s.page.reverse();
+      s.page.entries.reverse();
     });
     flush();
     const after = container.querySelectorAll('h2');
@@ -96,10 +99,12 @@ describe('<PageView>', () => {
     const { container } = render(() => <PageView bricks={[heading]} page={p()} />);
     const [first, second] = container.querySelectorAll('h2');
 
-    setP([
+    setP({
+      entries: [
       { brick: 'heading', id: 'b', data: { text: 'Second!' } },
       { brick: 'heading', id: 'a', data: { text: 'First!' } },
-    ]);
+      ],
+    });
     flush();
     const after = container.querySelectorAll('h2');
     expect(texts(container, 'h2')).toEqual(['Second!', 'First!']);
@@ -109,13 +114,13 @@ describe('<PageView>', () => {
 
   it('keeps list items inside a brick when another item is edited', () => {
     const [state, setState] = createStore<{ page: Page }>({
-      page: [{ brick: 'tags', id: 't', data: { items: [{ name: 'one' }, { name: 'two' }] } }],
+      page: { entries: [{ brick: 'tags', id: 't', data: { items: [{ name: 'one' }, { name: 'two' }] } }] },
     });
     const { container } = render(() => <PageView bricks={[tags]} page={state.page} />);
     const [one, two] = container.querySelectorAll('li');
 
     setState((s) => {
-      (s.page[0]!.data.items as { name: string }[])[1]!.name = 'TWO';
+      (s.page.entries[0]!.data.items as { name: string }[])[1]!.name = 'TWO';
     });
     flush();
     const after = container.querySelectorAll('li');

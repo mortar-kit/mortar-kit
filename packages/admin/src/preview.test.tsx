@@ -47,7 +47,7 @@ describe('<PreviewPage>', () => {
   it('shows a placeholder for an unknown brick', () => {
     const { container } = render(() => <PreviewPage bricks={bricks} />);
     flush();
-    post([{ brick: 'gone', id: 'g', data: {} }, ...page()]);
+    post({ entries: [{ brick: 'gone', id: 'g', data: {} }, ...page().entries] });
     expect(container.querySelector('[role="note"]')).toHaveTextContent('Unknown brick "gone"');
     expect(container.querySelector('h2')).toHaveTextContent('Welcome');
   });
@@ -59,14 +59,14 @@ describe('<PreviewPage>', () => {
     const h2 = container.querySelector('h2');
     const ul = container.querySelector('ul');
 
-    const [heading, tags] = page();
+    const [heading, tags] = page().entries;
     const added = { brick: 'heading', id: 'new', data: { text: 'Added' } };
-    post([tags!, added, heading!]);
+    post({ entries: [tags!, added, heading!] });
     expect(container.querySelector('ul')).toBe(ul);
     expect([...container.querySelectorAll('h2')].map((el) => el.textContent)).toEqual(['Added', 'Welcome']);
     expect(container.querySelectorAll('h2')[1]).toBe(h2);
 
-    post([{ ...tags!, data: { items: [{ name: 'b' }, { name: 'a' }] } }, added, heading!]);
+    post({ entries: [{ ...tags!, data: { items: [{ name: 'b' }, { name: 'a' }] } }, added, heading!] });
     expect(container.querySelector('ul')).toBe(ul);
     expect([...container.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['b', 'a']);
   });
@@ -79,9 +79,9 @@ describe('<PreviewPage>', () => {
     const [a, b] = container.querySelectorAll('li');
 
     const next = page();
-    next[0]!.data.text = 'Edited';
-    (next[1]!.data.items as { name: string }[])[1]!.name = 'B';
-    post([next[1]!, next[0]!]);
+    next.entries[0]!.data.text = 'Edited';
+    (next.entries[1]!.data.items as { name: string }[])[1]!.name = 'B';
+    post({ entries: [next.entries[1]!, next.entries[0]!] });
 
     expect(container.querySelector('h2')).toBe(h2);
     expect(h2).toHaveTextContent('Edited');

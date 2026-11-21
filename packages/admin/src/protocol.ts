@@ -35,6 +35,6 @@ export function isPageMessage(data: unknown): data is PageMessage {
     typeof data === 'object' &&
     data !== null &&
     (data as { type?: unknown }).type === 'mortar:page' &&
-    Array.isArray((data as { page?: unknown }).page)
+    Array.isArray((data as { page?: { entries?: unknown } }).page?.entries)
   );
 }

@@ -10,6 +10,8 @@ keep every other name plain and conventional (no further construction puns).
 
 - **Schema**: `fields.*` helpers that build **Valibot** schemas; UI hints live in
   `v.metadata({ mortar: FieldInfo })`. Validation is Valibot's.
+- **Page format**: `Page = { entries: PageEntry[]; meta?: Record<string, unknown> }`
+  (wrapped, not a bare array, so page-level data such as a title fits later).
 - **Storage**: swappable load/save adapter; default adapter is **JSON files**
   (read on the server for SSR, saved through a server function).
 - **Packages**: `@mortar-kit/core` (fields, defineBrick, page model, `PageView`,

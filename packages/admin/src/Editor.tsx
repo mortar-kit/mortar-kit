@@ -26,7 +26,7 @@ export function Editor(props: EditorProps) {
     () => props.page,
   );
   const byName = createMemo(() => brickMap(props.bricks));
-  const selected = createMemo(() => editor.state.page.find((e) => e.id === editor.state.selected));
+  const selected = createMemo(() => editor.state.page.entries.find((e) => e.id === editor.state.selected));
 
   createEffect(
     () => deep(editor.state.page),
@@ -39,7 +39,7 @@ export function Editor(props: EditorProps) {
 
   /** Adds after the selected entry, or at the end. */
   const add = (brickName: string) => {
-    const index = editor.state.page.findIndex((e) => e.id === editor.state.selected);
+    const index = editor.state.page.entries.findIndex((e) => e.id === editor.state.selected);
     editor.addEntry(brickName, index === -1 ? undefined : index + 1);
   };
 
@@ -50,9 +50,9 @@ export function Editor(props: EditorProps) {
           <h2 class="mortar-heading">Page</h2>
           <AddMenu bricks={props.bricks} onAdd={add} />
         </div>
-        <Show when={editor.state.page.length > 0} fallback={<p class="mortar-help mortar-empty">This page is empty. Add a brick to start.</p>}>
+        <Show when={editor.state.page.entries.length > 0} fallback={<p class="mortar-help mortar-empty">This page is empty. Add a brick to start.</p>}>
           <ol class="mortar-entries">
-            <For each={editor.state.page} keyed={(entry) => entry.id}>
+            <For each={editor.state.page.entries} keyed={(entry) => entry.id}>
               {(entry, index) => (
                 <EntryRow entry={entry()} index={index()} brick={byName().get(entry().brick)} editor={editor} />
               )}
@@ -117,7 +117,7 @@ function EntryRow(props: { entry: PageEntry; index: number; brick: AnyBrick | un
         <button
           type="button"
           aria-label={`Move ${name()} down`}
-          disabled={props.index === props.editor.state.page.length - 1}
+          disabled={props.index === props.editor.state.page.entries.length - 1}
           onClick={() => props.editor.moveEntry(id(), props.index + 1)}
         >
           ↓

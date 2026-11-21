@@ -33,7 +33,9 @@ export const tags = defineBrick({
 
 export const bricks = [heading, tags];
 
-export const page = (): Page => [
-  { brick: 'heading', id: 'h', data: { text: 'Welcome' } },
-  { brick: 'tags', id: 't', data: { items: [{ name: 'a' }, { name: 'b' }] } },
-];
+export const page = (): Page => ({
+  entries: [
+    { brick: 'heading', id: 'h', data: { text: 'Welcome' } },
+    { brick: 'tags', id: 't', data: { items: [{ name: 'a' }, { name: 'b' }] } },
+  ],
+});

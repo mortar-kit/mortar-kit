@@ -19,12 +19,16 @@ describe('normalizePage', () => {
   it('fills defaults without touching the source page', () => {
     const source = page();
     const out = normalizePage(bricks, source);
-    expect(out[0]?.data).toEqual({ text: 'Welcome', size: 2, tone: 'plain', shown: true });
-    expect(source[0]?.data).toEqual({ text: 'Welcome' });
+    expect(out.entries[0]?.data).toEqual({ text: 'Welcome', size: 2, tone: 'plain', shown: true });
+    expect(source.entries[0]?.data).toEqual({ text: 'Welcome' });
+  });
+
+  it('keeps page metadata', () => {
+    expect(normalizePage(bricks, { entries: [], meta: { title: 'Home' } })).toEqual({ entries: [], meta: { title: 'Home' } });
   });
 
   it('keeps entries of unknown bricks', () => {
-    expect(normalizePage(bricks, [{ brick: 'gone', id: 'x', data: { a: 1 } }])).toEqual([{ brick: 'gone', id: 'x', data: { a: 1 } }]);
+    expect(normalizePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] })).toEqual({ entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] });
   });
 });
 
@@ -38,8 +42,8 @@ describe('createEditorStore', () => {
     editor.setValue('t', ['items', 1, 'name'], 'B');
     editor.setValue('h', ['text'], 'Hi');
     flush();
-    expect(snapshot(editor.state.page[1]?.data)).toEqual({ items: [{ name: 'a' }, { name: 'B' }] });
-    expect(editor.state.page[0]?.data.text).toBe('Hi');
+    expect(snapshot(editor.state.page.entries[1]?.data)).toEqual({ items: [{ name: 'a' }, { name: 'B' }] });
+    expect(editor.state.page.entries[0]?.data.text).toBe('Hi');
   });
 
   it('inserts, moves and removes list items', () => {
@@ -48,10 +52,10 @@ describe('createEditorStore', () => {
     flush();
     editor.moveItem('t', ['items'], 2, 0);
     flush();
-    expect(snapshot(editor.state.page[1]?.data.items)).toEqual([{ name: 'c' }, { name: 'a' }, { name: 'b' }]);
+    expect(snapshot(editor.state.page.entries[1]?.data.items)).toEqual([{ name: 'c' }, { name: 'a' }, { name: 'b' }]);
     editor.removeItem('t', ['items'], 1);
     flush();
-    expect(snapshot(editor.state.page[1]?.data.items)).toEqual([{ name: 'c' }, { name: 'b' }]);
+    expect(snapshot(editor.state.page.entries[1]?.data.items)).toEqual([{ name: 'c' }, { name: 'b' }]);
   });
 
   it('ignores moves past either end and unknown entries', () => {
@@ -60,7 +64,7 @@ describe('createEditorStore', () => {
     editor.moveItem('t', ['items'], 1, 2);
     editor.setValue('nope', ['text'], 'x');
     flush();
-    expect(snapshot(editor.state.page[1]?.data.items)).toEqual([{ name: 'a' }, { name: 'b' }]);
+    expect(snapshot(editor.state.page.entries[1]?.data.items)).toEqual([{ name: 'a' }, { name: 'b' }]);
   });
 
   it('never writes through to the source page', () => {
@@ -68,7 +72,7 @@ describe('createEditorStore', () => {
     const editor = setup(source);
     editor.setValue('t', ['items', 0, 'name'], 'changed');
     flush();
-    expect(source[1]?.data).toEqual({ items: [{ name: 'a' }, { name: 'b' }] });
+    expect(source.entries[1]?.data).toEqual({ items: [{ name: 'a' }, { name: 'b' }] });
   });
 
   it('adds entries with default data and selects them', () => {
@@ -76,13 +80,13 @@ describe('createEditorStore', () => {
     const id = editor.addEntry('heading', 1);
     flush();
     expect(id).toMatch(/^heading-[0-9a-f-]{36}$/);
-    expect(editor.state.page.map((e) => e.id)).toEqual(['h', id, 't']);
-    expect(snapshot(editor.state.page[1]?.data)).toEqual({ text: 'Hello', size: 2, tone: 'plain', shown: true });
+    expect(editor.state.page.entries.map((e) => e.id)).toEqual(['h', id, 't']);
+    expect(snapshot(editor.state.page.entries[1]?.data)).toEqual({ text: 'Hello', size: 2, tone: 'plain', shown: true });
     expect(editor.state.selected).toBe(id);
 
     const last = editor.addEntry('tags');
     flush();
-    expect(editor.state.page.at(-1)?.id).toBe(last);
+    expect(editor.state.page.entries.at(-1)?.id).toBe(last);
     expect(editor.addEntry('nope')).toBeUndefined();
   });
 
@@ -93,14 +97,14 @@ describe('createEditorStore', () => {
     editor.select('t');
     editor.addEntry('tags');
     flush();
-    expect(editor.state.page[0]?.data.text).toBe('edited');
+    expect(editor.state.page.entries[0]?.data.text).toBe('edited');
   });
 
   it('removes entries and selects a neighbour', () => {
     const editor = setup();
     editor.addEntry('tags');
     flush();
-    const [, , third] = editor.state.page.map((e) => e.id);
+    const [, , third] = editor.state.page.entries.map((e) => e.id);
     editor.select('t');
     editor.removeEntry('t');
     flush();
@@ -110,7 +114,7 @@ describe('createEditorStore', () => {
     expect(editor.state.selected).toBe('h');
     editor.removeEntry('h');
     flush();
-    expect(editor.state.page).toEqual([]);
+    expect(editor.state.page.entries).toEqual([]);
     expect(editor.state.selected).toBeNull();
   });
 
@@ -123,15 +127,15 @@ describe('createEditorStore', () => {
 
   it('moves entries, ignoring moves past either end', () => {
     const editor = setup();
-    const first = editor.state.page[0];
+    const first = editor.state.page.entries[0];
     editor.moveEntry('h', 1);
     flush();
-    expect(editor.state.page.map((e) => e.id)).toEqual(['t', 'h']);
-    expect(editor.state.page[1]).toBe(first);
+    expect(editor.state.page.entries.map((e) => e.id)).toEqual(['t', 'h']);
+    expect(editor.state.page.entries[1]).toBe(first);
     editor.moveEntry('h', 2);
     editor.moveEntry('t', -1);
     flush();
-    expect(editor.state.page.map((e) => e.id)).toEqual(['t', 'h']);
+    expect(editor.state.page.entries.map((e) => e.id)).toEqual(['t', 'h']);
   });
 
   it('duplicates an entry with a new id and an independent copy of its data', () => {
@@ -139,12 +143,12 @@ describe('createEditorStore', () => {
     editor.setValue('t', ['items', 0, 'name'], 'edited');
     const id = editor.duplicateEntry('t');
     flush();
-    expect(editor.state.page.map((e) => e.id)).toEqual(['h', 't', id]);
+    expect(editor.state.page.entries.map((e) => e.id)).toEqual(['h', 't', id]);
     expect(editor.state.selected).toBe(id);
-    expect(snapshot(editor.state.page[2]?.data)).toEqual({ items: [{ name: 'edited' }, { name: 'b' }] });
+    expect(snapshot(editor.state.page.entries[2]?.data)).toEqual({ items: [{ name: 'edited' }, { name: 'b' }] });
     editor.setValue(id!, ['items', 0, 'name'], 'copy');
     flush();
-    expect(editor.state.page[1]?.data).toEqual({ items: [{ name: 'edited' }, { name: 'b' }] });
+    expect(editor.state.page.entries[1]?.data).toEqual({ items: [{ name: 'edited' }, { name: 'b' }] });
     expect(editor.duplicateEntry('nope')).toBeUndefined();
   });
 
@@ -154,9 +158,9 @@ describe('createEditorStore', () => {
     flush();
     editor.setValue('h', ['text'], 'edited');
     flush();
-    setSource([{ brick: 'heading', id: 'other', data: {} }]);
+    setSource({ entries: [{ brick: 'heading', id: 'other', data: {} }] });
     flush();
-    expect(editor.state.page.map((e) => e.id)).toEqual(['other']);
+    expect(editor.state.page.entries.map((e) => e.id)).toEqual(['other']);
     expect(editor.state.selected).toBe('other');
   });
 });

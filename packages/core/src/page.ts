@@ -1,5 +1,6 @@
-// The page model: a page is an ordered array of brick instances. Plain JSON,
-// so it can be stored by any adapter and sent to the browser as-is.
+// The page model: a page is an ordered array of brick instances plus
+// free-form page-level metadata. Plain JSON, so it can be stored by any
+// adapter and sent to the browser as-is.
 
 /** One brick instance on a page. */
 export interface PageEntry {
@@ -11,5 +12,9 @@ export interface PageEntry {
   data: Record<string, unknown>;
 }
 
-/** A page: brick instances in render order. */
-export type Page = PageEntry[];
+/** A page: brick instances in render order, plus optional metadata. */
+export interface Page {
+  entries: PageEntry[];
+  /** Page-level data such as a title. Free-form for now; Mortar doesn't interpret it. */
+  meta?: Record<string, unknown>;
+}

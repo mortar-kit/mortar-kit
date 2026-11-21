@@ -50,10 +50,11 @@ function newId(brickName: string): string {
  */
 export function normalizePage(bricks: readonly AnyBrick[], page: Page): Page {
   const byName = brickMap(bricks);
-  return page.map((entry): PageEntry => {
+  const entries = page.entries.map((entry): PageEntry => {
     const brick = byName.get(entry.brick);
     return brick ? { ...entry, data: brick.normalize(entry.data) } : { ...entry, data: snapshot(entry.data) };
   });
+  return page.meta === undefined ? { entries } : { entries, meta: snapshot(page.meta) };
 }
 
 /**
@@ -66,15 +67,15 @@ export function createEditorStore(bricks: () => readonly AnyBrick[], page: () =>
     (draft) => {
       const next = normalizePage(bricks(), page());
       draft.page = next;
-      if (!next.some((e) => e.id === draft.selected)) draft.selected = next[0]?.id ?? null;
+      if (!next.entries.some((e) => e.id === draft.selected)) draft.selected = next.entries[0]?.id ?? null;
     },
-    { page: [], selected: null },
+    { page: { entries: [] }, selected: null },
   );
 
   /** Runs `fn` on the container at `path` inside the entry's data, in a draft. */
   function update(entryId: string, path: Path, fn: (container: Record<string | number, unknown>) => void) {
     setState((s) => {
-      const entry = s.page.find((e) => e.id === entryId);
+      const entry = s.page.entries.find((e) => e.id === entryId);
       if (!entry) return;
       let target: unknown = entry.data;
       for (const key of path) {
@@ -103,35 +104,35 @@ export function createEditorStore(bricks: () => readonly AnyBrick[], page: () =>
       if (!brick) return undefined;
       const entry: PageEntry = { brick: brick.name, id: newId(brick.name), data: brick.defaults() };
       setState((s) => {
-        s.page.splice(index ?? s.page.length, 0, entry);
+        s.page.entries.splice(index ?? s.page.entries.length, 0, entry);
         s.selected = entry.id;
       });
       return entry.id;
     },
     removeEntry(id) {
       setState((s) => {
-        const index = s.page.findIndex((e) => e.id === id);
+        const index = s.page.entries.findIndex((e) => e.id === id);
         if (index === -1) return;
-        s.page.splice(index, 1);
-        if (s.selected === id) s.selected = (s.page[index] ?? s.page[index - 1])?.id ?? null;
+        s.page.entries.splice(index, 1);
+        if (s.selected === id) s.selected = (s.page.entries[index] ?? s.page.entries[index - 1])?.id ?? null;
       });
     },
     moveEntry(id, toIndex) {
       setState((s) => {
-        const from = s.page.findIndex((e) => e.id === id);
-        if (from === -1 || toIndex < 0 || toIndex >= s.page.length || from === toIndex) return;
-        const [entry] = s.page.splice(from, 1);
-        s.page.splice(toIndex, 0, entry!);
+        const from = s.page.entries.findIndex((e) => e.id === id);
+        if (from === -1 || toIndex < 0 || toIndex >= s.page.entries.length || from === toIndex) return;
+        const [entry] = s.page.entries.splice(from, 1);
+        s.page.entries.splice(toIndex, 0, entry!);
       });
     },
     duplicateEntry(id) {
       let copyId: string | undefined;
       setState((s) => {
-        const index = s.page.findIndex((e) => e.id === id);
-        const source = s.page[index];
+        const index = s.page.entries.findIndex((e) => e.id === id);
+        const source = s.page.entries[index];
         if (!source) return;
         copyId = newId(source.brick);
-        s.page.splice(index + 1, 0, { brick: source.brick, id: copyId, data: structuredClone(snapshot(source.data)) });
+        s.page.entries.splice(index + 1, 0, { brick: source.brick, id: copyId, data: structuredClone(snapshot(source.data)) });
         s.selected = copyId;
       });
       return copyId;
