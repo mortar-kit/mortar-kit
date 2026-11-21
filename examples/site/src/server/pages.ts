@@ -22,7 +22,8 @@ export async function loadStoredPage(slug: string): Promise<Page | null> {
 
 /** Validates and stores a page from the editor. */
 export async function saveStoredPage(slug: string, page: Page): Promise<SaveResult> {
-  // Revalidate nothing: the editor already shows what was saved, and
-  // refetching would replace its state (and anything typed meanwhile).
+  // Revalidate nothing: refetching would replace the open editor's state
+  // (and anything typed meanwhile). The client drops its cached copy
+  // instead (saveEditedPage in src/pages.ts).
   return respond(await savePage(store, bricks, slug, page), { revalidate: '' });
 }

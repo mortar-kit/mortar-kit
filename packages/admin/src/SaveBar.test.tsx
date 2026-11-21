@@ -3,7 +3,7 @@
 // leave-page warning.
 import type { Page, SaveResult } from '@mortar-kit/core';
 import { fireEvent, render, screen } from '@solidjs/testing-library';
-import { flush } from 'solid-js';
+import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Editor } from './Editor.tsx';
@@ -109,6 +109,32 @@ describe('saving', () => {
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     await settle();
     expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports unsaved changes through onDirtyChange', async () => {
+    const onDirtyChange = vi.fn<(dirty: boolean) => void>();
+    const onSave = async (): Promise<SaveResult> => ({ ok: true });
+    render(() => <Editor bricks={bricks} page={page()} previewUrl="/preview" onSave={onSave} onDirtyChange={onDirtyChange} />);
+    flush();
+    expect(onDirtyChange.mock.calls).toEqual([[false]]);
+    type('Changed');
+    type('Changed again');
+    expect(onDirtyChange.mock.calls).toEqual([[false], [true]]);
+    fireEvent.click(saveButton());
+    await settle();
+    expect(onDirtyChange.mock.calls).toEqual([[false], [true], [false]]);
+  });
+
+  it('reports false when the save controls go away while dirty', () => {
+    const onDirtyChange = vi.fn<(dirty: boolean) => void>();
+    const save = async (): Promise<SaveResult> => ({ ok: true });
+    const [onSave, setOnSave] = createSignal<typeof save | undefined>(() => save);
+    render(() => <Editor bricks={bricks} page={page()} previewUrl="/preview" onSave={onSave()} onDirtyChange={onDirtyChange} />);
+    flush();
+    type('Changed');
+    setOnSave(undefined);
+    flush();
+    expect(onDirtyChange.mock.calls).toEqual([[false], [true], [false]]);
   });
 
   it('warns before leaving with unsaved changes', async () => {
