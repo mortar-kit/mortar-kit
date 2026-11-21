@@ -26,6 +26,26 @@ export {
   type Image,
   type InferFields,
 } from './fields.ts';
+export {
+  collectionMap,
+  defineCollection,
+  type AnyCollection,
+  type Collection,
+  type CollectionDefinition,
+  type DocOf,
+  type SortOrder,
+} from './collection.ts';
+export {
+  isValidDocId,
+  normalizeDoc,
+  validateDoc,
+  type Doc,
+  type DocIssue,
+  type DocRef,
+  type DocSummary,
+  type ValidateDocResult,
+} from './doc.ts';
+export { type EntryIssue } from './entries.ts';
 export { definePageMeta, type PageMeta } from './meta.ts';
 export {
   normalizePage,

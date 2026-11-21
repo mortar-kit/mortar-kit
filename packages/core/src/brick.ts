@@ -106,6 +106,26 @@ export function schemaOps<F extends Fields>(schema: F): SchemaOps<F> {
   };
 }
 
+/**
+ * `ops` that keep the keys of the data `schema` doesn't describe, as they
+ * are: for metadata and collection fields, where other code may store its
+ * own data alongside. Internal.
+ */
+export function keepExtra<F extends Fields>(ops: SchemaOps<F>, schema: F): SchemaOps<F> {
+  const extra = (data: unknown): Record<string, unknown> => {
+    if (!isRecord(data)) return {};
+    return Object.fromEntries(Object.entries(data).filter(([key]) => !Object.hasOwn(schema, key)));
+  };
+  return {
+    defaults: ops.defaults,
+    validate(data) {
+      const result = ops.validate(data);
+      return result.success ? { success: true, data: { ...extra(data), ...result.data } } : result;
+    },
+    normalize: (data) => ({ ...extra(data), ...ops.normalize(data) }),
+  };
+}
+
 /** Indexes bricks by name, rejecting duplicates. */
 export function brickMap(bricks: readonly AnyBrick[]): ReadonlyMap<string, AnyBrick> {
   const map = new Map<string, AnyBrick>();
