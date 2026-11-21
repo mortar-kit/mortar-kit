@@ -1,5 +1,5 @@
 // Bricks shared by the admin tests.
-import { defineBrick, fields, type Page } from '@mortar-kit/core';
+import { defineBrick, definePageMeta, fields, type Page } from '@mortar-kit/core';
 import { For } from 'solid-js';
 
 export const heading = defineBrick({
@@ -38,4 +38,8 @@ export const page = (): Page => ({
     { brick: 'heading', id: 'h', data: { text: 'Welcome' } },
     { brick: 'tags', id: 't', data: { items: [{ name: 'a' }, { name: 'b' }] } },
   ],
+});
+
+export const pageMeta = definePageMeta({
+  title: fields.text({ label: 'Title', required: true, default: 'Untitled' }),
 });

@@ -11,13 +11,14 @@ import { createJsonFileStore } from '@mortar-kit/core/server';
 import { respond } from '@solidjs/web';
 
 import { bricks } from '../bricks/index.ts';
+import { pageMeta } from '../page-meta.ts';
 
 // Resolved against the working directory: run the server from examples/site.
 const store = createJsonFileStore({ dir: 'content/pages' });
 
 /** The stored page for `slug`, normalized for rendering, or null if there is none. */
 export async function loadStoredPage(slug: string): Promise<Page | null> {
-  return (await loadPage(store, bricks, slug)) ?? null;
+  return (await loadPage(store, bricks, slug, { meta: pageMeta })) ?? null;
 }
 
 /** Validates and stores a page from the editor. */
@@ -25,5 +26,5 @@ export async function saveStoredPage(slug: string, page: Page): Promise<SaveResu
   // Revalidate nothing: refetching would replace the open editor's state
   // (and anything typed meanwhile). The client drops its cached copy
   // instead (saveEditedPage in src/pages.ts).
-  return respond(await savePage(store, bricks, slug, page), { revalidate: '' });
+  return respond(await savePage(store, bricks, slug, page, { meta: pageMeta }), { revalidate: '' });
 }

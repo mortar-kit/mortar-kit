@@ -11,7 +11,11 @@ keep every other name plain and conventional (no further construction puns).
 - **Schema**: `fields.*` helpers that build **Valibot** schemas; UI hints live in
   `v.metadata({ mortar: FieldInfo })`. Validation is Valibot's.
 - **Page format**: `Page = { entries: PageEntry[]; meta?: Record<string, unknown> }`
-  (wrapped, not a bare array, so page-level data such as a title fits later).
+  (wrapped, not a bare array, so page-level data such as a title fits).
+  A site declares its metadata with `definePageMeta(fields)` (same `fields.*`
+  as bricks; keys outside the schema are kept) and passes it as `meta` to
+  `loadPage`/`savePage` and `<Editor>` ("Page settings"). Rendering it into
+  the head (e.g. `@solidjs/meta`) is the app's job.
 - **Storage**: swappable load/save adapter; default adapter is **JSON files**
   (read on the server for SSR, saved through a server function).
 - **Packages**: `@mortar-kit/core` (fields, defineBrick, page model, `PageView`,
@@ -29,8 +33,9 @@ keep every other name plain and conventional (no further construction puns).
   out of the main entry so `node:fs` never reaches a client bundle. Storage
   helpers (`PageStore`, `loadPage` normalizes, `savePage` validates) are in
   the main entry.
-- `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR) with
-  example bricks. Mortar ships no bricks of its own. Pages are JSON files in
+- `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR with
+  `renderMode: 'async'`, so pages and head tags are in the HTML) with
+  example bricks and page metadata (`src/page-meta.ts`). Mortar ships no bricks of its own. Pages are JSON files in
   `examples/site/content/pages/`, read and written by the `'use server'`
   module `src/server/pages.ts`.
 - No auth: `/admin` and the save function are unprotected. Guarding them is

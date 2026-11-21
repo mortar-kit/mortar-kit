@@ -1,22 +1,29 @@
-// Editor state: the page being edited plus the selected entry, held in one
-// store. All writes go through the draft setter, addressed by entry id and a
-// path into that entry's data (e.g. ['cards', 2, 'title']).
-import { normalizePage, type AnyBrick, type Page, type PageEntry } from '@mortar-kit/core';
+// Editor state: the page being edited plus what is selected (an entry, or the
+// page's metadata), held in one store. All writes go through the draft
+// setter, addressed by a target (an entry id, or PAGE_META) and a path into
+// its data (e.g. ['cards', 2, 'title']).
+import { normalizePage, type AnyBrick, type Page, type PageEntry, type PageMeta } from '@mortar-kit/core';
 import { createStore, snapshot } from 'solid-js';
 
-/** A location inside an entry's data. */
+/** A location inside an entry's data (or the page's metadata). */
 export type Path = readonly (string | number)[];
+
+/** Selects (and addresses writes to) the page's metadata instead of an entry. */
+export const PAGE_META: unique symbol = Symbol('page meta');
+
+/** What a write is addressed to: an entry, by id, or the page's metadata. */
+export type Target = string | typeof PAGE_META;
 
 export interface EditorState {
   page: Page;
-  /** Id of the entry whose form is shown, or null. */
-  selected: string | null;
+  /** Whose form is shown: an entry's id, PAGE_META, or null. */
+  selected: Target | null;
 }
 
 /** The editor's state and the only ways to change it. */
 export interface EditorStore {
   readonly state: EditorState;
-  select(id: string | null): void;
+  select(target: Target | null): void;
   /**
    * Adds an entry of the named brick with its default data at `index`
    * (default: the end) and selects it. Returns the new id, or undefined if
@@ -29,14 +36,14 @@ export interface EditorStore {
   moveEntry(id: string, toIndex: number): void;
   /** Inserts a copy of an entry (new id, cloned data) after it and selects it. Returns the new id. */
   duplicateEntry(id: string): string | undefined;
-  /** Sets the value at `path` in an entry's data. */
-  setValue(entryId: string, path: Path, value: unknown): void;
+  /** Sets the value at `path` in an entry's data or the page's metadata. */
+  setValue(target: Target, path: Path, value: unknown): void;
   /** Inserts `value` into the list at `path`. */
-  insertItem(entryId: string, path: Path, index: number, value: unknown): void;
+  insertItem(target: Target, path: Path, index: number, value: unknown): void;
   /** Removes item `index` from the list at `path`. */
-  removeItem(entryId: string, path: Path, index: number): void;
+  removeItem(target: Target, path: Path, index: number): void;
   /** Moves an item of the list at `path` from one index to another. */
-  moveItem(entryId: string, path: Path, from: number, to: number): void;
+  moveItem(target: Target, path: Path, from: number, to: number): void;
 }
 
 /** A new entry id, created when an entry is added (never during render). */
@@ -47,25 +54,31 @@ function newId(brickName: string): string {
 /**
  * Creates the editor store. It is seeded from `page()` (normalized, so every
  * form input has a value to bind; the source is never modified) and
- * re-seeded if `bricks()` or `page()` change, e.g. when a different page is
- * loaded. Edits live in the store until then.
+ * re-seeded if `bricks()`, `page()` or `meta()` change, e.g. when a
+ * different page is loaded. Edits live in the store until then. With a
+ * `meta()` schema the page's metadata is normalized too, and PAGE_META can
+ * be selected.
  */
-export function createEditorStore(bricks: () => readonly AnyBrick[], page: () => Page): EditorStore {
+export function createEditorStore(
+  bricks: () => readonly AnyBrick[],
+  page: () => Page,
+  meta: () => PageMeta | undefined = () => undefined,
+): EditorStore {
   const [state, setState] = createStore<EditorState>(
     (draft) => {
-      const next = normalizePage(bricks(), page());
+      const schema = meta();
+      const next = normalizePage(bricks(), page(), schema);
       draft.page = next;
-      if (!next.entries.some((e) => e.id === draft.selected)) draft.selected = next.entries[0]?.id ?? null;
+      const keep = draft.selected === PAGE_META ? schema !== undefined : next.entries.some((e) => e.id === draft.selected);
+      if (!keep) draft.selected = next.entries[0]?.id ?? null;
     },
     { page: { entries: [] }, selected: null },
   );
 
-  /** Runs `fn` on the container at `path` inside the entry's data, in a draft. */
-  function update(entryId: string, path: Path, fn: (container: Record<string | number, unknown>) => void) {
+  /** Runs `fn` on the container at `path` inside the target's data, in a draft. */
+  function update(to: Target, path: Path, fn: (container: Record<string | number, unknown>) => void) {
     setState((s) => {
-      const entry = s.page.entries.find((e) => e.id === entryId);
-      if (!entry) return;
-      let target: unknown = entry.data;
+      let target: unknown = to === PAGE_META ? (s.page.meta ??= {}) : s.page.entries.find((e) => e.id === to)?.data;
       for (const key of path) {
         if (typeof target !== 'object' || target === null) return;
         target = (target as Record<string | number, unknown>)[key];
@@ -74,17 +87,17 @@ export function createEditorStore(bricks: () => readonly AnyBrick[], page: () =>
     });
   }
 
-  function list(entryId: string, path: Path, fn: (items: unknown[]) => void) {
-    update(entryId, path, (target) => {
+  function list(to: Target, path: Path, fn: (items: unknown[]) => void) {
+    update(to, path, (target) => {
       if (Array.isArray(target)) fn(target);
     });
   }
 
   return {
     state,
-    select(id) {
+    select(target) {
       setState((s) => {
-        s.selected = id;
+        s.selected = target;
       });
     },
     addEntry(brickName, index) {
@@ -125,25 +138,25 @@ export function createEditorStore(bricks: () => readonly AnyBrick[], page: () =>
       });
       return copyId;
     },
-    setValue(entryId, path, value) {
+    setValue(target, path, value) {
       const key = path.at(-1);
       if (key === undefined) return;
-      update(entryId, path.slice(0, -1), (parent) => {
+      update(target, path.slice(0, -1), (parent) => {
         parent[key] = value;
       });
     },
-    insertItem(entryId, path, index, value) {
-      list(entryId, path, (items) => {
+    insertItem(target, path, index, value) {
+      list(target, path, (items) => {
         items.splice(index, 0, value);
       });
     },
-    removeItem(entryId, path, index) {
-      list(entryId, path, (items) => {
+    removeItem(target, path, index) {
+      list(target, path, (items) => {
         items.splice(index, 1);
       });
     },
-    moveItem(entryId, path, from, to) {
-      list(entryId, path, (items) => {
+    moveItem(target, path, from, to) {
+      list(target, path, (items) => {
         if (to < 0 || to >= items.length || from === to) return;
         const [item] = items.splice(from, 1);
         items.splice(to, 0, item);

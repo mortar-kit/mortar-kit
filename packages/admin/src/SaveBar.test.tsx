@@ -1,13 +1,13 @@
 // Saving from <Editor>: dirty state, the saving state, local and server
 // validation problems, failures, the keyboard shortcut and the
 // leave-page warning.
-import type { Page, SaveResult } from '@mortar-kit/core';
+import { createMemoryStore, defineBrick, fields, savePage, type Page, type SaveResult } from '@mortar-kit/core';
 import { fireEvent, render, screen } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Editor } from './Editor.tsx';
-import { bricks, page } from './test/bricks.tsx';
+import { bricks, page, pageMeta } from './test/bricks.tsx';
 
 function setup(onSave: (page: Page) => Promise<SaveResult | void>) {
   const save = vi.fn(onSave);
@@ -150,5 +150,73 @@ describe('saving', () => {
     fireEvent.click(saveButton());
     await settle();
     expect(leave()).toBe(false);
+  });
+});
+
+describe('saving page metadata', () => {
+  it('validates page settings first and links their problems to the form', async () => {
+    const save = vi.fn(async () => ({ ok: true }) as const);
+    render(() => <Editor bricks={bricks} meta={pageMeta} page={page()} previewUrl="/preview" onSave={save} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Page settings' }));
+    flush();
+    fireEvent.input(screen.getByLabelText('Title', { exact: false }), { target: { value: '' } });
+    flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+    flush();
+    fireEvent.click(saveButton());
+    await settle();
+    expect(save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Page settings › title: Title is required' }));
+    flush();
+    expect(screen.getByRole('button', { name: 'Page settings', current: true })).toBeInTheDocument();
+  });
+
+  it('counts a page without stored metadata as saved', () => {
+    const save = async () => ({ ok: true }) as const;
+    render(() => <Editor bricks={bricks} meta={pageMeta} page={page()} previewUrl="/preview" onSave={save} />);
+    expect(status()).toBe('All changes saved');
+  });
+
+  it('shows metadata problems from the server as text when the editor has no page settings', async () => {
+    setup(async () => ({ ok: false, issues: [{ path: ['meta', 'title'], message: 'Title is required' }] }));
+    type('Changed');
+    fireEvent.click(saveButton());
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('Title is required');
+    expect(screen.queryByRole('button', { name: /Title is required/ })).toBeNull();
+  });
+});
+
+describe('a save the server rejects', () => {
+  // The server's bricks are stricter than the editor's (e.g. a deploy changed
+  // a schema while the editor was open), so the editor's own check passes
+  // and only savePage on the server finds the problem.
+  const strictHeading = defineBrick({
+    name: 'heading',
+    schema: { text: fields.text({ label: 'Text', maxLength: 5 }) },
+    component: () => null,
+  });
+
+  it('shows the server issues, links them to the entry, stays unsaved and stores nothing', async () => {
+    const store = createMemoryStore({ home: page() });
+    setup((next) => savePage(store, [strictHeading, bricks[1]!], 'home', next));
+    type('Much too long');
+    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    flush();
+    fireEvent.click(saveButton());
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved: fix this problem first.');
+    expect(status()).toBe('Unsaved changes');
+    expect((await store.load('home'))?.entries[0]?.data.text).toBe('Welcome');
+    fireEvent.click(screen.getByRole('button', { name: 'Heading 1 › text: Text must be at most 5 characters' }));
+    flush();
+    expect(screen.getByRole('button', { name: 'Heading', current: true })).toBeInTheDocument();
+
+    // Fixing it saves.
+    type('Short');
+    fireEvent.click(saveButton());
+    await settle();
+    expect(status()).toBe('All changes saved');
+    expect((await store.load('home'))?.entries[0]?.data.text).toBe('Short');
   });
 });

@@ -1,4 +1,4 @@
-# Handover: Mortar after steps 1–4
+# Handover: Mortar after steps 1–6
 
 You are picking up **Mortar**, a small website framework on **Solid 2**, at
 `/Users/tom/Projects/Github/bried/mortar`. Read `AGENTS.md` first (it is also
@@ -36,22 +36,43 @@ Solid APIs against the installed sources, not memory.
    by setting `--mortar-*` custom properties on any ancestor (defaults are on
    `:where(:root)`, so they never win).
 
+6. Loose ends:
+   - Page metadata: `definePageMeta(fields)` in core (shares `schemaOps`
+     with `defineBrick`; keys outside the schema are kept), optional
+     `meta` for `normalizePage`/`validatePage` (issues at
+     `['meta', ...]`) and `{ meta }` for `loadPage`/`savePage`. The editor
+     takes `meta` and shows a "Page settings" form (`PAGE_META` target in
+     the store; save problems link to it). The example declares a title
+     and description (`src/page-meta.ts`) and the home route renders them
+     with `@solidjs/meta` 2 (no provider; `Document.tsx`'s `<title>` is the
+     fallback). The example now renders with `renderMode: 'async'`, so the
+     page and its head tags are in the HTML, not streamed patches.
+   - Normalize/validate deep-copy kept data (unknown-brick data, metadata)
+     as plain JSON (`toJson` in `page.ts`): Solid 2's `snapshot` returns
+     plain objects as they are, and `structuredClone` throws on promises
+     and functions a crafted server-function call can carry. Validate
+     reports such values as issues; normalize drops them.
+   - The leave guard shows one confirm for a burst of navigations.
+   - Server-side save rejection is covered end to end in the admin tests
+     (Editor → `savePage` on a stricter server schema → issues, unsaved,
+     nothing stored).
+   - Public bundle: investigated, nothing to trim. `decode-*.js` is lazy and
+     never loads on the public page; the server-function client is imported
+     by `@solidjs/router` itself (`query`), so a lazy import in the app only
+     reshuffled chunks (60.1 → 62.7 kB gzip) and was dropped. The other
+     Mortar-attributable cost is valibot (~13 kB raw) via brick schemas.
+
 Verified in a browser on the production build: live preview, entry
 operations with keyed DOM reuse in the preview, save to disk, public SSR
 of the saved page, typing during an in-flight save (kept, stays dirty),
 local validation messages, leave guard (links, back/forward, leaving
-during a save, a failed save). 85 tests; typecheck, lint, build clean.
+during a save, a failed save, one confirm for a burst), page settings
+(edit, validation link, save, title and description in the served HTML).
+102 tests; typecheck, lint, build clean.
 
 ## Open / not built
 
 - Click-to-select in the preview (optional in the brief; skipped).
-- Two quick navigations while dirty show two confirms (the router's
-  documented `useBeforeLeave` pattern); harmless, but could be debounced.
-- `meta` has no editing UI, and `Document.tsx`'s title ignores it.
-- The server-side rejection path of a save is unit-tested only (the editor
-  validates first, so it is hard to reach from the UI).
-- The public page now also loads the router query + server-function client
-  (~20 kB gzip across `pages-*.js` and `decode-*.js`). Revisit if it matters.
 - Earlier "later" items still apply: schema `version`/`migrate`, a `hidden`
   brick flag, rich text, media, multi-page/slug UI, auth, publishing
   (changesets, publint, attw).

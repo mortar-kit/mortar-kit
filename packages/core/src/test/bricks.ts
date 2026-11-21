@@ -1,6 +1,7 @@
 // Bricks shared by core's node tests (no JSX: the components render nothing).
 import { defineBrick } from '../brick.ts';
 import { fields } from '../fields.ts';
+import { definePageMeta } from '../meta.ts';
 import type { Page } from '../page.ts';
 
 export const heading = defineBrick({
@@ -19,4 +20,9 @@ export const page = (): Page => ({
     { brick: 'heading', id: 'a', data: { text: 'First' } },
     { brick: 'heading', id: 'b', data: { text: 'Second', size: 3 } },
   ],
+});
+
+export const pageMeta = definePageMeta({
+  title: fields.text({ label: 'Title', required: true, default: 'Untitled' }),
+  description: fields.textarea({ label: 'Description', maxLength: 10 }),
 });

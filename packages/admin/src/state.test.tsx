@@ -4,8 +4,8 @@
 import { createRoot, createSignal, flush, snapshot } from 'solid-js';
 import { describe, expect, it } from 'vitest';
 
-import { createEditorStore } from './state.ts';
-import { bricks, page } from './test/bricks.tsx';
+import { createEditorStore, PAGE_META } from './state.ts';
+import { bricks, page, pageMeta } from './test/bricks.tsx';
 
 function setup(source = page()) {
   return createRoot(() => {
@@ -145,5 +145,34 @@ describe('createEditorStore', () => {
     flush();
     expect(editor.state.page.entries.map((e) => e.id)).toEqual(['other']);
     expect(editor.state.selected).toBe('other');
+  });
+});
+
+describe('createEditorStore with page metadata', () => {
+  it('normalizes metadata and writes to it through PAGE_META', () => {
+    const editor = createRoot(() => createEditorStore(() => bricks, page, () => pageMeta));
+    flush();
+    expect(editor.state.page.meta).toEqual({ title: 'Untitled' });
+    editor.select(PAGE_META);
+    editor.setValue(PAGE_META, ['title'], 'Home');
+    flush();
+    expect(editor.state.selected).toBe(PAGE_META);
+    expect(snapshot(editor.state.page.meta)).toEqual({ title: 'Home' });
+  });
+
+  it('keeps the page settings selected on re-seed, unless the schema goes away', () => {
+    const [meta, setMeta] = createSignal<typeof pageMeta | undefined>(pageMeta);
+    const [source, setSource] = createSignal(page());
+    const editor = createRoot(() => createEditorStore(() => bricks, source, meta));
+    flush();
+    editor.select(PAGE_META);
+    flush();
+    setSource({ ...page(), meta: { title: 'Other' } });
+    flush();
+    expect(editor.state.selected).toBe(PAGE_META);
+    expect(editor.state.page.meta).toEqual({ title: 'Other' });
+    setMeta(undefined);
+    flush();
+    expect(editor.state.selected).toBe('h');
   });
 });

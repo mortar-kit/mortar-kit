@@ -4,6 +4,7 @@
 // JSON-file store lives in `@mortar-kit/core/server` so `node:fs` never
 // reaches a client bundle.
 import type { AnyBrick } from './brick.ts';
+import type { PageMeta } from './meta.ts';
 import { normalizePage, validatePage, type Page, type PageIssue } from './page.ts';
 
 /** Where pages live. Implement this to store pages anywhere (files, a database, a CMS API). */
@@ -18,6 +19,12 @@ export interface PageStore {
 
 /** Result of `savePage`. */
 export type SaveResult = { ok: true } | { ok: false; issues: PageIssue[] };
+
+/** Options for `loadPage` and `savePage`. */
+export interface PageOptions {
+  /** The site's page metadata schema, if it declares one (`definePageMeta`). */
+  meta?: PageMeta;
+}
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -44,20 +51,21 @@ export function createMemoryStore(pages: Record<string, Page> = {}): PageStore {
   };
 }
 
-/** Loads a page and normalizes it for rendering. Undefined if the slug is invalid or no page is stored. */
-export async function loadPage(store: PageStore, bricks: readonly AnyBrick[], slug: string): Promise<Page | undefined> {
+/** Loads a page and normalizes it for rendering (with `options.meta`, its metadata too). Undefined if the slug is invalid or no page is stored. */
+export async function loadPage(store: PageStore, bricks: readonly AnyBrick[], slug: string, options: PageOptions = {}): Promise<Page | undefined> {
   if (!isValidSlug(slug)) return undefined;
   const page = await store.load(slug);
-  return page === undefined ? undefined : normalizePage(bricks, page);
+  return page === undefined ? undefined : normalizePage(bricks, page, options.meta);
 }
 
 /**
  * Validates a page (from an untrusted client) and saves it if it is valid.
- * Problems are returned, by entry id and path, rather than thrown.
+ * Problems are returned, by entry id and path, rather than thrown. With
+ * `options.meta`, the page's metadata is validated too.
  */
-export async function savePage(store: PageStore, bricks: readonly AnyBrick[], slug: string, page: unknown): Promise<SaveResult> {
+export async function savePage(store: PageStore, bricks: readonly AnyBrick[], slug: string, page: unknown, options: PageOptions = {}): Promise<SaveResult> {
   if (!isValidSlug(slug)) return { ok: false, issues: [{ path: [], message: `Invalid page slug "${slug}"` }] };
-  const result = validatePage(bricks, page);
+  const result = validatePage(bricks, page, options.meta);
   if (!result.success) return { ok: false, issues: result.issues };
   await store.save(slug, result.page);
   return { ok: true };
