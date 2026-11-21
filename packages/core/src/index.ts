@@ -7,6 +7,7 @@ export {
   type BrickDefinition,
   type BrickProps,
   type Issue,
+  type SchemaOps,
   type ValidateResult,
 } from './brick.ts';
 export {
@@ -22,6 +23,7 @@ export {
   type Image,
   type InferFields,
 } from './fields.ts';
+export { definePageMeta, type PageMeta } from './meta.ts';
 export {
   normalizePage,
   validatePage,
@@ -36,6 +38,7 @@ export {
   isValidSlug,
   loadPage,
   savePage,
+  type PageOptions,
   type PageStore,
   type SaveResult,
 } from './store.ts';

@@ -1,20 +1,26 @@
 // <Editor>: the admin panel. A sidebar lists the page's entries (with add,
-// move, duplicate and remove) and shows the generated form for the selected
-// one, with save controls when the app passes `onSave`; the rest is a live
+// move, duplicate and remove), plus the page's settings when the site
+// declares page metadata, and shows the generated form for the selected one,
+// with save controls when the app passes `onSave`; the rest is a live
 // preview iframe.
-import { brickMap, type AnyBrick, type Page, type PageEntry, type SaveResult } from '@mortar-kit/core';
+import { brickMap, type AnyBrick, type Page, type PageEntry, type PageMeta, type SaveResult } from '@mortar-kit/core';
 import { createEffect, createMemo, deep, For, Show, snapshot } from 'solid-js';
 
-import { BrickForm } from './BrickForm.tsx';
+import { BrickForm, MetaForm } from './BrickForm.tsx';
 import styles from './Editor.module.css';
 import { PreviewFrame } from './PreviewFrame.tsx';
 import { SaveBar } from './SaveBar.tsx';
 import common from './common.module.css';
-import { createEditorStore, type EditorStore } from './state.ts';
+import { createEditorStore, PAGE_META, type EditorStore } from './state.ts';
 
 export interface EditorProps {
   /** The bricks this site defines. */
   bricks: readonly AnyBrick[];
+  /**
+   * The site's page metadata schema (`definePageMeta`). With it, the sidebar
+   * has a "Page settings" form, and saving validates the metadata too.
+   */
+  meta?: PageMeta;
   /** The page to edit. Edits are kept in the editor; a new `page` value replaces them. */
   page: Page;
   /** URL of the app route that renders `<PreviewPage>` from `@mortar-kit/admin/preview`. */
@@ -41,6 +47,7 @@ export function Editor(props: EditorProps) {
   const editor = createEditorStore(
     () => props.bricks,
     () => props.page,
+    () => props.meta,
   );
   const byName = createMemo(() => brickMap(props.bricks));
   const selected = createMemo(() => editor.state.page.entries.find((e) => e.id === editor.state.selected));
@@ -68,7 +75,17 @@ export function Editor(props: EditorProps) {
           <AddMenu bricks={props.bricks} onAdd={add} />
         </div>
         <Show when={props.onSave}>
-          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} source={props.page} onSave={onSave()} onDirtyChange={props.onDirtyChange} />}
+          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} meta={props.meta} source={props.page} onSave={onSave()} onDirtyChange={props.onDirtyChange} />}
+        </Show>
+        <Show when={props.meta}>
+          <button
+            type="button"
+            class={[styles.entry, styles.pageSettings]}
+            aria-current={editor.state.selected === PAGE_META ? 'true' : undefined}
+            onClick={() => editor.select(PAGE_META)}
+          >
+            Page settings
+          </button>
         </Show>
         <Show when={editor.state.page.entries.length > 0} fallback={<p class={styles.empty}>This page is empty. Add a brick to start.</p>}>
           <ol class={styles.entries} aria-label="Page entries">
@@ -78,6 +95,14 @@ export function Editor(props: EditorProps) {
               )}
             </For>
           </ol>
+        </Show>
+        <Show when={editor.state.selected === PAGE_META && props.meta}>
+          {(meta) => (
+            <section aria-label="Edit page settings">
+              <h2 class={styles.heading}>Page settings</h2>
+              <MetaForm meta={meta()} data={editor.state.page.meta ?? {}} editor={editor} />
+            </section>
+          )}
         </Show>
         <Show when={selected()} keyed>
           {(entry) => (

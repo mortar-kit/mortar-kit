@@ -4,10 +4,11 @@
 // back/forward). Unprotected: guard /admin in your own app.
 import { Editor } from '@mortar-kit/admin';
 import type { Page } from '@mortar-kit/core';
-import { useBeforeLeave } from '@solidjs/router';
+import { useBeforeLeave, type BeforeLeaveEventArgs } from '@solidjs/router';
 import { createMemo, createSignal } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
+import { pageMeta } from '../page-meta.ts';
 import { getPage, saveEditedPage } from '../pages.ts';
 
 export default function Admin() {
@@ -15,6 +16,8 @@ export default function Admin() {
   const [dirty, setDirty] = createSignal(false);
   // The save in flight, if any. Not reactive state: only the guard reads it.
   let saving: Promise<unknown> | undefined;
+  // The navigation waiting for the leave confirm, if one is scheduled.
+  let leaving: BeforeLeaveEventArgs | undefined;
 
   const save = (next: Page) => {
     const pending = saveEditedPage('home', next);
@@ -39,15 +42,23 @@ export default function Admin() {
     }
     if (!dirty()) return;
     e.preventDefault();
+    // One confirm for a burst of navigations: a second one before the
+    // dialog opens only replaces where to go, and the latest wins.
+    const scheduled = leaving !== undefined;
+    leaving = e;
+    if (scheduled) return;
     // Confirm after the router finishes handling this navigation, as its docs show.
     setTimeout(() => {
-      if (window.confirm('Leave the editor? Your unsaved changes will be lost.')) e.retry(true);
+      const target = leaving;
+      leaving = undefined;
+      if (target && window.confirm('Leave the editor? Your unsaved changes will be lost.')) target.retry(true);
     }, 100);
   });
 
   return (
     <Editor
       bricks={bricks}
+      meta={pageMeta}
       page={page() ?? { entries: [] }}
       previewUrl="/admin/preview"
       onSave={save}

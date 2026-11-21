@@ -125,3 +125,7 @@
 .addItem:hover {
   background: var(--mortar-bg);
 }
+.pageSettings {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}

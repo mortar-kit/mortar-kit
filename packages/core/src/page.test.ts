@@ -13,8 +13,12 @@ describe('normalizePage', () => {
   });
 
   it('keeps metadata and entries of unknown bricks', () => {
-    const out = normalizePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }], meta: { title: 'Home' } });
-    expect(out).toEqual({ entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }], meta: { title: 'Home' } });
+    const source = { entries: [{ brick: 'gone', id: 'x', data: { a: { b: 1 } } }], meta: { title: { text: 'Home' } } };
+    const out = normalizePage(bricks, source);
+    expect(out).toEqual(source);
+    // Copies, so editing the result never reaches the source.
+    expect(out.entries[0]?.data.a).not.toBe(source.entries[0]?.data.a);
+    expect(out.meta?.title).not.toBe(source.meta.title);
   });
 
   it('drops malformed and duplicate entries instead of crashing', () => {
@@ -76,5 +80,36 @@ describe('validatePage', () => {
   it('keeps entries of unknown bricks as they are', () => {
     const result = validatePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] });
     expect(result).toEqual({ success: true, page: { entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] } });
+  });
+});
+
+describe('kept data', () => {
+  const odd = () => ({ ok: 1, fn: () => 1, when: new Date(0), wait: Promise.resolve(1), list: [1, () => 2, Number.NaN] });
+
+  it('validatePage returns copies of unknown-brick data and metadata', () => {
+    const source = { entries: [{ brick: 'gone', id: 'x', data: { a: { b: 1 } } }], meta: { og: { image: '/a.png' } } };
+    const result = validatePage(bricks, source);
+    if (!result.success) throw new Error('expected success');
+    expect(result.page).toEqual(source);
+    expect(result.page.entries[0]?.data.a).not.toBe(source.entries[0]?.data.a);
+    expect(result.page.meta?.og).not.toBe(source.meta.og);
+  });
+
+  it('validatePage reports values JSON cannot hold instead of throwing', () => {
+    const result = validatePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: odd() }], meta: odd() });
+    expect(result.success).toBe(false);
+    expect(!result.success && result.issues.map((i) => [i.entryId, i.path])).toEqual([
+      [undefined, ['meta']],
+      ['x', []],
+    ]);
+  });
+
+  it('normalizePage drops values JSON cannot hold, as JSON.stringify does', () => {
+    const out = normalizePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: odd() }], meta: odd() });
+    expect(out.entries[0]?.data).toEqual({ ok: 1, list: [1, null, null] });
+    expect(out.meta).toEqual({ ok: 1, list: [1, null, null] });
+    const cyclic: Record<string, unknown> = { a: 1 };
+    cyclic.self = cyclic;
+    expect(normalizePage(bricks, { entries: [], meta: cyclic }).meta).toEqual({ a: 1 });
   });
 });

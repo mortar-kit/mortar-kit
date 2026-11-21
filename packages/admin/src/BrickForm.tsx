@@ -1,12 +1,13 @@
-// The generated form for one page entry: one input per field in the brick's
-// schema, with validation messages shown next to the field they belong to.
-import type { AnyBrick, Fields, PageEntry } from '@mortar-kit/core';
+// Generated forms: one input per field of a schema, with validation messages
+// shown next to the field they belong to. `BrickForm` edits a page entry
+// with its brick's schema; `MetaForm` edits the page's metadata.
+import type { AnyBrick, Fields, PageEntry, PageMeta, ValidateResult } from '@mortar-kit/core';
 import { createMemo, For } from 'solid-js';
 
 import styles from './BrickForm.module.css';
 import { FormContext, pathKey, type FormApi } from './fields/context.ts';
 import { FieldInput } from './fields/FieldInput.tsx';
-import type { EditorStore } from './state.ts';
+import { PAGE_META, type EditorStore, type Target } from './state.ts';
 
 export interface BrickFormProps {
   brick: AnyBrick;
@@ -14,9 +15,36 @@ export interface BrickFormProps {
   editor: EditorStore;
 }
 
+/** The form for one page entry, from its brick's schema. */
 export function BrickForm(props: BrickFormProps) {
+  return (
+    <SchemaForm
+      schema={props.brick.schema as Fields}
+      data={props.entry.data}
+      validate={props.brick.validate}
+      target={props.entry.id}
+      editor={props.editor}
+    />
+  );
+}
+
+/** The form for the page's metadata, from the site's `definePageMeta` schema. */
+export function MetaForm(props: { meta: PageMeta; data: Record<string, unknown>; editor: EditorStore }) {
+  return <SchemaForm schema={props.meta.schema} data={props.data} validate={props.meta.validate} target={PAGE_META} editor={props.editor} />;
+}
+
+interface SchemaFormProps {
+  schema: Fields;
+  data: Record<string, unknown>;
+  validate: (data: unknown) => ValidateResult<unknown>;
+  /** Where the inputs write. */
+  target: Target;
+  editor: EditorStore;
+}
+
+function SchemaForm(props: SchemaFormProps) {
   const issues = createMemo(() => {
-    const result = props.brick.validate(props.entry.data);
+    const result = props.validate(props.data);
     const byPath = new Map<string, string>();
     if (!result.success) {
       for (const issue of result.issues) {
@@ -28,19 +56,17 @@ export function BrickForm(props: BrickFormProps) {
   });
 
   const api: FormApi = {
-    setValue: (path, value) => props.editor.setValue(props.entry.id, path, value),
-    insertItem: (path, index, value) => props.editor.insertItem(props.entry.id, path, index, value),
-    removeItem: (path, index) => props.editor.removeItem(props.entry.id, path, index),
-    moveItem: (path, from, to) => props.editor.moveItem(props.entry.id, path, from, to),
+    setValue: (path, value) => props.editor.setValue(props.target, path, value),
+    insertItem: (path, index, value) => props.editor.insertItem(props.target, path, index, value),
+    removeItem: (path, index) => props.editor.removeItem(props.target, path, index),
+    moveItem: (path, from, to) => props.editor.moveItem(props.target, path, from, to),
     issue: (path) => issues().get(pathKey(path)),
   };
 
   return (
     <FormContext value={api}>
       <div class={styles.form}>
-        <For each={Object.entries(props.brick.schema as Fields)}>
-          {([key, field]) => <FieldInput field={field} path={[key]} value={props.entry.data[key]} />}
-        </For>
+        <For each={Object.entries(props.schema)}>{([key, field]) => <FieldInput field={field} path={[key]} value={props.data[key]} />}</For>
       </div>
     </FormContext>
   );

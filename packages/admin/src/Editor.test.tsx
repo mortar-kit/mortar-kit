@@ -7,7 +7,7 @@ import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Editor } from './Editor.tsx';
-import { bricks, page } from './test/bricks.tsx';
+import { bricks, page, pageMeta } from './test/bricks.tsx';
 
 function setup(source: Page = page()) {
   const onChange = vi.fn<(page: Page) => void>();
@@ -198,5 +198,30 @@ describe('<Editor>', () => {
     expect(post).toHaveBeenCalledTimes(2);
     const sent = post.mock.lastCall?.[0] as { page: Page } | undefined;
     expect(sent?.page.entries[0]?.data.text).toBe('Live');
+  });
+
+  it('has no page settings without a meta schema', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: 'Page settings' })).toBeNull();
+  });
+
+  it('edits page settings when the site declares page metadata', () => {
+    const onChange = vi.fn<(page: Page) => void>();
+    render(() => <Editor bricks={bricks} meta={pageMeta} page={{ ...page(), meta: { title: 'Home', extra: 1 } }} previewUrl="/preview" onChange={onChange} />);
+    click('Page settings');
+    expect(screen.getByRole('button', { name: 'Page settings', current: true })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Edit page settings' })).toBeInTheDocument();
+    expect(input('Title').value).toBe('Home');
+    fireEvent.input(input('Title'), { target: { value: '' } });
+    flush();
+    expect(screen.getByText('Title is required')).toBeInTheDocument();
+    fireEvent.input(input('Title'), { target: { value: 'New title' } });
+    flush();
+    expect(onChange.mock.lastCall?.[0].meta).toEqual({ title: 'New title', extra: 1 });
+    expect(onChange.mock.lastCall?.[0].entries.map((e) => e.data.text)).toEqual(['Welcome', undefined]);
+    // Selecting an entry swaps the form.
+    click('Heading');
+    expect(screen.queryByRole('region', { name: 'Edit page settings' })).toBeNull();
+    expect(input('Text').value).toBe('Welcome');
   });
 });

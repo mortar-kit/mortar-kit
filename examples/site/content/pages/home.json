@@ -47,6 +47,7 @@
     }
   ],
   "meta": {
-    "title": "Mortar example"
+    "title": "Mortar: pages from bricks",
+    "description": "A small Solid 2 framework: define bricks, compose pages, edit them live."
   }
 }

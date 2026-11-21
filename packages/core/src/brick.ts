@@ -33,23 +33,12 @@ export interface Issue {
 /** Result of `brick.validate(data)`. */
 export type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] };
 
-/** A registered brick. */
-export interface Brick<F extends Fields = Fields> {
+/** A registered brick. `defaults()` is used when the brick is added to a page. */
+export interface Brick<F extends Fields = Fields> extends SchemaOps<F> {
   readonly name: string;
   readonly label: string;
   readonly schema: F;
   readonly component: Component<BrickProps<InferFields<F>>>;
-  /** Fresh default data, used when the brick is added to a page. */
-  defaults(): InferFields<F>;
-  /** Validates (and fills defaults into) unknown data. */
-  validate(data: unknown): ValidateResult<InferFields<F>>;
-  /**
-   * Coerces unknown data into the brick's shape for rendering: missing fields
-   * get defaults, and fields of the wrong type are replaced by their default.
-   * Values that are the right type but break a rule (an empty required text)
-   * are kept, so a preview shows what the editor typed.
-   */
-  normalize(data: unknown): InferFields<F>;
 }
 
 /** A brick of any schema, e.g. in a list of bricks. */
@@ -63,13 +52,35 @@ export function defineBrick<const F extends Fields>(def: BrickDefinition<F>): Br
   if (!NAME.test(def.name)) {
     throw new Error(`defineBrick: invalid name "${def.name}" (use lowercase letters, digits and dashes)`);
   }
-  const validator = v.object(def.schema);
   return {
     name: def.name,
     label: def.label ?? def.name,
     schema: def.schema,
     component: def.component,
-    defaults: () => defaultsOf(def.schema),
+    ...schemaOps(def.schema),
+  };
+}
+
+/** What bricks and page metadata share: defaults, validation and normalization for a record of fields. */
+export interface SchemaOps<F extends Fields> {
+  /** Fresh default data. */
+  defaults(): InferFields<F>;
+  /** Validates (and fills defaults into) unknown data. */
+  validate(data: unknown): ValidateResult<InferFields<F>>;
+  /**
+   * Coerces unknown data into the schema's shape for rendering: missing fields
+   * get defaults, and fields of the wrong type are replaced by their default.
+   * Values that are the right type but break a rule (an empty required text)
+   * are kept, so a preview shows what the editor typed.
+   */
+  normalize(data: unknown): InferFields<F>;
+}
+
+/** Builds the `SchemaOps` for a record of fields. Internal: used by `defineBrick` and `definePageMeta`. */
+export function schemaOps<F extends Fields>(schema: F): SchemaOps<F> {
+  const validator = v.object(schema);
+  return {
+    defaults: () => defaultsOf(schema),
     validate(data) {
       const result = v.safeParse(validator, data);
       if (result.success) return { success: true, data: result.output as InferFields<F> };
@@ -86,7 +97,7 @@ export function defineBrick<const F extends Fields>(def: BrickDefinition<F>): Br
       if (whole.typed) return whole.output as InferFields<F>;
       const input = isRecord(data) ? data : {};
       const out: Record<string, unknown> = {};
-      for (const [key, field] of Object.entries(def.schema)) {
+      for (const [key, field] of Object.entries(schema)) {
         const one = v.safeParse(field, input[key]);
         out[key] = one.typed ? one.output : v.getDefault(field as never);
       }

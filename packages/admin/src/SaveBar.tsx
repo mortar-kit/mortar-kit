@@ -1,18 +1,28 @@
 // The editor's save controls: whether there are unsaved changes, a Save
 // button (also Ctrl/Cmd+S), a saving state, and the problems that stopped a
-// save, each linking to its entry. Warns before the tab is closed with
-// unsaved changes, and reports changes in that state so the app can guard
-// its own navigation (the editor doesn't depend on a router).
-import { brickMap, normalizePage, validatePage, type AnyBrick, type Page, type PageIssue, type SaveResult } from '@mortar-kit/core';
+// save, each linking to its entry (or the page settings). Warns before the
+// tab is closed with unsaved changes, and reports changes in that state so
+// the app can guard its own navigation (the editor doesn't depend on a router).
+import {
+  brickMap,
+  normalizePage,
+  validatePage,
+  type AnyBrick,
+  type Page,
+  type PageIssue,
+  type PageMeta,
+  type SaveResult,
+} from '@mortar-kit/core';
 import { action, createEffect, createMemo, createOptimistic, createSignal, For, onSettled, Show, snapshot } from 'solid-js';
 
 import styles from './SaveBar.module.css';
 import common from './common.module.css';
-import type { EditorStore } from './state.ts';
+import { PAGE_META, type EditorStore } from './state.ts';
 
 export interface SaveBarProps {
   editor: EditorStore;
   bricks: readonly AnyBrick[];
+  meta?: PageMeta;
   /** The page as last loaded; the baseline for "unsaved changes" until the first save. */
   source: Page;
   onSave: (page: Page) => Promise<SaveResult | void>;
@@ -21,7 +31,7 @@ export interface SaveBarProps {
 
 export function SaveBar(props: SaveBarProps) {
   // JSON of the page as last loaded or saved. Re-derived when a new page is loaded.
-  const [savedJson, setSavedJson] = createSignal(() => JSON.stringify(normalizePage(props.bricks, props.source)));
+  const [savedJson, setSavedJson] = createSignal(() => JSON.stringify(normalizePage(props.bricks, props.source, props.meta)));
   const dirty = createMemo(() => JSON.stringify(props.editor.state.page) !== savedJson());
   const [saving, setSaving] = createOptimistic(false);
   const [issues, setIssues] = createSignal<PageIssue[]>([]);
@@ -30,7 +40,7 @@ export function SaveBar(props: SaveBarProps) {
   const save = action(function* () {
     const page = snapshot(props.editor.state.page);
     // Check here first for quick feedback; the server validates again.
-    const checked = validatePage(props.bricks, page);
+    const checked = validatePage(props.bricks, page, props.meta);
     if (!checked.success) {
       setIssues(checked.issues);
       setError(undefined);
@@ -94,7 +104,9 @@ export function SaveBar(props: SaveBarProps) {
         <div role="alert" class={styles.issues}>
           <p class={common.issue}>Not saved: fix {issues().length === 1 ? 'this problem' : `these ${issues().length} problems`} first.</p>
           <ul>
-            <For each={issues()}>{(issue) => <IssueItem issue={issue} editor={props.editor} bricks={props.bricks} />}</For>
+            <For each={issues()}>
+              {(issue) => <IssueItem issue={issue} editor={props.editor} bricks={props.bricks} settings={props.meta !== undefined} />}
+            </For>
           </ul>
         </div>
       </Show>
@@ -102,9 +114,14 @@ export function SaveBar(props: SaveBarProps) {
   );
 }
 
-/** One problem; if it belongs to an entry, a button that selects that entry. */
-function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: readonly AnyBrick[] }) {
+/**
+ * One problem; if it belongs to an entry, or to a page setting the editor
+ * has a form for (`settings`), a button that selects it.
+ */
+function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: readonly AnyBrick[]; settings: boolean }) {
+  const isMeta = () => props.settings && props.issue.entryId === undefined && props.issue.path[0] === 'meta' && props.issue.path.length > 1;
   const where = createMemo(() => {
+    if (isMeta()) return ['Page settings', ...props.issue.path.slice(1)].join(' › ');
     const entries = props.editor.state.page.entries;
     const index = entries.findIndex((e) => e.id === props.issue.entryId);
     const entry = entries[index];
@@ -117,7 +134,7 @@ function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: reado
     <li>
       <Show when={where()} fallback={props.issue.message}>
         {(text) => (
-          <button type="button" class={styles.issueLink} onClick={() => props.editor.select(props.issue.entryId ?? null)}>
+          <button type="button" class={styles.issueLink} onClick={() => props.editor.select(isMeta() ? PAGE_META : (props.issue.entryId ?? null))}>
             {text()}: {props.issue.message}
           </button>
         )}

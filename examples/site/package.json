@@ -10,6 +10,7 @@
   "dependencies": {
     "@mortar-kit/admin": "workspace:*",
     "@mortar-kit/core": "workspace:*",
+    "@solidjs/meta": "2.0.0",
     "@solidjs/router": "2.0.1",
     "@solidjs/web": "2.0.3",
     "solid-js": "2.0.3"
