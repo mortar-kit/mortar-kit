@@ -10,6 +10,10 @@
     ".": {
       "types": "./src/index.ts",
       "solid": "./src/index.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "solid": "./src/server.ts"
     }
   },
   "publishConfig": {
@@ -17,6 +21,10 @@
       ".": {
         "types": "./dist/source/index.d.ts",
         "solid": "./dist/source/index.js"
+      },
+      "./server": {
+        "types": "./dist/source/server.d.ts",
+        "solid": "./dist/source/server.js"
       }
     }
   },

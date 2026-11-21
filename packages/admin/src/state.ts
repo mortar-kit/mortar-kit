@@ -1,7 +1,7 @@
 // Editor state: the page being edited plus the selected entry, held in one
 // store. All writes go through the draft setter, addressed by entry id and a
 // path into that entry's data (e.g. ['cards', 2, 'title']).
-import { brickMap, type AnyBrick, type Page, type PageEntry } from '@mortar-kit/core';
+import { normalizePage, type AnyBrick, type Page, type PageEntry } from '@mortar-kit/core';
 import { createStore, snapshot } from 'solid-js';
 
 /** A location inside an entry's data. */
@@ -45,22 +45,10 @@ function newId(brickName: string): string {
 }
 
 /**
- * Normalizes each entry of a known brick (missing fields get defaults) so
- * every form input has a value to bind. Unknown bricks are kept untouched.
- */
-export function normalizePage(bricks: readonly AnyBrick[], page: Page): Page {
-  const byName = brickMap(bricks);
-  const entries = page.entries.map((entry): PageEntry => {
-    const brick = byName.get(entry.brick);
-    return brick ? { ...entry, data: brick.normalize(entry.data) } : { ...entry, data: snapshot(entry.data) };
-  });
-  return page.meta === undefined ? { entries } : { entries, meta: snapshot(page.meta) };
-}
-
-/**
- * Creates the editor store. It is seeded from `page()` (normalized; the source
- * is never modified) and re-seeded if `bricks()` or `page()` change, e.g. when
- * a different page is loaded. Edits live in the store until then.
+ * Creates the editor store. It is seeded from `page()` (normalized, so every
+ * form input has a value to bind; the source is never modified) and
+ * re-seeded if `bricks()` or `page()` change, e.g. when a different page is
+ * loaded. Edits live in the store until then.
  */
 export function createEditorStore(bricks: () => readonly AnyBrick[], page: () => Page): EditorStore {
   const [state, setState] = createStore<EditorState>(

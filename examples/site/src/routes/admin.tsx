@@ -1,9 +1,20 @@
-// Admin: the Mortar editor for the home page. (No auth or saving yet.)
+// Admin: the Mortar editor for the home page, saving through the app's
+// server function. Unprotected: guard /admin in your own app.
 import { Editor } from '@mortar-kit/admin';
+import { createMemo } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
-import { home } from '../content/home.ts';
+import { getPage } from '../pages.ts';
+import { saveStoredPage } from '../server/pages.ts';
 
 export default function Admin() {
-  return <Editor bricks={bricks} page={home} previewUrl="/admin/preview" />;
+  const page = createMemo(() => getPage('home'));
+  return (
+    <Editor
+      bricks={bricks}
+      page={page() ?? { entries: [] }}
+      previewUrl="/admin/preview"
+      onSave={(next) => saveStoredPage('home', next)}
+    />
+  );
 }
