@@ -4,24 +4,37 @@
 import type { Component } from 'solid-js';
 import * as v from 'valibot';
 
+import type { ContentReader } from './content.ts';
 import { defaultsOf, type Fields, type InferFields } from './fields.ts';
 
 /** Props every brick component receives. */
-export interface BrickProps<D> {
+export interface BrickProps<D, L = undefined> {
   /** The brick's data: the right shape, with defaults filled in (see `Brick.normalize`). */
   data: D;
+  /** What the brick's `load` returned; undefined for a brick without one. */
+  loaded: L;
 }
 
 /** What a developer passes to `defineBrick`. */
-export interface BrickDefinition<F extends Fields> {
+export interface BrickDefinition<F extends Fields, L = undefined> {
   /** Stable identifier stored in page data. Lowercase, e.g. `hero` or `feature-grid`. */
   name: string;
   /** Human-readable name for the admin panel. Defaults to `name`. */
   label?: string;
   /** The editable fields, built with `fields.*`. */
   schema: F;
-  /** Renders the brick. Read `props.data.x`; don't destructure props. */
-  component: Component<BrickProps<InferFields<F>>>;
+  /**
+   * Loads what the brick shows besides its own data, e.g. the latest posts.
+   * Runs on the server when the page renders (pages without JavaScript
+   * included) and in the browser in the admin preview, where it reads
+   * saved content (not unsaved edits to other documents). Read the `data`
+   * fields it depends on before the first `await`: changing those loads
+   * again, changing others doesn't. Return plain JSON. Write it before
+   * `component`, so `props.loaded` gets its type.
+   */
+  load?: (data: InferFields<F>, content: ContentReader) => L | Promise<L>;
+  /** Renders the brick. Read `props.data.x` (and `props.loaded`); don't destructure props. */
+  component: Component<BrickProps<InferFields<F>, L>>;
 }
 
 /** A validation problem, located by its path inside the brick's data. */
@@ -34,21 +47,22 @@ export interface Issue {
 export type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] };
 
 /** A registered brick. `defaults()` is used when the brick is added to a page. */
-export interface Brick<F extends Fields = Fields> extends SchemaOps<F> {
+export interface Brick<F extends Fields = Fields, L = undefined> extends SchemaOps<F> {
   readonly name: string;
   readonly label: string;
   readonly schema: F;
-  readonly component: Component<BrickProps<InferFields<F>>>;
+  readonly load: ((data: InferFields<F>, content: ContentReader) => L | Promise<L>) | undefined;
+  readonly component: Component<BrickProps<InferFields<F>, L>>;
 }
 
 /** A brick of any schema, e.g. in a list of bricks. */
 // oxlint-disable-next-line typescript/no-explicit-any -- component props are contravariant.
-export type AnyBrick = Brick<any>;
+export type AnyBrick = Brick<any, any>;
 
 const NAME = /^[a-z][a-z0-9-]*$/;
 
 /** Registers a brick: a named component plus the schema of its data. */
-export function defineBrick<const F extends Fields>(def: BrickDefinition<F>): Brick<F> {
+export function defineBrick<const F extends Fields, L = undefined>(def: BrickDefinition<F, L>): Brick<F, L> {
   if (!NAME.test(def.name)) {
     throw new Error(`defineBrick: invalid name "${def.name}" (use lowercase letters, digits and dashes)`);
   }
@@ -56,6 +70,7 @@ export function defineBrick<const F extends Fields>(def: BrickDefinition<F>): Br
     name: def.name,
     label: def.label ?? def.name,
     schema: def.schema,
+    load: def.load,
     component: def.component,
     ...schemaOps(def.schema),
   };
