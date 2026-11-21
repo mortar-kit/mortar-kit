@@ -1,4 +1,4 @@
-# Handover: Mortar after steps 1–6
+# Handover: Mortar after steps 1–7
 
 You are picking up **Mortar**, a small website framework on **Solid 2**, at
 `/Users/tom/Projects/Github/bried/mortar`. Read `AGENTS.md` first (it is also
@@ -62,17 +62,40 @@ Solid APIs against the installed sources, not memory.
      reshuffled chunks (60.1 → 62.7 kB gzip) and was dropped. The other
      Mortar-attributable cost is valibot (~13 kB raw) via brick schemas.
 
+7. Public pages without JavaScript (user's request, 2026-11-22; islands
+   wanted later). The example's entries are authored instead of generated:
+   `src/Root.tsx` is the tree both entries render (error boundaries outside
+   and inside the Document, production only, as the generated entries do),
+   `src/client.ts` `hydrates(pathname)` picks whole-document hydration
+   (`/admin*`, case-insensitive like the router). Other pages render under
+   `<NoHydration>` (no `_hk`, no lazy chunk preloads) with `noScripts` (no
+   hydration data), `stylesOnly(manifest)` (CSS links, no entry-import
+   `modulepreload`s; `src/styles-only.ts`), no bootstrap or client script,
+   and are always sent settled (a plain promise), since streamed content
+   needs a script. The client script tag carries the request's CSP nonce.
+   Result: home is ~1.3 kB of HTML plus two stylesheets, zero scripts.
+   For islands: static content under `<NoHydration>`, each interactive
+   brick in `<Hydration id={entry.id}>`, page data deciding which islands
+   render, hydration data and island chunks kept on those pages, and a
+   separate client entry hydrating each island root (see `client.ts`).
+
 Verified in a browser on the production build: live preview, entry
 operations with keyed DOM reuse in the preview, save to disk, public SSR
 of the saved page, typing during an in-flight save (kept, stays dirty),
 local validation messages, leave guard (links, back/forward, leaving
 during a save, a failed save, one confirm for a burst), page settings
-(edit, validation link, save, title and description in the served HTML).
-102 tests; typecheck, lint, build clean.
+(edit, validation link, save, title and description in the served HTML),
+no-JS home (0 scripts, only CSS requests; a save in the editor shows on
+it; also checked in dev and, temporarily, with `renderMode: 'stream'`),
+admin hydration with no console errors, a page error giving a 500 that
+keeps head and styles. 107 tests; typecheck, lint, build clean.
 
 ## Open / not built
 
 - Click-to-select in the preview (optional in the brief; skipped).
+- Islands: hydrate single interactive bricks on no-JS pages (plan in
+  `examples/site/src/client.ts`). Possibly move the no-JS entries into a
+  Mortar package once the shape settles.
 - Earlier "later" items still apply: schema `version`/`migrate`, a `hidden`
   brick flag, rich text, media, multi-page/slug UI, auth, publishing
   (changesets, publint, attw).

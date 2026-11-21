@@ -35,7 +35,13 @@ keep every other name plain and conventional (no further construction puns).
   the main entry.
 - `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR with
   `renderMode: 'async'`, so pages and head tags are in the HTML) with
-  example bricks and page metadata (`src/page-meta.ts`). Mortar ships no bricks of its own. Pages are JSON files in
+  example bricks and page metadata (`src/page-meta.ts`). Mortar ships no bricks of its own.
+  Its entries are authored (`src/entry-server.tsx`, `src/entry-client.tsx`,
+  shared tree in `src/Root.tsx`) so public pages ship **no JavaScript**:
+  `src/client.ts` picks the pages that hydrate (the admin); the rest render
+  under `<NoHydration>` with `noScripts` and a CSS-only manifest
+  (`src/styles-only.ts`). Islands (hydrating single bricks) are planned;
+  `client.ts` notes what they will need. Pages are JSON files in
   `examples/site/content/pages/`, read and written by the `'use server'`
   module `src/server/pages.ts`.
 - No auth: `/admin` and the save function are unprotected. Guarding them is
