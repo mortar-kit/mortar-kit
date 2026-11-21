@@ -45,6 +45,18 @@ describe('<PageView>', () => {
     expect(container.querySelectorAll('h2')).toHaveLength(2);
   });
 
+  it('renders the fallback for an unknown brick when one is given', () => {
+    const { container } = render(() => (
+      <PageView
+        bricks={[heading]}
+        page={[{ brick: 'missing', id: 'x', data: {} }, ...page()]}
+        fallback={(entry) => <p class="missing">{entry.brick}</p>}
+      />
+    ));
+    expect(texts(container, '.missing')).toEqual(['missing']);
+    expect(texts(container, 'h2')).toEqual(['First', 'Second']);
+  });
+
   it('fills missing and wrongly typed data with defaults', () => {
     const { container } = render(() => (
       <PageView

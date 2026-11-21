@@ -17,6 +17,18 @@ export interface EditorState {
 export interface EditorStore {
   readonly state: EditorState;
   select(id: string | null): void;
+  /**
+   * Adds an entry of the named brick with its default data at `index`
+   * (default: the end) and selects it. Returns the new id, or undefined if
+   * no brick has that name.
+   */
+  addEntry(brickName: string, index?: number): string | undefined;
+  /** Removes an entry. If it was selected, a neighbour (or nothing) is selected. */
+  removeEntry(id: string): void;
+  /** Moves an entry to `toIndex`. Indexes past either end are ignored. */
+  moveEntry(id: string, toIndex: number): void;
+  /** Inserts a copy of an entry (new id, cloned data) after it and selects it. Returns the new id. */
+  duplicateEntry(id: string): string | undefined;
   /** Sets the value at `path` in an entry's data. */
   setValue(entryId: string, path: Path, value: unknown): void;
   /** Inserts `value` into the list at `path`. */
@@ -25,6 +37,11 @@ export interface EditorStore {
   removeItem(entryId: string, path: Path, index: number): void;
   /** Moves an item of the list at `path` from one index to another. */
   moveItem(entryId: string, path: Path, from: number, to: number): void;
+}
+
+/** A new entry id, created when an entry is added (never during render). */
+function newId(brickName: string): string {
+  return `${brickName}-${crypto.randomUUID()}`;
 }
 
 /**
@@ -80,6 +97,44 @@ export function createEditorStore(bricks: () => readonly AnyBrick[], page: () =>
       setState((s) => {
         s.selected = id;
       });
+    },
+    addEntry(brickName, index) {
+      const brick = bricks().find((b) => b.name === brickName);
+      if (!brick) return undefined;
+      const entry: PageEntry = { brick: brick.name, id: newId(brick.name), data: brick.defaults() };
+      setState((s) => {
+        s.page.splice(index ?? s.page.length, 0, entry);
+        s.selected = entry.id;
+      });
+      return entry.id;
+    },
+    removeEntry(id) {
+      setState((s) => {
+        const index = s.page.findIndex((e) => e.id === id);
+        if (index === -1) return;
+        s.page.splice(index, 1);
+        if (s.selected === id) s.selected = (s.page[index] ?? s.page[index - 1])?.id ?? null;
+      });
+    },
+    moveEntry(id, toIndex) {
+      setState((s) => {
+        const from = s.page.findIndex((e) => e.id === id);
+        if (from === -1 || toIndex < 0 || toIndex >= s.page.length || from === toIndex) return;
+        const [entry] = s.page.splice(from, 1);
+        s.page.splice(toIndex, 0, entry!);
+      });
+    },
+    duplicateEntry(id) {
+      let copyId: string | undefined;
+      setState((s) => {
+        const index = s.page.findIndex((e) => e.id === id);
+        const source = s.page[index];
+        if (!source) return;
+        copyId = newId(source.brick);
+        s.page.splice(index + 1, 0, { brick: source.brick, id: copyId, data: structuredClone(snapshot(source.data)) });
+        s.selected = copyId;
+      });
+      return copyId;
     },
     setValue(entryId, path, value) {
       const key = path.at(-1);
