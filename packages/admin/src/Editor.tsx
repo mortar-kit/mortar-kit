@@ -34,6 +34,8 @@ export interface EditorProps {
    * or reject if saving failed. The editor validates before calling it too.
    */
   onSave?: (doc: Doc) => Promise<SaveResult | void>;
+  /** Deletes the document; without it there is no Delete button. The editor doesn't ask first: the handler does. */
+  onRemove?: () => void;
   /**
    * Called with whether there are unsaved changes, initially and whenever
    * that changes (only with `onSave`), and with false if the save controls
@@ -86,7 +88,16 @@ export function Editor(props: EditorProps) {
       <aside class={styles.sidebar}>
         <header class={styles.header}>
           <h2 class={styles.heading}>{props.collection.label}</h2>
-          <h1 class={styles.title}>{props.collection.titleOf(editor.state.doc)}</h1>
+          <div class={styles.titleRow}>
+            <h1 class={styles.title}>{props.collection.titleOf(editor.state.doc)}</h1>
+            <Show when={props.onRemove}>
+              {(onRemove) => (
+                <button type="button" class={[common.button, styles.delete]} onClick={() => onRemove()()}>
+                  Delete
+                </button>
+              )}
+            </Show>
+          </div>
           <label class={styles.slug}>
             <span class={styles.slugLabel}>Slug</span>
             <input

@@ -156,3 +156,12 @@
 .slugInput[aria-invalid='true'] {
   border-color: var(--mortar-danger);
 }
+.titleRow {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.delete {
+  color: var(--mortar-danger);
+}
