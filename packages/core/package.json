@@ -1,0 +1,38 @@
+{
+  "name": "@mortar-kit/core",
+  "version": "0.0.0",
+  "description": "Mortar core: bricks, schema fields, page model and page rendering for Solid 2",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "solid": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/source/index.d.ts",
+        "solid": "./dist/source/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "valibot": "^1.5.0"
+  },
+  "peerDependencies": {
+    "@solidjs/web": "^2.0.0",
+    "solid-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@solidjs/web": "2.0.3",
+    "solid-js": "2.0.3"
+  }
+}
