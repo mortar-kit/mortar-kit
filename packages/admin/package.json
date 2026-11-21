@@ -1,0 +1,45 @@
+{
+  "name": "@mortar-kit/admin",
+  "version": "0.0.0",
+  "description": "Mortar admin: schema-driven brick editor with live preview for Solid 2",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": ["**/*.css"],
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "solid": "./src/index.ts"
+    },
+    "./preview": {
+      "types": "./src/preview.tsx",
+      "solid": "./src/preview.tsx"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/source/index.d.ts",
+        "solid": "./dist/source/index.js"
+      },
+      "./preview": {
+        "types": "./dist/source/preview.d.ts",
+        "solid": "./dist/source/preview.jsx"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && node -e \"require('node:fs').cpSync('src/editor.css','dist/source/editor.css')\"",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@mortar-kit/core": "workspace:^",
+    "@solidjs/web": "^2.0.0",
+    "solid-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@mortar-kit/core": "workspace:*",
+    "@solidjs/web": "2.0.3",
+    "solid-js": "2.0.3"
+  }
+}

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter mortar-example-site dev",
     "build": "pnpm -r build",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p packages/core/tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p packages/core/tsconfig.build.json && tsc --noEmit -p packages/admin/tsconfig.build.json",
     "lint": "oxlint packages examples",
     "test": "vitest run",
     "test:watch": "vitest"

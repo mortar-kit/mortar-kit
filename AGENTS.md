@@ -33,6 +33,8 @@ keep every other name plain and conventional (no further construction puns).
   Keep all green at every step.
 - Tests: vitest projects. `*.test.tsx` → client (jsdom); `*.test.ts` and
   `*.ssr.test.tsx` → server (node, SSR codegen). Call `flush()` before asserting.
+  Anything that must re-run (memos, effects, derived stores) needs a client
+  test: the server build of Solid computes once and never updates.
 - No SolidStart (Solid 1 only): start mode lives in `@solidjs/vite-plugin` 3.
 - `@solidjs/testing-library` must be the `next` (1.x) line, not `latest`.
 - Packages that render JSX publish preserved JSX under a `solid` export
