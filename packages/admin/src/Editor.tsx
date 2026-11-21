@@ -1,11 +1,13 @@
 // <Editor>: the admin panel. A sidebar lists the page's entries (with add,
 // move, duplicate and remove) and shows the generated form for the selected
-// one; the rest is a live preview iframe.
-import { brickMap, type AnyBrick, type Page, type PageEntry } from '@mortar-kit/core';
+// one, with save controls when the app passes `onSave`; the rest is a live
+// preview iframe.
+import { brickMap, type AnyBrick, type Page, type PageEntry, type SaveResult } from '@mortar-kit/core';
 import { createEffect, createMemo, deep, For, Show, snapshot } from 'solid-js';
 
 import { BrickForm } from './BrickForm.tsx';
 import { PreviewFrame } from './PreviewFrame.tsx';
+import { SaveBar } from './SaveBar.tsx';
 import { createEditorStore, type EditorStore } from './state.ts';
 import './editor.css';
 
@@ -18,6 +20,12 @@ export interface EditorProps {
   previewUrl: string;
   /** Called with a plain copy of the page after every change. */
   onChange?: (page: Page) => void;
+  /**
+   * Saves the page; without it there is no Save button. Resolve with a
+   * `SaveResult` (e.g. from `savePage`) to report validation problems, or
+   * reject if saving failed. The editor validates before calling it too.
+   */
+  onSave?: (page: Page) => Promise<SaveResult | void>;
 }
 
 export function Editor(props: EditorProps) {
@@ -50,6 +58,9 @@ export function Editor(props: EditorProps) {
           <h2 class="mortar-heading">Page</h2>
           <AddMenu bricks={props.bricks} onAdd={add} />
         </div>
+        <Show when={props.onSave}>
+          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} source={props.page} onSave={onSave()} />}
+        </Show>
         <Show when={editor.state.page.entries.length > 0} fallback={<p class="mortar-help mortar-empty">This page is empty. Add a brick to start.</p>}>
           <ol class="mortar-entries">
             <For each={editor.state.page.entries} keyed={(entry) => entry.id}>

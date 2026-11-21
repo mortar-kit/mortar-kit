@@ -3,4 +3,4 @@
 export { BrickForm, type BrickFormProps } from './BrickForm.tsx';
 export { Editor, type EditorProps } from './Editor.tsx';
 export { PreviewFrame, type PreviewFrameProps } from './PreviewFrame.tsx';
-export { createEditorStore, normalizePage, type EditorState, type EditorStore, type Path } from './state.ts';
+export { createEditorStore, type EditorState, type EditorStore, type Path } from './state.ts';

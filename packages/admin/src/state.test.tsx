@@ -4,7 +4,7 @@
 import { createRoot, createSignal, flush, snapshot } from 'solid-js';
 import { describe, expect, it } from 'vitest';
 
-import { createEditorStore, normalizePage } from './state.ts';
+import { createEditorStore } from './state.ts';
 import { bricks, page } from './test/bricks.tsx';
 
 function setup(source = page()) {
@@ -14,23 +14,6 @@ function setup(source = page()) {
     return editor;
   });
 }
-
-describe('normalizePage', () => {
-  it('fills defaults without touching the source page', () => {
-    const source = page();
-    const out = normalizePage(bricks, source);
-    expect(out.entries[0]?.data).toEqual({ text: 'Welcome', size: 2, tone: 'plain', shown: true });
-    expect(source.entries[0]?.data).toEqual({ text: 'Welcome' });
-  });
-
-  it('keeps page metadata', () => {
-    expect(normalizePage(bricks, { entries: [], meta: { title: 'Home' } })).toEqual({ entries: [], meta: { title: 'Home' } });
-  });
-
-  it('keeps entries of unknown bricks', () => {
-    expect(normalizePage(bricks, { entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] })).toEqual({ entries: [{ brick: 'gone', id: 'x', data: { a: 1 } }] });
-  });
-});
 
 describe('createEditorStore', () => {
   it('selects the first entry', () => {

@@ -22,5 +22,20 @@ export {
   type Image,
   type InferFields,
 } from './fields.ts';
-export type { Page, PageEntry } from './page.ts';
+export {
+  normalizePage,
+  validatePage,
+  type Page,
+  type PageEntry,
+  type PageIssue,
+  type ValidatePageResult,
+} from './page.ts';
 export { PageView, type PageViewProps } from './PageView.tsx';
+export {
+  createMemoryStore,
+  isValidSlug,
+  loadPage,
+  savePage,
+  type PageStore,
+  type SaveResult,
+} from './store.ts';

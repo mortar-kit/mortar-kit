@@ -25,8 +25,16 @@ keep every other name plain and conventional (no further construction puns).
 - `packages/core`, `packages/admin`: published under `@mortar-kit`. In the
   workspace, `exports` point at `src/` (the `solid` condition) so no build is
   needed for dev/tests; `publishConfig.exports` points at `dist/`.
+- `@mortar-kit/core/server`: node-only entry (`createJsonFileStore`), kept
+  out of the main entry so `node:fs` never reaches a client bundle. Storage
+  helpers (`PageStore`, `loadPage` normalizes, `savePage` validates) are in
+  the main entry.
 - `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR) with
-  example bricks. Mortar ships no bricks of its own.
+  example bricks. Mortar ships no bricks of its own. Pages are JSON files in
+  `examples/site/content/pages/`, read and written by the `'use server'`
+  module `src/server/pages.ts`.
+- No auth: `/admin` and the save function are unprotected. Guarding them is
+  the consuming app's job (e.g. `start.middleware`).
 
 ## Tooling
 
