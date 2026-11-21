@@ -306,3 +306,49 @@ describe('navigation', () => {
     expect(screen.getByText("This document doesn't exist (it may have been deleted).")).toBeInTheDocument();
   });
 });
+
+describe('the reference picker', () => {
+  const picker = () => screen.getByLabelText('By') as HTMLSelectElement;
+  const options = () => [...picker().options].map((o) => o.textContent);
+
+  it('lists the referenced collection by title, and writes the id', async () => {
+    const { store } = setup();
+    await settle();
+    await open('Quotes', 'Hello');
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    await settle();
+    expect(options()).toEqual(['None', 'Ada', 'Grace']);
+    expect(picker().value).toBe('ada-id');
+    fireEvent.change(picker(), { target: { value: 'grace-id' } });
+    flush();
+    await click(screen.getByRole('button', { name: 'Save' }));
+    expect(((await store.get('quotes', 'q1')) as Doc).fields.by).toBe('grace-id');
+    fireEvent.change(picker(), { target: { value: '' } });
+    flush();
+    expect(screen.getByRole('button', { name: 'Open the selected by' })).toBeDisabled();
+  });
+
+  it('opens the referenced document', async () => {
+    setup();
+    await settle();
+    await open('Quotes', 'Hello');
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    await settle();
+    await click(screen.getByRole('button', { name: 'Open the selected by' }));
+    expect(nav().getByRole('button', { name: 'Authors', current: true })).toBeInTheDocument();
+    expect(editorTitle()).toBe('Ada');
+  });
+
+  it('shows a reference to a deleted document as missing', async () => {
+    const { store } = seed();
+    await store.put('quotes', { id: 'q2', slug: 'q2', fields: { text: 'Orphan', by: 'gone-id' } });
+    setup({ content: createContent({ store, collections, bricks }) });
+    await settle();
+    await open('Quotes', 'Orphan');
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    await settle();
+    expect(options()).toEqual(['None', 'Missing document (gone-id)', 'Ada', 'Grace']);
+    expect(picker()).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('The selected document no longer exists. Pick another, or None.')).toBeInTheDocument();
+  });
+});
