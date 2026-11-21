@@ -4,19 +4,26 @@
 // normalized into the brick's shape through a projection, so stale or
 // hand-edited data can't crash a brick, and unchanged parts keep their
 // identity (lists inside a brick don't remount on every edit).
-import { createMemo, createProjection, dynamicComponent, For } from 'solid-js';
+import type { JSX } from '@solidjs/web';
+import { createMemo, createProjection, dynamicComponent, For, Show } from 'solid-js';
 
 import { brickMap, type AnyBrick } from './brick.ts';
-import type { Page } from './page.ts';
+import type { Page, PageEntry } from './page.ts';
 
 export interface PageViewProps {
   /** The bricks this site defines. */
   bricks: readonly AnyBrick[];
   /** The entries to render, in order. */
   page: Page;
+  /**
+   * Rendered in place of an entry whose brick isn't defined (e.g. a brick
+   * that was removed from the code). Default: nothing, which suits a public
+   * site; the admin preview shows a placeholder.
+   */
+  fallback?: (entry: PageEntry) => JSX.Element;
 }
 
-/** Renders every entry of `page` with its brick's component. Unknown bricks render nothing. */
+/** Renders every entry of `page` with its brick's component. */
 export function PageView(props: PageViewProps) {
   const byName = createMemo(() => brickMap(props.bricks));
   return (
@@ -25,7 +32,11 @@ export function PageView(props: PageViewProps) {
         const brick = createMemo(() => byName().get(entry().brick));
         const data = createProjection(() => brick()?.normalize(entry().data) ?? {});
         const Brick = dynamicComponent(() => brick()?.component);
-        return <Brick data={data} />;
+        return (
+          <Show when={brick()} fallback={props.fallback?.(entry())}>
+            <Brick data={data} />
+          </Show>
+        );
       }}
     </For>
   );

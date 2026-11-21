@@ -1,5 +1,6 @@
 // <Editor>: generated forms write to the page, validation shows per field,
-// and the preview iframe receives the page after its ready handshake.
+// entries can be added, moved, duplicated and removed, and the preview
+// iframe receives the page after its ready handshake.
 import type { Page } from '@mortar-kit/core';
 import { fireEvent, render, screen } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
@@ -8,19 +9,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { Editor } from './Editor.tsx';
 import { bricks, page } from './test/bricks.tsx';
 
-function setup() {
+function setup(source: Page = page()) {
   const onChange = vi.fn<(page: Page) => void>();
-  const result = render(() => <Editor bricks={bricks} page={page()} previewUrl="/preview" onChange={onChange} />);
+  const result = render(() => <Editor bricks={bricks} page={source} previewUrl="/preview" onChange={onChange} />);
   const last = () => onChange.mock.lastCall?.[0];
   return { ...result, onChange, last };
 }
 
 const input = (label: string) => screen.getByLabelText(label, { exact: false }) as HTMLInputElement;
+/** Labels of the entries in the sidebar list, in order. */
+const entries = () => [...document.querySelectorAll('.mortar-entry')].map((b) => b.textContent);
+const click = (name: string) => {
+  fireEvent.click(screen.getByRole('button', { name }));
+  flush();
+};
 
 describe('<Editor>', () => {
   it('lists entries and shows the first entry’s form', () => {
     setup();
-    expect(screen.getAllByRole('button', { name: /Heading|Tags/ }).map((b) => b.textContent)).toEqual(['Heading', 'Tags']);
+    expect(entries()).toEqual(['Heading', 'Tags']);
     expect(input('Text').value).toBe('Welcome');
     expect(input('Size').value).toBe('2');
   });
@@ -67,14 +74,18 @@ describe('<Editor>', () => {
 
   it('accepts a signal setter as onChange', () => {
     // A setter returns the new value, which an effect must not take as its cleanup.
-    const [, setLatest] = createSignal<Page>();
-    const onChange = vi.fn(setLatest);
-    render(() => <Editor bricks={bricks} page={page()} previewUrl="/preview" onChange={onChange} />);
+    const [latest, setLatest] = createSignal<Page>();
+    render(() => (
+      <>
+        <Editor bricks={bricks} page={page()} previewUrl="/preview" onChange={setLatest} />
+        <output data-testid="latest">{latest()?.[0]?.data.text as string}</output>
+      </>
+    ));
     fireEvent.input(input('Text'), { target: { value: 'Set' } });
     flush();
     fireEvent.input(input('Text'), { target: { value: 'Again' } });
     flush();
-    expect((onChange.mock.lastCall?.[0] as Page | undefined)?.[0]?.data.text).toBe('Again');
+    expect(screen.getByTestId('latest')).toHaveTextContent('Again');
   });
 
   it('shows validation messages next to the field', () => {
@@ -105,6 +116,60 @@ describe('<Editor>', () => {
     flush();
     expect(last()?.[1]?.data.items).toEqual([{ name: 'new' }, { name: 'b' }]);
     expect(names().map((i) => i.value)).toEqual(['new', 'b']);
+  });
+
+  it('adds a brick after the selected entry and shows its form', () => {
+    const { last } = setup();
+    click('Add Tags');
+    expect(entries()).toEqual(['Heading', 'Tags', 'Tags']);
+    expect(screen.getByRole('button', { name: 'Tags', current: true })).toBe(document.querySelectorAll('.mortar-entry')[1]);
+    expect(last()?.[1]?.data).toEqual({ items: [] });
+    expect(screen.getByRole('button', { name: 'Add Tag' })).toBeInTheDocument();
+    expect((document.querySelector('.mortar-add-menu') as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it('moves and duplicates entries', () => {
+    const { last } = setup();
+    expect(screen.getByRole('button', { name: 'Move Heading 1 up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move Tags 2 down' })).toBeDisabled();
+    click('Move Heading 1 down');
+    expect(entries()).toEqual(['Tags', 'Heading']);
+    click('Duplicate Heading 2');
+    expect(entries()).toEqual(['Tags', 'Heading', 'Heading']);
+    expect(last()?.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Welcome']);
+    expect(last()?.[2]?.id).not.toBe('h');
+    // The duplicate is selected: editing it leaves the original alone.
+    fireEvent.input(input('Text'), { target: { value: 'Copy' } });
+    flush();
+    expect(last()?.map((e) => e.data.text)).toEqual([undefined, 'Welcome', 'Copy']);
+  });
+
+  it('removes an entry only after confirmation', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { last } = setup();
+    click('Remove Heading 1');
+    expect(confirm).toHaveBeenCalledWith('Remove "Heading" from the page?');
+    expect(entries()).toEqual(['Heading', 'Tags']);
+    confirm.mockReturnValue(true);
+    click('Remove Heading 1');
+    expect(entries()).toEqual(['Tags']);
+    expect(last()?.map((e) => e.id)).toEqual(['t']);
+    expect(screen.getByRole('button', { name: 'Tags', current: true })).toBeInTheDocument();
+    click('Remove Tags 1');
+    expect(screen.getByText('This page is empty. Add a brick to start.')).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
+  it('lists an unknown brick with a warning and lets it be removed', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    setup([{ brick: 'gone', id: 'g', data: { a: 1 } }, ...page()]);
+    expect(entries()).toEqual(['⚠ Unknown brick "gone"', 'Heading', 'Tags']);
+    expect(screen.getByText(/No brick named "gone" is defined/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Duplicate Unknown brick "gone" 1' })).toBeDisabled();
+    click('Remove Unknown brick "gone" 1');
+    expect(entries()).toEqual(['Heading', 'Tags']);
+    expect(input('Text').value).toBe('Welcome');
+    confirm.mockRestore();
   });
 
   it('posts the page to the preview after it reports ready, and on every change', () => {

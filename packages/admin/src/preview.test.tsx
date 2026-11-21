@@ -44,6 +44,33 @@ describe('<PreviewPage>', () => {
     expect([...container.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['a', 'b']);
   });
 
+  it('shows a placeholder for an unknown brick', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    post([{ brick: 'gone', id: 'g', data: {} }, ...page()]);
+    expect(container.querySelector('[role="note"]')).toHaveTextContent('Unknown brick "gone"');
+    expect(container.querySelector('h2')).toHaveTextContent('Welcome');
+  });
+
+  it('keeps brick DOM across added entries, entry moves and list item moves', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    post(page());
+    const h2 = container.querySelector('h2');
+    const ul = container.querySelector('ul');
+
+    const [heading, tags] = page();
+    const added = { brick: 'heading', id: 'new', data: { text: 'Added' } };
+    post([tags!, added, heading!]);
+    expect(container.querySelector('ul')).toBe(ul);
+    expect([...container.querySelectorAll('h2')].map((el) => el.textContent)).toEqual(['Added', 'Welcome']);
+    expect(container.querySelectorAll('h2')[1]).toBe(h2);
+
+    post([{ ...tags!, data: { items: [{ name: 'b' }, { name: 'a' }] } }, added, heading!]);
+    expect(container.querySelector('ul')).toBe(ul);
+    expect([...container.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['b', 'a']);
+  });
+
   it('updates in place: brick and list DOM survive edits and reorders', () => {
     const { container } = render(() => <PreviewPage bricks={bricks} />);
     flush();

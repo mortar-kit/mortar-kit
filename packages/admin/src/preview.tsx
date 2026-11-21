@@ -32,7 +32,19 @@ export function PreviewPage(props: PreviewPageProps) {
     return () => window.removeEventListener('message', onMessage);
   });
 
-  return <PageView bricks={props.bricks} page={state.page} />;
+  return <PageView bricks={props.bricks} page={state.page} fallback={(entry) => <MissingBrick name={entry.brick} />} />;
+}
+
+/** Placeholder for an entry whose brick isn't defined. Inline styles: the preview carries only the site's CSS. */
+function MissingBrick(props: { name: string }) {
+  return (
+    <div
+      role="note"
+      style={{ margin: '1rem', padding: '1rem', border: '2px dashed #b91c1c', color: '#b91c1c', font: '14px/1.4 system-ui, sans-serif' }}
+    >
+      Unknown brick "{props.name}": it isn't defined, so the public site renders nothing here.
+    </div>
+  );
 }
 
 export type { HelloMessage, PageMessage, ReadyMessage } from './protocol.ts';
