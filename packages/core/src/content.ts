@@ -23,10 +23,14 @@ export interface ContentReader {
  */
 export const ContentContext = createContext<ContentSource | null>(null);
 
-/** A typed reader over a source. No caching of its own: the source decides. */
+/**
+ * A typed reader over a source. No caching of its own: the source decides.
+ * Options left undefined (`{ where: undefined }`) are dropped, so they can
+ * cross a server function, whose arguments must be plain JSON.
+ */
 export function contentReader(source: ContentSource): ContentReader {
   return {
-    list: (collection, options) => source.list(collection.name, options) as never,
+    list: (collection, options) => (options === undefined ? source.list(collection.name) : source.list(collection.name, plain(options))) as never,
     get: (collection, ref) => source.get(collection.name, ref) as never,
   };
 }
@@ -40,4 +44,15 @@ export function useContent(): ContentReader {
   const source = useContext(ContentContext);
   if (!source) throw new Error('Mortar: no ContentContext; provide one around the app (<ContentContext value={source}>)');
   return contentReader(source);
+}
+
+/** `options` without undefined values (top level and in `where`). */
+function plain(options: ListOptions): ListOptions {
+  const out: ListOptions = {};
+  if (options.where !== undefined) {
+    out.where = Object.fromEntries(Object.entries(options.where).filter(([, value]) => value !== undefined));
+  }
+  if (options.sort !== undefined) out.sort = options.sort.order === undefined ? { field: options.sort.field } : options.sort;
+  if (options.limit !== undefined) out.limit = options.limit;
+  return out;
 }
