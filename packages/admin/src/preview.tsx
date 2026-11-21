@@ -14,7 +14,7 @@ export interface PreviewPageProps {
 
 /** Renders the page the parent editor posts; empty until the first message. */
 export function PreviewPage(props: PreviewPageProps) {
-  const [state, setState] = createStore<{ page: Page }>({ page: [] });
+  const [state, setState] = createStore<{ page: Page }>({ page: { entries: [] } });
 
   onSettled(() => {
     const ready: ReadyMessage = { type: 'mortar:ready' };

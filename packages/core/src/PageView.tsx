@@ -13,7 +13,7 @@ import type { Page, PageEntry } from './page.ts';
 export interface PageViewProps {
   /** The bricks this site defines. */
   bricks: readonly AnyBrick[];
-  /** The entries to render, in order. */
+  /** The page whose entries are rendered, in order. */
   page: Page;
   /**
    * Rendered in place of an entry whose brick isn't defined (e.g. a brick
@@ -27,7 +27,7 @@ export interface PageViewProps {
 export function PageView(props: PageViewProps) {
   const byName = createMemo(() => brickMap(props.bricks));
   return (
-    <For each={props.page} keyed={(entry) => entry.id}>
+    <For each={props.page.entries} keyed={(entry) => entry.id}>
       {(entry) => {
         const brick = createMemo(() => byName().get(entry().brick));
         const data = createProjection(() => brick()?.normalize(entry().data) ?? {});

@@ -15,7 +15,7 @@ const heading = defineBrick({
 describe('<PageView> on the server', () => {
   it('renders brick markup to HTML', () => {
     const html = renderToString(() => (
-      <PageView bricks={[heading]} page={[{ brick: 'heading', id: 'a', data: { text: 'Hello SSR' } }]} />
+      <PageView bricks={[heading]} page={{ entries: [{ brick: 'heading', id: 'a', data: { text: 'Hello SSR' } }] }} />
     ));
     expect(html).toContain('Hello SSR');
     expect(html).toContain('<h2');
