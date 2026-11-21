@@ -1,18 +1,20 @@
 // The editor's side of the live preview: an iframe on the same origin that
 // loads the app's preview route. When the preview reports ready, and after
-// every change, the whole page is posted to it. Either side may load first:
+// every change, the whole document is posted to it. Either side may load first:
 // the preview announces itself when it mounts, and the editor says hello
 // once it is listening, which the preview answers.
-import type { Page } from '@mortar-kit/core';
+import type { Doc } from '@mortar-kit/core';
 import { createEffect, createSignal, deep, onSettled, snapshot } from 'solid-js';
 
 import styles from './PreviewFrame.module.css';
-import { isReadyMessage, type HelloMessage, type PageMessage } from './protocol.ts';
+import { isReadyMessage, type HelloMessage, type DocMessage } from './protocol.ts';
 
 export interface PreviewFrameProps {
   /** URL of the app route that renders `<PreviewPage>`. */
   url: string;
-  page: Page;
+  /** The edited document's collection, by name. */
+  collection: string;
+  doc: Doc;
 }
 
 export function PreviewFrame(props: PreviewFrameProps) {
@@ -32,10 +34,10 @@ export function PreviewFrame(props: PreviewFrameProps) {
   });
 
   createEffect(
-    () => (handshakes() > 0 ? deep(props.page) : undefined),
-    (page) => {
-      if (!page) return;
-      const message: PageMessage = { type: 'mortar:page', page: snapshot(page) };
+    () => (handshakes() > 0 ? deep(props.doc) : undefined),
+    (doc) => {
+      if (!doc) return;
+      const message: DocMessage = { type: 'mortar:doc', collection: props.collection, doc: snapshot(doc) };
       frame?.contentWindow?.postMessage(message, location.origin);
     },
   );

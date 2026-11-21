@@ -37,6 +37,7 @@ export {
 } from './collection.ts';
 export {
   isValidDocId,
+  isValidSlug,
   normalizeDoc,
   validateDoc,
   type Doc,
@@ -45,23 +46,17 @@ export {
   type DocSummary,
   type ValidateDocResult,
 } from './doc.ts';
-export { type EntryIssue } from './entries.ts';
-export { definePageMeta, type PageMeta } from './meta.ts';
-export {
-  normalizePage,
-  validatePage,
-  type Page,
-  type PageEntry,
-  type PageIssue,
-  type ValidatePageResult,
-} from './page.ts';
+export { normalizeEntries, validateEntries, type EntryIssue, type PageEntry } from './entries.ts';
 export { PageView, type PageViewProps } from './PageView.tsx';
 export {
+  createContent,
   createMemoryStore,
-  isValidSlug,
-  loadPage,
-  savePage,
-  type PageOptions,
-  type PageStore,
+  type Content,
+  type ContentOptions,
+  type ContentSource,
+  type ContentStore,
+  type ListOptions,
+  type Referrer,
+  type RemoveResult,
   type SaveResult,
 } from './store.ts';

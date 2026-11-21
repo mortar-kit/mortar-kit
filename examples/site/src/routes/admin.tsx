@@ -1,26 +1,26 @@
 // Admin: the Mortar editor for the home page, saving through the app's
-// server function. Leaving with unsaved changes asks first: the editor
+// server functions. Leaving with unsaved changes asks first: the editor
 // guards closing the tab, and this route guards router navigation (links,
 // back/forward). Unprotected: guard /admin in your own app.
 import { Editor } from '@mortar-kit/admin';
-import type { Page } from '@mortar-kit/core';
+import type { Doc } from '@mortar-kit/core';
 import { useBeforeLeave, type BeforeLeaveEventArgs } from '@solidjs/router';
 import { createMemo, createSignal } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
-import { pageMeta } from '../page-meta.ts';
-import { getPage, saveEditedPage } from '../pages.ts';
+import { pages } from '../collections.ts';
+import { adminContent } from '../content.ts';
 
 export default function Admin() {
-  const page = createMemo(() => getPage('home'));
+  const page = createMemo(() => adminContent.get('pages', { slug: 'home' }));
   const [dirty, setDirty] = createSignal(false);
   // The save in flight, if any. Not reactive state: only the guard reads it.
   let saving: Promise<unknown> | undefined;
   // The navigation waiting for the leave confirm, if one is scheduled.
   let leaving: BeforeLeaveEventArgs | undefined;
 
-  const save = (next: Page) => {
-    const pending = saveEditedPage('home', next);
+  const save = (next: Doc) => {
+    const pending = adminContent.save('pages', next);
     saving = pending;
     const done = () => {
       if (saving === pending) saving = undefined;
@@ -33,7 +33,7 @@ export default function Admin() {
     if (e.defaultPrevented) return;
     if (saving) {
       // Let the save finish first: the next page then reads what was saved
-      // (saveEditedPage drops the cached copy), and the guard runs again
+      // (adminContent drops cached reads), and the guard runs again
       // with the result, asking only if changes are still unsaved.
       e.preventDefault();
       const retry = () => e.retry();
@@ -58,8 +58,9 @@ export default function Admin() {
   return (
     <Editor
       bricks={bricks}
-      meta={pageMeta}
-      page={page() ?? { entries: [] }}
+      collection={pages}
+      doc={page() ?? { id: 'home', slug: 'home', fields: {}, entries: [] }}
+      isNew={page() === null}
       previewUrl="/admin/preview"
       onSave={save}
       onDirtyChange={setDirty}

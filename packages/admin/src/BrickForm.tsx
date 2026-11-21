@@ -1,13 +1,13 @@
 // Generated forms: one input per field of a schema, with validation messages
-// shown next to the field they belong to. `BrickForm` edits a page entry
-// with its brick's schema; `MetaForm` edits the page's metadata.
-import type { AnyBrick, Fields, PageEntry, PageMeta, ValidateResult } from '@mortar-kit/core';
+// shown next to the field they belong to. `BrickForm` edits an entry with
+// its brick's schema; `FieldsForm` edits a document's fields.
+import type { AnyBrick, AnyCollection, Fields, PageEntry, ValidateResult } from '@mortar-kit/core';
 import { createMemo, For } from 'solid-js';
 
 import styles from './BrickForm.module.css';
 import { FormContext, pathKey, type FormApi } from './fields/context.ts';
 import { FieldInput } from './fields/FieldInput.tsx';
-import { PAGE_META, type EditorStore, type Target } from './state.ts';
+import { FIELDS, type EditorStore, type Target } from './state.ts';
 
 export interface BrickFormProps {
   brick: AnyBrick;
@@ -15,7 +15,7 @@ export interface BrickFormProps {
   editor: EditorStore;
 }
 
-/** The form for one page entry, from its brick's schema. */
+/** The form for one entry, from its brick's schema. */
 export function BrickForm(props: BrickFormProps) {
   return (
     <SchemaForm
@@ -28,9 +28,9 @@ export function BrickForm(props: BrickFormProps) {
   );
 }
 
-/** The form for the page's metadata, from the site's `definePageMeta` schema. */
-export function MetaForm(props: { meta: PageMeta; data: Record<string, unknown>; editor: EditorStore }) {
-  return <SchemaForm schema={props.meta.schema} data={props.data} validate={props.meta.validate} target={PAGE_META} editor={props.editor} />;
+/** The form for a document's fields, from its collection's schema. */
+export function FieldsForm(props: { collection: AnyCollection; data: Record<string, unknown>; editor: EditorStore }) {
+  return <SchemaForm schema={props.collection.fields} data={props.data} validate={props.collection.validate} target={FIELDS} editor={props.editor} />;
 }
 
 interface SchemaFormProps {

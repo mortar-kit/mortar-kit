@@ -1,8 +1,8 @@
 // Messages between the editor and its preview iframe. Both documents share an
 // origin; every message is checked against it (and its source window).
-import type { Page } from '@mortar-kit/core';
+import type { Doc } from '@mortar-kit/core';
 
-/** Preview → editor: the preview has mounted and wants the current page. */
+/** Preview → editor: the preview has mounted and wants the current document. */
 export interface ReadyMessage {
   type: 'mortar:ready';
 }
@@ -16,25 +16,41 @@ export interface HelloMessage {
   type: 'mortar:hello';
 }
 
-/** Editor → preview: the full page to render (sent on every change). */
-export interface PageMessage {
-  type: 'mortar:page';
-  page: Page;
+/** Editor → preview: the full document to render, and its collection's name (sent on every change). */
+export interface DocMessage {
+  type: 'mortar:doc';
+  collection: string;
+  doc: Doc;
+}
+
+/** Editor → preview: saved content changed; data that bricks loaded should be fetched again. */
+export interface RefreshMessage {
+  type: 'mortar:refresh';
+}
+
+function hasType(data: unknown, type: string): boolean {
+  return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === type;
 }
 
 export function isReadyMessage(data: unknown): data is ReadyMessage {
-  return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'mortar:ready';
+  return hasType(data, 'mortar:ready');
 }
 
 export function isHelloMessage(data: unknown): data is HelloMessage {
-  return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'mortar:hello';
+  return hasType(data, 'mortar:hello');
 }
 
-export function isPageMessage(data: unknown): data is PageMessage {
+export function isDocMessage(data: unknown): data is DocMessage {
+  const message = data as Partial<DocMessage>;
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    (data as { type?: unknown }).type === 'mortar:page' &&
-    Array.isArray((data as { page?: { entries?: unknown } }).page?.entries)
+    hasType(data, 'mortar:doc') &&
+    typeof message.collection === 'string' &&
+    typeof message.doc === 'object' &&
+    message.doc !== null &&
+    typeof message.doc.id === 'string'
   );
+}
+
+export function isRefreshMessage(data: unknown): data is RefreshMessage {
+  return hasType(data, 'mortar:refresh');
 }
