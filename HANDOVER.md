@@ -126,19 +126,77 @@ create → save → listed and on the site and in "latest posts", delete,
 loading bricks in the preview (and reloading on a picker change).
 201 tests; typecheck, lint, build clean.
 
-## Open / not built
+## Open / not built, and future plans
 
-- Click-to-select in the preview (optional in the brief; skipped).
-- Islands: hydrate single interactive bricks on no-JS pages (plan in
-  `examples/site/src/client.ts`). Possibly move the no-JS entries into a
-  Mortar package once the shape settles.
-- Collections, later: a title→slug helper on the New form, pagination
-  (`offset`) and an index for large collections (listing reads the whole
-  folder), store-level locking for several server processes, a 404 page
-  component in Mortar, lists of references in the picker UI (`fields.list`
-  of references works, edited one select per item).
-- Earlier "later" items still apply: schema `version`/`migrate`, a `hidden`
-  brick flag, rich text, media, auth, publishing (changesets, publint, attw).
+How the user works: they pick the next feature; small loose ends get done
+first, then the larger items are revisited one at a time (their words,
+2026-11-22: "Let's get all the small loose ends. Once those are done we can
+revisit the others"). Commit each step; don't push unless asked.
+
+### Decisions taken as defaults, not yet confirmed by the user
+
+The collections design left three choices open. I picked these and said
+so; ask before building on them if it matters:
+- Deleting a referenced document is **blocked** (with links to the
+  referrers), not just warned about. Saving a dangling reference is allowed;
+  the picker flags it.
+- The example keeps the admin's location in the **URL**
+  (`?collection=&id=`); `<Admin>` also works without it.
+- **No title→slug helper** on the New form yet.
+
+### Islands (the user wants them; next big candidate)
+
+Public pages ship no JavaScript today (step 7). Islands would hydrate single
+interactive bricks on such pages. The plan (also in
+`examples/site/src/client.ts`):
+- Render the static page under `<NoHydration>` and each interactive brick
+  inside `<Hydration id={entry.id}>` (Solid's own island mechanism: each
+  Hydration zone gets its own id namespace).
+- The page data, not the path, decides which islands render: probably a
+  per-brick flag (e.g. `defineBrick({ interactive: true })`), so
+  `hydrates(pathname)` stays the switch for whole-document hydration only.
+- Island pages keep hydration data and their islands' chunks (so no
+  `noScripts` / `stylesOnly` there) and load a separate client entry that
+  hydrates each island root with `hydrate(..., { renderId })`.
+- Brick loaders already fit: in a Hydration zone the deferred `load`
+  result is serialized, so an island adopts it without fetching again
+  (loaders must return plain JSON, as their JSDoc says).
+- Once settled, consider moving the no-JS entries (`entry-server.tsx`,
+  `Root.tsx`, `styles-only.ts`, `client.ts`) into a Mortar package, so
+  sites don't copy them.
+
+### Collections, later
+
+- A title→slug helper (`slugify`) on the New form (see above).
+- Pagination (`offset`) and an index or smarter adapter for large
+  collections: listing reads the whole folder, and `get({ id })` lists it
+  too.
+- Store-level locking (or compare-and-set puts) for several server
+  processes sharing one store; writes are only serialized per
+  `createContent` instance.
+- After a crash mid-rename, `get({ slug })` can serve the hidden stale copy
+  until the next save/delete of that document cleans it up.
+- A nicer picker for lists of references (`fields.list` of references
+  works, edited one select per item).
+- A 404/not-found helper in Mortar (the example has its own
+  `layouts/NotFound.tsx`, which sets the status).
+- Loaded bricks in the preview show saved content, not unsaved edits to
+  other documents (by design; documented on `load`).
+- Deliberately cut from the design (don't add back without a reason): a
+  singular label, `force` delete, a summaries/problems channel, per-document
+  drafts for many open documents, a filter box in the document list,
+  rejecting saves with dangling references.
+
+### Other open items
+
+- Click-to-select in the preview (optional in the original brief; skipped).
+- Schema `version`/`migrate` for stored data, a `hidden` brick flag, rich
+  text, media (uploads; images are URLs today), auth (the admin and its
+  server functions are unprotected; the app guards them), publishing
+  (changesets, publint, attw).
+- The example renders with `renderMode: 'async'` (one settled document).
+  Switch to `'stream'` only if pages load slow data; no-JS pages are
+  always sent settled anyway.
 
 ## Gotchas
 
