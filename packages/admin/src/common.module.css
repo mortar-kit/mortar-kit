@@ -1,0 +1,25 @@
+/* Pieces of the editor's look shared by several components, used as they
+   are (no component overrides them, so load order never matters). Colours
+   come from the --mortar-* custom properties (defaults in Editor.module.css). */
+.button {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: 0.375rem;
+  background: white;
+  font: inherit;
+  cursor: pointer;
+}
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.help {
+  color: var(--mortar-muted);
+}
+.issue {
+  color: var(--mortar-danger);
+}
+.rowActions {
+  display: flex;
+  gap: 0.25rem;
+}

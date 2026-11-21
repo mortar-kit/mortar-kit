@@ -5,7 +5,9 @@ import { defaultOf, fieldInfo, type AnyField, type FieldInfo, type Image } from 
 import type { JSX } from '@solidjs/web';
 import { createMemo, createSignal, For, Match, Show, Switch } from 'solid-js';
 
+import common from '../common.module.css';
 import type { Path } from '../state.ts';
+import styles from './FieldInput.module.css';
 import { useForm } from './context.ts';
 
 export interface FieldInputProps {
@@ -18,7 +20,7 @@ export interface FieldInputProps {
 export function FieldInput(props: FieldInputProps) {
   const info = createMemo(() => fieldInfo(props.field));
   return (
-    <Show when={info()} fallback={<p class="mortar-issue">Unsupported field at {props.path.join('.')}</p>}>
+    <Show when={info()} fallback={<p class={common.issue}>Unsupported field at {props.path.join('.')}</p>}>
       {(i) => (
         <Switch>
           <Match when={i().kind === 'text' || i().kind === 'url'}>
@@ -61,8 +63,8 @@ interface InputProps {
 function Labelled(props: { info: FieldInfo; path: Path; children: JSX.Element }) {
   const form = useForm();
   return (
-    <label class="mortar-field">
-      <span class="mortar-label">
+    <label class={styles.field}>
+      <span class={styles.label}>
         {props.info.label}
         <Show when={props.info.required}>
           <span aria-hidden="true"> *</span>
@@ -70,9 +72,9 @@ function Labelled(props: { info: FieldInfo; path: Path; children: JSX.Element })
       </span>
       {props.children}
       <Show when={props.info.help}>
-        <small class="mortar-help">{props.info.help}</small>
+        <small class={common.help}>{props.info.help}</small>
       </Show>
-      <Show when={form.issue(props.path)}>{(message) => <small class="mortar-issue">{message()}</small>}</Show>
+      <Show when={form.issue(props.path)}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
     </label>
   );
 }
@@ -91,6 +93,7 @@ function TextInput(props: InputProps & { multiline?: boolean }) {
         fallback={
           <input
             type="text"
+            class={styles.input}
             inputmode={props.info.kind === 'url' ? 'url' : undefined}
             value={asString(props.value)}
             placeholder={props.info.placeholder}
@@ -101,6 +104,7 @@ function TextInput(props: InputProps & { multiline?: boolean }) {
         }
       >
         <textarea
+          class={styles.input}
           rows={4}
           value={asString(props.value)}
           placeholder={props.info.placeholder}
@@ -129,6 +133,7 @@ function NumberInput(props: InputProps) {
     <Labelled info={props.info} path={props.path}>
       <input
         type="number"
+        class={styles.input}
         value={draft()}
         min={props.info.min}
         max={props.info.max}
@@ -148,11 +153,11 @@ function NumberInput(props: InputProps) {
 function BooleanInput(props: InputProps) {
   const form = useForm();
   return (
-    <label class="mortar-field mortar-checkbox">
+    <label class={styles.checkbox}>
       <input type="checkbox" checked={props.value === true} onChange={(e) => form.setValue(props.path, e.currentTarget.checked)} />
-      <span class="mortar-label">{props.info.label}</span>
+      <span class={styles.label}>{props.info.label}</span>
       <Show when={props.info.help}>
-        <small class="mortar-help">{props.info.help}</small>
+        <small class={styles.checkboxHelp}>{props.info.help}</small>
       </Show>
     </label>
   );
@@ -163,7 +168,7 @@ function SelectInput(props: InputProps) {
   const options = () => Object.entries(props.info.options ?? {});
   return (
     <Labelled info={props.info} path={props.path}>
-      <select onChange={(e) => form.setValue(props.path, e.currentTarget.value)}>
+      <select class={styles.input} onChange={(e) => form.setValue(props.path, e.currentTarget.value)}>
         <For each={options()}>
           {([value, label]) => (
             <option value={value} selected={props.value === value}>
@@ -180,19 +185,19 @@ function ImageInput(props: InputProps) {
   const form = useForm();
   const image = () => (props.value ?? { src: '', alt: '' }) as Image;
   return (
-    <fieldset class="mortar-group">
+    <fieldset class={styles.group}>
       <legend>{props.info.label}</legend>
       <Show when={props.info.help}>
-        <small class="mortar-help">{props.info.help}</small>
+        <small class={common.help}>{props.info.help}</small>
       </Show>
       <Labelled info={{ kind: 'url', label: 'Image URL', required: props.info.required }} path={[...props.path, 'src']}>
-        <input type="text" inputmode="url" value={image().src} onInput={(e) => form.setValue([...props.path, 'src'], e.currentTarget.value)} />
+        <input type="text" class={styles.input} inputmode="url" value={image().src} onInput={(e) => form.setValue([...props.path, 'src'], e.currentTarget.value)} />
       </Labelled>
       <Labelled info={{ kind: 'text', label: 'Alt text' }} path={[...props.path, 'alt']}>
-        <input type="text" value={image().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
+        <input type="text" class={styles.input} value={image().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
       </Labelled>
       <Show when={image().src}>
-        <img class="mortar-thumb" src={image().src} alt="" />
+        <img class={styles.thumb} src={image().src} alt="" />
       </Show>
     </fieldset>
   );
@@ -201,10 +206,10 @@ function ImageInput(props: InputProps) {
 function ObjectInput(props: InputProps) {
   const record = () => (props.value ?? {}) as Record<string, unknown>;
   return (
-    <fieldset class="mortar-group">
+    <fieldset class={styles.group}>
       <legend>{props.info.label}</legend>
       <Show when={props.info.help}>
-        <small class="mortar-help">{props.info.help}</small>
+        <small class={common.help}>{props.info.help}</small>
       </Show>
       <For each={Object.entries(props.info.fields ?? {})}>
         {([key, field]) => <FieldInput field={field} path={[...props.path, key]} value={record()[key]} />}
@@ -220,22 +225,23 @@ function ListInput(props: InputProps) {
   const canAdd = () => props.info.max === undefined || items().length < props.info.max;
   const canRemove = () => props.info.min === undefined || items().length > props.info.min;
   return (
-    <fieldset class="mortar-group mortar-list">
+    <fieldset class={styles.group}>
       <legend>{props.info.label}</legend>
       <Show when={props.info.help}>
-        <small class="mortar-help">{props.info.help}</small>
+        <small class={common.help}>{props.info.help}</small>
       </Show>
-      <Show when={form.issue(props.path)}>{(message) => <small class="mortar-issue">{message()}</small>}</Show>
+      <Show when={form.issue(props.path)}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
       <Show when={props.info.item}>
         {(item) => (
           <>
             <For each={items()} keyed={false}>
               {(value, index) => (
-                <div class="mortar-list-item">
+                <div class={styles.listItem}>
                   <FieldInput field={item()} path={[...props.path, index]} value={value()} />
-                  <div class="mortar-row-actions">
+                  <div class={common.rowActions}>
                     <button
                       type="button"
+                      class={common.button}
                       disabled={index === 0}
                       aria-label={`Move ${itemLabel()} ${index + 1} up`}
                       onClick={() => form.moveItem(props.path, index, index - 1)}
@@ -244,6 +250,7 @@ function ListInput(props: InputProps) {
                     </button>
                     <button
                       type="button"
+                      class={common.button}
                       disabled={index === items().length - 1}
                       aria-label={`Move ${itemLabel()} ${index + 1} down`}
                       onClick={() => form.moveItem(props.path, index, index + 1)}
@@ -252,6 +259,7 @@ function ListInput(props: InputProps) {
                     </button>
                     <button
                       type="button"
+                      class={common.button}
                       disabled={!canRemove()}
                       aria-label={`Remove ${itemLabel()} ${index + 1}`}
                       onClick={() => form.removeItem(props.path, index)}
@@ -264,7 +272,7 @@ function ListInput(props: InputProps) {
             </For>
             <button
               type="button"
-              class="mortar-add"
+              class={common.button}
               disabled={!canAdd()}
               onClick={() => form.insertItem(props.path, items().length, defaultOf(item()))}
             >

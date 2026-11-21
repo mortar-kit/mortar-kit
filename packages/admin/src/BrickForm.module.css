@@ -1,0 +1,5 @@
+/* The generated form: fields stacked with even spacing. */
+.form {
+  display: grid;
+  gap: 0.875rem;
+}

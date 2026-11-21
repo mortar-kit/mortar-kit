@@ -2,6 +2,8 @@
 import { defineBrick, fields } from '@mortar-kit/core';
 import { For, Show } from 'solid-js';
 
+import styles from './feature-grid.module.css';
+
 const feature = fields.object({
   label: 'Feature',
   fields: {
@@ -20,14 +22,14 @@ export const featureGrid = defineBrick({
     features: fields.list({ label: 'Features', of: feature, min: 1, max: 12 }),
   },
   component: (props) => (
-    <section class="features">
+    <section class={styles.features}>
       <Show when={props.data.heading}>
         <h2>{props.data.heading}</h2>
       </Show>
-      <div class="features-grid" style={{ '--columns': String(props.data.columns) }}>
+      <div class={styles.grid} style={{ '--columns': String(props.data.columns) }}>
         <For each={props.data.features}>
           {(item) => (
-            <article class="feature">
+            <article class={styles.feature}>
               <Show when={item.image.src}>
                 <img src={item.image.src} alt={item.image.alt} />
               </Show>

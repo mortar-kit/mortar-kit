@@ -3,6 +3,7 @@
 import type { AnyBrick, Fields, PageEntry } from '@mortar-kit/core';
 import { createMemo, For } from 'solid-js';
 
+import styles from './BrickForm.module.css';
 import { FormContext, pathKey, type FormApi } from './fields/context.ts';
 import { FieldInput } from './fields/FieldInput.tsx';
 import type { EditorStore } from './state.ts';
@@ -36,7 +37,7 @@ export function BrickForm(props: BrickFormProps) {
 
   return (
     <FormContext value={api}>
-      <div class="mortar-form">
+      <div class={styles.form}>
         <For each={Object.entries(props.brick.schema as Fields)}>
           {([key, field]) => <FieldInput field={field} path={[key]} value={props.entry.data[key]} />}
         </For>
