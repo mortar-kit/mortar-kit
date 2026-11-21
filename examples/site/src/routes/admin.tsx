@@ -1,40 +1,48 @@
-// Admin: the Mortar editor for the home page, saving through the app's
-// server functions. Leaving with unsaved changes asks first: the editor
-// guards closing the tab, and this route guards router navigation (links,
-// back/forward). Unprotected: guard /admin in your own app.
-import { Editor } from '@mortar-kit/admin';
-import type { Doc } from '@mortar-kit/core';
-import { useBeforeLeave, type BeforeLeaveEventArgs } from '@solidjs/router';
-import { createMemo, createSignal } from 'solid-js';
+// Admin: the Mortar admin for every collection, saving through the app's
+// server functions. Where it is lives in the URL (?collection=&id=), so
+// documents can be linked and back/forward moves between them. Leaving a
+// document with unsaved changes asks first: the editor guards closing the
+// tab, and this route guards router navigation (links, back/forward, and
+// switching documents, which changes the URL). Unprotected: guard /admin
+// in your own app.
+import { Admin, type AdminLocation } from '@mortar-kit/admin';
+import type { Content } from '@mortar-kit/core';
+import { useBeforeLeave, useSearchParams, type BeforeLeaveEventArgs } from '@solidjs/router';
+import { createSignal } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
-import { pages } from '../collections.ts';
+import { collections } from '../collections.ts';
 import { adminContent } from '../content.ts';
 
-export default function Admin() {
-  const page = createMemo(() => adminContent.get('pages', { slug: 'home' }));
+const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
+export default function AdminRoute() {
+  const [params, setParams] = useSearchParams();
   const [dirty, setDirty] = createSignal(false);
   // The save in flight, if any. Not reactive state: only the guard reads it.
   let saving: Promise<unknown> | undefined;
   // The navigation waiting for the leave confirm, if one is scheduled.
   let leaving: BeforeLeaveEventArgs | undefined;
 
-  const save = (next: Doc) => {
-    const pending = adminContent.save('pages', next);
-    saving = pending;
-    const done = () => {
-      if (saving === pending) saving = undefined;
-    };
-    pending.then(done, done);
-    return pending;
+  const content: Content = {
+    ...adminContent,
+    save(collection, doc) {
+      const pending = adminContent.save(collection, doc);
+      saving = pending;
+      const done = () => {
+        if (saving === pending) saving = undefined;
+      };
+      pending.then(done, done);
+      return pending;
+    },
   };
 
   useBeforeLeave((e) => {
     if (e.defaultPrevented) return;
     if (saving) {
       // Let the save finish first: the next page then reads what was saved
-      // (adminContent drops cached reads), and the guard runs again
-      // with the result, asking only if changes are still unsaved.
+      // (adminContent drops cached reads), and the guard runs again with
+      // the result, asking only if changes are still unsaved.
       e.preventDefault();
       const retry = () => e.retry();
       saving.then(retry, retry);
@@ -51,18 +59,23 @@ export default function Admin() {
     setTimeout(() => {
       const target = leaving;
       leaving = undefined;
-      if (target && window.confirm('Leave the editor? Your unsaved changes will be lost.')) target.retry(true);
+      if (!target) return;
+      const inAdmin = typeof target.to === 'string' && target.to.startsWith('/admin');
+      const question = inAdmin ? 'Discard your unsaved changes to this document?' : 'Leave the editor? Your unsaved changes will be lost.';
+      if (window.confirm(question)) target.retry(true);
     }, 100);
   });
 
+  const location = (): AdminLocation => ({ collection: one(params.collection) ?? collections[0].name, id: one(params.id) });
+
   return (
-    <Editor
+    <Admin
       bricks={bricks}
-      collection={pages}
-      doc={page() ?? { id: 'home', slug: 'home', fields: {}, entries: [] }}
-      isNew={page() === null}
+      collections={collections}
+      content={content}
       previewUrl="/admin/preview"
-      onSave={save}
+      location={location()}
+      onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null })}
       onDirtyChange={setDirty}
     />
   );

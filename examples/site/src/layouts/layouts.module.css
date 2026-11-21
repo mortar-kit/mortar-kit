@@ -1,0 +1,91 @@
+/* Styles for the site's layouts: post and category headers, product pages
+   and product cards. */
+.header {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 1rem;
+}
+.header h1 {
+  margin: 0.25rem 0;
+  font-size: 2.5rem;
+}
+.header time {
+  color: #78716c;
+}
+.back {
+  color: #9a3412;
+  font-size: 0.9rem;
+}
+.cover {
+  width: 100%;
+  margin-top: 1.5rem;
+  border-radius: 0.75rem;
+}
+.muted {
+  color: #78716c;
+  text-align: center;
+}
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1.5rem;
+}
+.card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.card img {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+.card a {
+  font-weight: 600;
+  color: #1c1917;
+}
+.price {
+  color: #9a3412;
+  font-weight: 600;
+}
+.product {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 2rem;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+.product h1 {
+  margin: 0.25rem 0;
+  font-size: 2.25rem;
+}
+.category {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.5rem;
+}
+.list a {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #9a3412;
+}
+.list time {
+  display: block;
+  color: #78716c;
+}
+.list p {
+  margin: 0.25rem 0 0;
+}

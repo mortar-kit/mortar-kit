@@ -1,7 +1,9 @@
-// Every brick this site defines. Passed to <PageView> and the editor.
+// Every brick this site defines. Passed to <PageView> and the admin.
 import type { AnyBrick } from '@mortar-kit/core';
 
 import { featureGrid } from './feature-grid.tsx';
 import { hero } from './hero.tsx';
+import { latestPosts } from './latest-posts.tsx';
+import { productGrid } from './product-grid.tsx';
 
-export const bricks: readonly AnyBrick[] = [hero, featureGrid];
+export const bricks: readonly AnyBrick[] = [hero, featureGrid, latestPosts, productGrid];

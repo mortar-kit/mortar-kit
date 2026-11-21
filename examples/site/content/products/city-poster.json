@@ -1,0 +1,13 @@
+{
+  "id": "city-poster",
+  "fields": {
+    "name": "City poster",
+    "price": 25,
+    "category": "cat-posters",
+    "image": {
+      "src": "",
+      "alt": ""
+    },
+    "description": "A two-colour print of the old town, A2."
+  }
+}

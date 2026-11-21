@@ -1,0 +1,10 @@
+/* Styles for the product-grid brick. */
+.grid {
+  padding: 3rem 1.5rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.grid h2 {
+  font-size: 1.75rem;
+  text-align: center;
+}

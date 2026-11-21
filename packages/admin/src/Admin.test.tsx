@@ -225,6 +225,17 @@ describe('deleting documents', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('dismisses the refusal', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    setup();
+    await settle();
+    await open('Authors', 'Ada');
+    await click(screen.getByRole('button', { name: 'Delete' }));
+    await click(within(screen.getByRole('alert')).getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(editorTitle()).toBe('Ada');
+  });
+
   it('discards an unsaved new document without storing anything', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const content = seed().content;
