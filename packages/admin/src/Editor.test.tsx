@@ -2,7 +2,7 @@
 // and the preview iframe receives the page after its ready handshake.
 import type { Page } from '@mortar-kit/core';
 import { fireEvent, render, screen } from '@solidjs/testing-library';
-import { flush } from 'solid-js';
+import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Editor } from './Editor.tsx';
@@ -44,6 +44,37 @@ describe('<Editor>', () => {
     flush();
     expect(size.value).toBe('');
     expect(last()?.[0]?.data.size).toBe(4);
+  });
+
+  it('commits any finite number and keeps the typed text', () => {
+    const { last } = setup();
+    const size = input('Size');
+    for (const [text, n] of [['0.50', 0.5], ['1e1', 10], ['3.0', 3]] as const) {
+      fireEvent.input(size, { target: { value: text } });
+      flush();
+      expect(last()?.[0]?.data.size).toBe(n);
+      expect(size.value).toBe(text);
+    }
+  });
+
+  it('keeps the same input element while typing', () => {
+    setup();
+    const text = input('Text');
+    fireEvent.input(text, { target: { value: 'Typing' } });
+    flush();
+    expect(input('Text')).toBe(text);
+  });
+
+  it('accepts a signal setter as onChange', () => {
+    // A setter returns the new value, which an effect must not take as its cleanup.
+    const [, setLatest] = createSignal<Page>();
+    const onChange = vi.fn(setLatest);
+    render(() => <Editor bricks={bricks} page={page()} previewUrl="/preview" onChange={onChange} />);
+    fireEvent.input(input('Text'), { target: { value: 'Set' } });
+    flush();
+    fireEvent.input(input('Text'), { target: { value: 'Again' } });
+    flush();
+    expect((onChange.mock.lastCall?.[0] as Page | undefined)?.[0]?.data.text).toBe('Again');
   });
 
   it('shows validation messages next to the field', () => {

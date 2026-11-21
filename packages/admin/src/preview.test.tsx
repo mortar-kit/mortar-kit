@@ -22,6 +22,15 @@ describe('<PreviewPage>', () => {
     spy.mockRestore();
   });
 
+  it('answers the editor’s hello with ready (editor hydrated after the preview)', () => {
+    render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    const spy = vi.spyOn(window.parent, 'postMessage');
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:hello' }, origin: location.origin, source: window.parent }));
+    expect(spy).toHaveBeenCalledWith({ type: 'mortar:ready' }, location.origin);
+    spy.mockRestore();
+  });
+
   it('renders posted pages and ignores other origins', () => {
     const { container } = render(() => <PreviewPage bricks={bricks} />);
     flush();

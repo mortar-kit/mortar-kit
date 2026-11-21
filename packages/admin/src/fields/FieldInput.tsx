@@ -114,12 +114,17 @@ function TextInput(props: InputProps & { multiline?: boolean }) {
 }
 
 /**
- * Number input with a draft: text that isn't a complete number yet ("1.",
- * "-") stays in the input, and only parsed numbers reach the store.
+ * Number input with a draft: text that isn't a number yet ("-") stays in the
+ * input, and only parsed numbers reach the store. The typed text is kept
+ * while it still means the stored value ("0.50", "1e3"), so committing a
+ * number never rewrites what the editor is typing.
  */
 function NumberInput(props: InputProps) {
   const form = useForm();
-  const [draft, setDraft] = createSignal(() => (typeof props.value === 'number' ? String(props.value) : ''));
+  const [draft, setDraft] = createSignal<string>((prev) => {
+    if (typeof props.value !== 'number') return '';
+    return prev !== undefined && prev.trim() !== '' && Number(prev) === props.value ? prev : String(props.value);
+  });
   return (
     <Labelled info={props.info} path={props.path}>
       <input
@@ -133,7 +138,7 @@ function NumberInput(props: InputProps) {
           const text = e.currentTarget.value;
           setDraft(text);
           const n = Number(text);
-          if (text.trim() !== '' && Number.isFinite(n) && String(n) === text) form.setValue(props.path, n);
+          if (text.trim() !== '' && Number.isFinite(n)) form.setValue(props.path, n);
         }}
       />
     </Labelled>

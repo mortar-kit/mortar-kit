@@ -7,6 +7,15 @@ export interface ReadyMessage {
   type: 'mortar:ready';
 }
 
+/**
+ * Editor → preview: the editor is listening now; answer with `mortar:ready`.
+ * Covers a preview that loaded (and announced itself) before the editor
+ * hydrated, since the iframe is in the server-rendered HTML.
+ */
+export interface HelloMessage {
+  type: 'mortar:hello';
+}
+
 /** Editor → preview: the full page to render (sent on every change). */
 export interface PageMessage {
   type: 'mortar:page';
@@ -15,6 +24,10 @@ export interface PageMessage {
 
 export function isReadyMessage(data: unknown): data is ReadyMessage {
   return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'mortar:ready';
+}
+
+export function isHelloMessage(data: unknown): data is HelloMessage {
+  return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'mortar:hello';
 }
 
 export function isPageMessage(data: unknown): data is PageMessage {
