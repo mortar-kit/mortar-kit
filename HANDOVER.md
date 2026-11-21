@@ -1,4 +1,4 @@
-# Handover: Mortar after steps 1–7
+# Handover: Mortar after steps 1–8
 
 You are picking up **Mortar**, a small website framework on **Solid 2**, at
 `/Users/tom/Projects/Github/bried/mortar`. Read `AGENTS.md` first (it is also
@@ -6,6 +6,9 @@ You are picking up **Mortar**, a small website framework on **Solid 2**, at
 Solid APIs against the installed sources, not memory.
 
 ## Done (one commit each)
+
+Steps 4–6 describe the page model (`Page`, `definePageMeta`, `PageStore`,
+`loadPage`/`savePage`, "Page settings"); step 8 replaced it with collections.
 
 1. `51c0b38` Workspace and `@mortar-kit/core` (fields, `defineBrick`, `PageView`).
 2. `4d8353e` Admin editor: schema-driven forms, live iframe preview.
@@ -79,16 +82,49 @@ Solid APIs against the installed sources, not memory.
    render, hydration data and island chunks kept on those pages, and a
    separate client entry hydrating each island root (see `client.ts`).
 
+8. Collections (user's request, 2026-11-22: reusable content such as
+   posts with a list and a page each, products in categories). Designed
+   by a three-way design panel plus judge; built in steps:
+   `a96ee47` `fields.date` (YYYY-MM-DD) and `fields.reference({ collection })`
+   (stores the target's id), `referencesIn`/`referencedCollections`.
+   `34a1ac0` entry checks moved to `entries.ts`.
+   `e2189f4` `defineCollection` and documents (`Doc = { id, slug, fields, entries? }`,
+   `normalizeDoc`/`validateDoc`).
+   `61d28fb` storage switch-over: `ContentStore` (memory, JSON files at
+   `<dir>/<collection>/<slug>.json`), `createContent` (rules, see AGENTS.md),
+   `PageView` takes `entries`, the page model removed, the editor edits one
+   document (title, slug with rename note, Details form, body).
+   `b32381d` brick `load` + `ContentContext`/`useContent`, deferred per-brick
+   loading in `PageView`. `a9d0f40` preview in the app's layouts, refresh
+   after saves. `d199b76` `<Admin>` (collections, documents, create,
+   rename, delete refused while referenced, location in the app's URL or
+   its own). `e9ec5e8` reference picker. `0568ef8` undefined list options
+   dropped (server-function arguments are plain JSON). `adcc730` example:
+   pages/posts/products/categories, layouts, routes, two loading bricks.
+   Review fixes (one more commit): writes serialized per `createContent`
+   (concurrent saves/deletes could break slug uniqueness or delete a
+   document being referenced), leftover rename copies removed on the next
+   save/delete, no second confirm after deleting, drafts promoted only when
+   the location reaches them, the reference picker no longer blocks the
+   form while loading, `ContentSource.track` so preview refreshes reach
+   loaders that `await` first, the preview ignores entries of a collection
+   without a body, the route guard re-checks dirty after a save.
+
 Verified in a browser on the production build: live preview, entry
-operations with keyed DOM reuse in the preview, save to disk, public SSR
-of the saved page, typing during an in-flight save (kept, stays dirty),
-local validation messages, leave guard (links, back/forward, leaving
-during a save, a failed save, one confirm for a burst), page settings
-(edit, validation link, save, title and description in the served HTML),
-no-JS home (0 scripts, only CSS requests; a save in the editor shows on
-it; also checked in dev and, temporarily, with `renderMode: 'stream'`),
-admin hydration with no console errors, a page error giving a 500 that
-keeps head and styles. 107 tests; typecheck, lint, build clean.
+operations with keyed DOM reuse in the preview, save to disk, typing during
+an in-flight save (kept, stays dirty), local validation messages, leave
+guard (links, back/forward, leaving during a save, a failed save, one
+confirm for a burst), no-JS pages (0 scripts, only CSS requests; also in
+dev and, temporarily, with `renderMode: 'stream'`), a page error giving a
+500 that keeps head and styles. Collections: every public route
+(`/`, `/about`, `/posts`, `/posts/<slug>`, `/products/<slug>`,
+`/categories/<slug>`) with 0 scripts and its title, 404 for a missing
+document; admin deep links (`?collection=&id=`), the picker (in Details
+and in a brick form), product and post previews in their layouts, the
+guard on switching documents, a blocked delete with referrer links,
+create → save → listed and on the site and in "latest posts", delete,
+loading bricks in the preview (and reloading on a picker change).
+201 tests; typecheck, lint, build clean.
 
 ## Open / not built
 
@@ -96,9 +132,13 @@ keeps head and styles. 107 tests; typecheck, lint, build clean.
 - Islands: hydrate single interactive bricks on no-JS pages (plan in
   `examples/site/src/client.ts`). Possibly move the no-JS entries into a
   Mortar package once the shape settles.
+- Collections, later: a title→slug helper on the New form, pagination
+  (`offset`) and an index for large collections (listing reads the whole
+  folder), store-level locking for several server processes, a 404 page
+  component in Mortar, lists of references in the picker UI (`fields.list`
+  of references works, edited one select per item).
 - Earlier "later" items still apply: schema `version`/`migrate`, a `hidden`
-  brick flag, rich text, media, multi-page/slug UI, auth, publishing
-  (changesets, publint, attw).
+  brick flag, rich text, media, auth, publishing (changesets, publint, attw).
 
 ## Gotchas
 
@@ -108,8 +148,14 @@ keeps head and styles. 107 tests; typecheck, lint, build clean.
 - `*.test.ts` runs on Solid's server build (computes once). Reactive tests
   must be client `*.test.tsx`; `flush()` before asserting.
 - An effect's apply function must not return a value unless it is a cleanup.
+- Solid 2: writes made while an async refresh is in flight (e.g. right
+  after `refresh(list)`) wait for it to settle. Report state the app reads
+  (dirty) before refreshing, or refresh later (`setTimeout`).
+- `createContext(undefined)` means "no default" in Solid 2 (reading it
+  without a provider throws); use `null`.
+- Server-function arguments must be plain JSON: no `undefined` values.
 - Example site: `cd examples/site && nix develop ../.. -c vite build`, then
   `vite preview --port <free port>` (cwd matters: the JSON store resolves
-  `content/pages` against it). Kill servers afterwards:
+  `content/` against it). Kill servers afterwards:
   `pkill -f "vite.js preview --port <port>"`. Saving from the admin rewrites
-  `content/pages/home.json`; restore it with git after manual tests.
+  files under `content/`; restore them with git after manual tests.
