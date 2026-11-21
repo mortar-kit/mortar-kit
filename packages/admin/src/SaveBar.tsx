@@ -1,46 +1,54 @@
 // The editor's save controls: whether there are unsaved changes, a Save
 // button (also Ctrl/Cmd+S), a saving state, and the problems that stopped a
-// save, each linking to its entry (or the page settings). Warns before the
+// save, each linking to its entry, field or the slug. Warns before the
 // tab is closed with unsaved changes, and reports changes in that state so
 // the app can guard its own navigation (the editor doesn't depend on a router).
 import {
   brickMap,
-  normalizePage,
-  validatePage,
+  normalizeDoc,
+  validateDoc,
   type AnyBrick,
-  type Page,
-  type PageIssue,
-  type PageMeta,
+  type AnyCollection,
+  type Doc,
+  type DocIssue,
   type SaveResult,
 } from '@mortar-kit/core';
 import { action, createEffect, createMemo, createOptimistic, createSignal, For, onSettled, Show, snapshot } from 'solid-js';
 
 import styles from './SaveBar.module.css';
 import common from './common.module.css';
-import { PAGE_META, type EditorStore } from './state.ts';
+import { FIELDS, type EditorStore } from './state.ts';
 
 export interface SaveBarProps {
   editor: EditorStore;
   bricks: readonly AnyBrick[];
-  meta?: PageMeta;
-  /** The page as last loaded; the baseline for "unsaved changes" until the first save. */
-  source: Page;
-  onSave: (page: Page) => Promise<SaveResult | void>;
+  collection: AnyCollection;
+  /** The document as last loaded; the baseline for "unsaved changes" until the first save. */
+  source: Doc;
+  /** A new document that was never saved: unsaved from the start. */
+  isNew?: boolean;
+  onSave: (doc: Doc) => Promise<SaveResult | void>;
+  /** Called when a problem with the slug is clicked (the editor focuses its slug input). */
+  onSlugIssue?: () => void;
+  /** Called with the document after each successful save. */
+  onSaved?: (doc: Doc) => void;
   onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function SaveBar(props: SaveBarProps) {
-  // JSON of the page as last loaded or saved. Re-derived when a new page is loaded.
-  const [savedJson, setSavedJson] = createSignal(() => JSON.stringify(normalizePage(props.bricks, props.source, props.meta)));
-  const dirty = createMemo(() => JSON.stringify(props.editor.state.page) !== savedJson());
+  // JSON of the document as last loaded or saved ("" for a new one). Re-derived when another document is loaded.
+  const [savedJson, setSavedJson] = createSignal(() =>
+    props.isNew ? '' : JSON.stringify(normalizeDoc(props.collection, props.bricks, props.source)),
+  );
+  const dirty = createMemo(() => JSON.stringify(props.editor.state.doc) !== savedJson());
   const [saving, setSaving] = createOptimistic(false);
-  const [issues, setIssues] = createSignal<PageIssue[]>([]);
+  const [issues, setIssues] = createSignal<DocIssue[]>([]);
   const [error, setError] = createSignal<string>();
 
   const save = action(function* () {
-    const page = snapshot(props.editor.state.page);
+    const doc = snapshot(props.editor.state.doc);
     // Check here first for quick feedback; the server validates again.
-    const checked = validatePage(props.bricks, page, props.meta);
+    const checked = validateDoc(props.collection, props.bricks, doc);
     if (!checked.success) {
       setIssues(checked.issues);
       setError(undefined);
@@ -48,10 +56,13 @@ export function SaveBar(props: SaveBarProps) {
     }
     setSaving(true);
     try {
-      const result = (yield props.onSave(page)) as SaveResult | void;
+      const result = (yield props.onSave(doc)) as SaveResult | void;
       setIssues(result && !result.ok ? result.issues : []);
       setError(undefined);
-      if (!result || result.ok) setSavedJson(JSON.stringify(page));
+      if (!result || result.ok) {
+        setSavedJson(JSON.stringify(doc));
+        props.onSaved?.(doc);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -105,7 +116,7 @@ export function SaveBar(props: SaveBarProps) {
           <p class={common.issue}>Not saved: fix {issues().length === 1 ? 'this problem' : `these ${issues().length} problems`} first.</p>
           <ul>
             <For each={issues()}>
-              {(issue) => <IssueItem issue={issue} editor={props.editor} bricks={props.bricks} settings={props.meta !== undefined} />}
+              {(issue) => <IssueItem issue={issue} editor={props.editor} bricks={props.bricks} onSlugIssue={props.onSlugIssue} />}
             </For>
           </ul>
         </div>
@@ -115,14 +126,23 @@ export function SaveBar(props: SaveBarProps) {
 }
 
 /**
- * One problem; if it belongs to an entry, or to a page setting the editor
- * has a form for (`settings`), a button that selects it.
+ * One problem, as a button that shows where it is: the entry, the field in
+ * the document's details, or the slug. Problems elsewhere are plain text.
  */
-function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: readonly AnyBrick[]; settings: boolean }) {
-  const isMeta = () => props.settings && props.issue.entryId === undefined && props.issue.path[0] === 'meta' && props.issue.path.length > 1;
+function IssueItem(props: { issue: DocIssue; editor: EditorStore; bricks: readonly AnyBrick[]; onSlugIssue?: () => void }) {
+  const kind = () => {
+    const { entryId, path } = props.issue;
+    if (entryId !== undefined) return 'entry';
+    if (path[0] === 'fields' && path.length > 1) return 'fields';
+    if (path[0] === 'slug') return 'slug';
+    return undefined;
+  };
   const where = createMemo(() => {
-    if (isMeta()) return ['Page settings', ...props.issue.path.slice(1)].join(' › ');
-    const entries = props.editor.state.page.entries;
+    const k = kind();
+    if (k === 'fields') return ['Details', ...props.issue.path.slice(1)].join(' › ');
+    if (k === 'slug') return 'Slug';
+    if (k !== 'entry') return undefined;
+    const entries = props.editor.state.doc.entries ?? [];
     const index = entries.findIndex((e) => e.id === props.issue.entryId);
     const entry = entries[index];
     if (!entry) return undefined;
@@ -130,11 +150,16 @@ function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: reado
     const path = props.issue.path.length > 0 ? ` › ${props.issue.path.join(' › ')}` : '';
     return `${label} ${index + 1}${path}`;
   });
+  const go = () => {
+    const k = kind();
+    if (k === 'slug') props.onSlugIssue?.();
+    else props.editor.select(k === 'fields' ? FIELDS : (props.issue.entryId ?? null));
+  };
   return (
     <li>
       <Show when={where()} fallback={props.issue.message}>
         {(text) => (
-          <button type="button" class={styles.issueLink} onClick={() => props.editor.select(isMeta() ? PAGE_META : (props.issue.entryId ?? null))}>
+          <button type="button" class={styles.issueLink} onClick={go}>
             {text()}: {props.issue.message}
           </button>
         )}

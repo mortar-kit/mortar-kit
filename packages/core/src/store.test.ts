@@ -1,13 +1,15 @@
-// Page stores: the in-memory store, the JSON-file store (real I/O against a
-// temp dir) and the load/save helpers that normalize and validate.
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+// Content stores: the in-memory store and the JSON-file store (real I/O
+// against a temp dir). The rules on top are in content.test.ts.
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { isValidSlug, type Doc } from './doc.ts';
 import { createJsonFileStore } from './server.ts';
-import { createMemoryStore, isValidSlug, loadPage, savePage } from './store.ts';
-import { bricks, page } from './test/bricks.ts';
+import { createMemoryStore } from './store.ts';
+
+const doc = (slug = 'home'): Doc => ({ id: `id-${slug}`, slug, fields: { title: 'Home' }, entries: [{ brick: 'heading', id: 'a', data: { text: 'Hi' } }] });
 
 describe('isValidSlug', () => {
   it('accepts lowercase words joined by dashes and rejects everything else', () => {
@@ -17,17 +19,21 @@ describe('isValidSlug', () => {
 });
 
 describe('createMemoryStore', () => {
-  it('copies pages in and out', async () => {
-    const source = page();
-    const store = createMemoryStore({ home: source });
-    source.entries.length = 0;
-    const loaded = await store.load('home');
-    expect(loaded?.entries).toHaveLength(2);
-    loaded!.entries.length = 0;
-    expect((await store.load('home'))?.entries).toHaveLength(2);
-    expect(await store.load('missing')).toBeUndefined();
-    await store.save('about', page());
-    expect(await store.list?.()).toEqual(['about', 'home']);
+  it('copies documents in and out, per collection', async () => {
+    const source = doc();
+    const store = createMemoryStore({ pages: [source] });
+    source.fields.title = 'Changed';
+    const got = (await store.get('pages', 'home')) as Doc;
+    expect(got.fields.title).toBe('Home');
+    got.fields.title = 'Changed';
+    expect(((await store.get('pages', 'home')) as Doc).fields.title).toBe('Home');
+    expect(await store.get('pages', 'missing')).toBeUndefined();
+    expect(await store.list('posts')).toEqual([]);
+    await store.put('pages', doc('about'));
+    expect(((await store.list('pages')) as Doc[]).map((d) => d.slug).sort()).toEqual(['about', 'home']);
+    await store.remove('pages', 'home');
+    await store.remove('pages', 'never');
+    expect(((await store.list('pages')) as Doc[]).map((d) => d.slug)).toEqual(['about']);
   });
 });
 
@@ -40,65 +46,53 @@ describe('createJsonFileStore', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('round-trips pages as pretty-printed JSON files', async () => {
-    const store = createJsonFileStore({ dir: join(dir, 'pages') });
-    expect(await store.load('home')).toBeUndefined();
-    expect(await store.list?.()).toEqual([]);
-
-    await store.save('home', page());
-    expect(await store.load('home')).toEqual(page());
-    const text = await readFile(join(dir, 'pages', 'home.json'), 'utf8');
-    expect(text).toBe(`${JSON.stringify(page(), null, 2)}\n`);
-  });
-
-  it('replaces atomically and leaves no temp files behind', async () => {
+  it('keeps one pretty-printed file per document, without the slug inside', async () => {
     const store = createJsonFileStore({ dir });
-    await store.save('home', page());
-    await store.save('home', { entries: [] });
-    expect(await store.load('home')).toEqual({ entries: [] });
-    expect(await readdir(dir)).toEqual(['home.json']);
+    expect(await store.get('pages', 'home')).toBeUndefined();
+    expect(await store.list('pages')).toEqual([]);
+    await store.put('pages', doc());
+    const { slug: _, ...stored } = doc();
+    expect(await readFile(join(dir, 'pages', 'home.json'), 'utf8')).toBe(`${JSON.stringify(stored, null, 2)}\n`);
+    expect(await store.get('pages', 'home')).toEqual(doc());
+    expect(await store.list('pages')).toEqual([doc()]);
   });
 
-  it('lists stored slugs, ignoring other files', async () => {
+  it('takes the slug from the file name', async () => {
+    await mkdir(join(dir, 'pages'));
+    await writeFile(join(dir, 'pages', 'about.json'), JSON.stringify({ slug: 'other', fields: {} }));
+    expect(await createJsonFileStore({ dir }).get('pages', 'about')).toEqual({ slug: 'about', fields: {} });
+  });
+
+  it('replaces atomically, removes, and leaves no temp files behind', async () => {
     const store = createJsonFileStore({ dir });
-    await store.save('home', page());
-    await store.save('about', page());
-    await writeFile(join(dir, 'notes.txt'), '');
-    await writeFile(join(dir, 'Bad Name.json'), '{}');
-    expect(await store.list?.()).toEqual(['about', 'home']);
+    await store.put('pages', doc());
+    await store.put('pages', { ...doc(), fields: { title: 'Again' } });
+    expect(((await store.get('pages', 'home')) as Doc).fields.title).toBe('Again');
+    expect(await readdir(join(dir, 'pages'))).toEqual(['home.json']);
+    await store.remove('pages', 'home');
+    await store.remove('pages', 'home');
+    expect(await readdir(join(dir, 'pages'))).toEqual([]);
   });
 
-  it('rejects slugs that could escape the directory', async () => {
+  it('lists valid slugs only, and skips a file it cannot parse', async () => {
     const store = createJsonFileStore({ dir });
-    await expect(store.load('../secret')).rejects.toThrow('invalid page slug');
-    await expect(store.save('a/b', page())).rejects.toThrow('invalid page slug');
+    await store.put('pages', doc('home'));
+    await store.put('pages', doc('about'));
+    await writeFile(join(dir, 'pages', 'notes.txt'), '');
+    await writeFile(join(dir, 'pages', 'Bad Name.json'), '{}');
+    await writeFile(join(dir, 'pages', 'broken.json'), '{ nope');
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(((await store.list('pages')) as Doc[]).map((d) => d.slug)).toEqual(['about', 'home']);
+    expect(error).toHaveBeenCalledOnce();
+    error.mockRestore();
+    await expect(store.get('pages', 'broken')).rejects.toThrow(SyntaxError);
   });
 
-  it('surfaces malformed JSON', async () => {
-    await writeFile(join(dir, 'home.json'), '{ nope');
-    await expect(createJsonFileStore({ dir }).load('home')).rejects.toThrow(SyntaxError);
-  });
-});
-
-describe('loadPage / savePage', () => {
-  it('normalizes on load', async () => {
-    const store = createMemoryStore({ home: page() });
-    expect((await loadPage(store, bricks, 'home'))?.entries[0]?.data).toEqual({ text: 'First', size: 2 });
-    expect(await loadPage(store, bricks, 'missing')).toBeUndefined();
-    expect(await loadPage(store, bricks, '../x')).toBeUndefined();
-  });
-
-  it('saves only valid pages and reports issues otherwise', async () => {
-    const store = createMemoryStore();
-    const bad = { entries: [{ brick: 'heading', id: 'a', data: { text: '' } }] };
-    expect(await savePage(store, bricks, 'home', bad)).toEqual({
-      ok: false,
-      issues: [{ entryId: 'a', path: ['text'], message: 'Text is required' }],
-    });
-    expect(await store.load('home')).toBeUndefined();
-
-    expect(await savePage(store, bricks, 'home', page())).toEqual({ ok: true });
-    expect((await store.load('home'))?.entries[0]?.data).toEqual({ text: 'First', size: 2 });
-    expect(await savePage(store, bricks, 'Bad', page())).toEqual({ ok: false, issues: [{ path: [], message: 'Invalid page slug "Bad"' }] });
+  it('rejects collection names and slugs that could escape the directory', async () => {
+    const store = createJsonFileStore({ dir });
+    await expect(store.get('pages', '../secret')).rejects.toThrow('invalid slug');
+    await expect(store.put('pages', doc('a/b'))).rejects.toThrow('invalid slug');
+    await expect(store.list('../etc')).rejects.toThrow('invalid collection name');
+    await expect(store.remove('Pages', 'home')).rejects.toThrow('invalid collection name');
   });
 });

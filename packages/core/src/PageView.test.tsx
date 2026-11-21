@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defineBrick } from './brick.ts';
 import { fields } from './fields.ts';
-import type { Page, PageEntry } from './page.ts';
+import type { PageEntry } from './entries.ts';
 import { PageView } from './PageView.tsx';
 
 const heading = defineBrick({
@@ -29,19 +29,20 @@ const entries = (): PageEntry[] => [
   { brick: 'heading', id: 'a', data: { text: 'First' } },
   { brick: 'heading', id: 'b', data: { text: 'Second' } },
 ];
+type Page = { entries: PageEntry[] };
 const page = (): Page => ({ entries: entries() });
 
 const texts = (root: Element, selector: string) => [...root.querySelectorAll(selector)].map((el) => el.textContent);
 
 describe('<PageView>', () => {
   it('renders each entry with its brick, in order', () => {
-    const { container } = render(() => <PageView bricks={[heading]} page={page()} />);
+    const { container } = render(() => <PageView bricks={[heading]} entries={entries()} />);
     expect(texts(container, 'h2')).toEqual(['First', 'Second']);
   });
 
   it('renders nothing for an unknown brick', () => {
     const { container } = render(() => (
-      <PageView bricks={[heading]} page={{ entries: [{ brick: 'missing', id: 'x', data: {} }, ...entries()] }} />
+      <PageView bricks={[heading]} entries={[{ brick: 'missing', id: 'x', data: {} }, ...entries()]} />
     ));
     expect(container.querySelectorAll('h2')).toHaveLength(2);
   });
@@ -50,7 +51,7 @@ describe('<PageView>', () => {
     const { container } = render(() => (
       <PageView
         bricks={[heading]}
-        page={{ entries: [{ brick: 'missing', id: 'x', data: {} }, ...entries()] }}
+        entries={[{ brick: 'missing', id: 'x', data: {} }, ...entries()]}
         fallback={(entry) => <p class="missing">{entry.brick}</p>}
       />
     ));
@@ -62,12 +63,10 @@ describe('<PageView>', () => {
     const { container } = render(() => (
       <PageView
         bricks={[heading, tags]}
-        page={{
-          entries: [
+        entries={[
           { brick: 'heading', id: 'a', data: {} },
           { brick: 'tags', id: 'b', data: { items: 'not a list' } },
-          ],
-        }}
+        ]}
       />
     ));
     expect(texts(container, 'h2')).toEqual(['Default heading']);
@@ -76,7 +75,7 @@ describe('<PageView>', () => {
 
   it('updates in place when store data changes and moves DOM when reordered', () => {
     const [state, setState] = createStore({ page: page() });
-    const { container } = render(() => <PageView bricks={[heading]} page={state.page} />);
+    const { container } = render(() => <PageView bricks={[heading]} entries={state.page.entries} />);
     const [first, second] = container.querySelectorAll('h2');
 
     setState((s) => {
@@ -96,7 +95,7 @@ describe('<PageView>', () => {
 
   it('keys by id, so a fresh array (e.g. a reload) reuses DOM', () => {
     const [p, setP] = createSignal<Page>(page());
-    const { container } = render(() => <PageView bricks={[heading]} page={p()} />);
+    const { container } = render(() => <PageView bricks={[heading]} entries={p().entries} />);
     const [first, second] = container.querySelectorAll('h2');
 
     setP({
@@ -116,7 +115,7 @@ describe('<PageView>', () => {
     const [state, setState] = createStore<{ page: Page }>({
       page: { entries: [{ brick: 'tags', id: 't', data: { items: [{ name: 'one' }, { name: 'two' }] } }] },
     });
-    const { container } = render(() => <PageView bricks={[tags]} page={state.page} />);
+    const { container } = render(() => <PageView bricks={[tags]} entries={state.page.entries} />);
     const [one, two] = container.querySelectorAll('li');
 
     setState((s) => {

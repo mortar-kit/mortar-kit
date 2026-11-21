@@ -1,4 +1,9 @@
 {
+  "id": "home",
+  "fields": {
+    "title": "Mortar: pages from bricks",
+    "description": "A small Solid 2 framework: define bricks, compose pages, edit them live."
+  },
   "entries": [
     {
       "brick": "hero",
@@ -45,9 +50,5 @@
         ]
       }
     }
-  ],
-  "meta": {
-    "title": "Mortar: pages from bricks",
-    "description": "A small Solid 2 framework: define bricks, compose pages, edit them live."
-  }
+  ]
 }

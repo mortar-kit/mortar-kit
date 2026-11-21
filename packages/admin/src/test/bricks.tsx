@@ -1,5 +1,5 @@
-// Bricks shared by the admin tests.
-import { defineBrick, definePageMeta, fields, type Page } from '@mortar-kit/core';
+// Bricks, collections and a document shared by the admin tests.
+import { defineBrick, defineCollection, fields, type Doc } from '@mortar-kit/core';
 import { For } from 'solid-js';
 
 export const heading = defineBrick({
@@ -33,13 +33,35 @@ export const tags = defineBrick({
 
 export const bricks = [heading, tags];
 
-export const page = (): Page => ({
+/** A collection with a body, like a site's pages. */
+export const pages = defineCollection({
+  name: 'pages',
+  label: 'Pages',
+  fields: { title: fields.text({ label: 'Title', required: true, default: 'Untitled' }) },
+  body: true,
+  reservedSlugs: ['admin'],
+});
+
+/** A collection without a body: documents are fields only. */
+export const authors = defineCollection({
+  name: 'authors',
+  label: 'Authors',
+  fields: {
+    name: fields.text({ label: 'Name', required: true, default: '' }),
+    bio: fields.text({ label: 'Bio' }),
+  },
+});
+
+/** A saved page with a heading and a tags entry. */
+export const doc = (): Doc => ({
+  id: 'home-id',
+  slug: 'home',
+  fields: { title: 'Home' },
   entries: [
     { brick: 'heading', id: 'h', data: { text: 'Welcome' } },
     { brick: 'tags', id: 't', data: { items: [{ name: 'a' }, { name: 'b' }] } },
   ],
 });
 
-export const pageMeta = definePageMeta({
-  title: fields.text({ label: 'Title', required: true, default: 'Untitled' }),
-});
+/** A saved author (no body). */
+export const author = (): Doc => ({ id: 'ada-id', slug: 'ada', fields: { name: 'Ada' } });

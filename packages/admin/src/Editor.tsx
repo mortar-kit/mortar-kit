@@ -1,38 +1,37 @@
-// <Editor>: the admin panel. A sidebar lists the page's entries (with add,
-// move, duplicate and remove), plus the page's settings when the site
-// declares page metadata, and shows the generated form for the selected one,
-// with save controls when the app passes `onSave`; the rest is a live
-// preview iframe.
-import { brickMap, type AnyBrick, type Page, type PageEntry, type PageMeta, type SaveResult } from '@mortar-kit/core';
-import { createEffect, createMemo, deep, For, Show, snapshot } from 'solid-js';
+// <Editor>: edits one document. The sidebar has its title and slug, the
+// save controls (when the app passes `onSave`), a "Details" item for the
+// collection's fields, and, when the collection has a body, its entries
+// (with add, move, duplicate and remove); below them, the generated form
+// for the selected item. The rest is a live preview iframe.
+import { brickMap, isValidSlug, type AnyBrick, type AnyCollection, type Doc, type PageEntry, type SaveResult } from '@mortar-kit/core';
+import { createEffect, createMemo, createSignal, deep, For, Show, snapshot } from 'solid-js';
 
-import { BrickForm, MetaForm } from './BrickForm.tsx';
+import { BrickForm, FieldsForm } from './BrickForm.tsx';
 import styles from './Editor.module.css';
 import { PreviewFrame } from './PreviewFrame.tsx';
 import { SaveBar } from './SaveBar.tsx';
 import common from './common.module.css';
-import { createEditorStore, PAGE_META, type EditorStore } from './state.ts';
+import { createEditorStore, FIELDS, type EditorStore } from './state.ts';
 
 export interface EditorProps {
   /** The bricks this site defines. */
   bricks: readonly AnyBrick[];
-  /**
-   * The site's page metadata schema (`definePageMeta`). With it, the sidebar
-   * has a "Page settings" form, and saving validates the metadata too.
-   */
-  meta?: PageMeta;
-  /** The page to edit. Edits are kept in the editor; a new `page` value replaces them. */
-  page: Page;
+  /** The collection the document belongs to. */
+  collection: AnyCollection;
+  /** The document to edit. Edits are kept in the editor; a new `doc` value replaces them. */
+  doc: Doc;
+  /** A new document that was never saved: it starts unsaved, and the first save creates it (the editor then treats it as saved). */
+  isNew?: boolean;
   /** URL of the app route that renders `<PreviewPage>` from `@mortar-kit/admin/preview`. */
   previewUrl: string;
-  /** Called with a plain copy of the page after every change. */
-  onChange?: (page: Page) => void;
+  /** Called with a plain copy of the document after every change. */
+  onChange?: (doc: Doc) => void;
   /**
-   * Saves the page; without it there is no Save button. Resolve with a
-   * `SaveResult` (e.g. from `savePage`) to report validation problems, or
-   * reject if saving failed. The editor validates before calling it too.
+   * Saves the document; without it there is no Save button. Resolve with a
+   * `SaveResult` (e.g. from `Content.save`) to report validation problems,
+   * or reject if saving failed. The editor validates before calling it too.
    */
-  onSave?: (page: Page) => Promise<SaveResult | void>;
+  onSave?: (doc: Doc) => Promise<SaveResult | void>;
   /**
    * Called with whether there are unsaved changes, initially and whenever
    * that changes (only with `onSave`), and with false if the save controls
@@ -46,63 +45,100 @@ export interface EditorProps {
 export function Editor(props: EditorProps) {
   const editor = createEditorStore(
     () => props.bricks,
-    () => props.page,
-    () => props.meta,
+    () => props.collection,
+    () => props.doc,
   );
   const byName = createMemo(() => brickMap(props.bricks));
-  const selected = createMemo(() => editor.state.page.entries.find((e) => e.id === editor.state.selected));
+  const entries = () => (props.collection.body ? (editor.state.doc.entries ?? []) : []);
+  const selected = createMemo(() => entries().find((e) => e.id === editor.state.selected));
+  let slugInput: HTMLInputElement | undefined;
+  // The slug as last saved, and whether the document exists yet. Reset when the app passes another document.
+  const [saved, setSaved] = createSignal(() => ({ slug: props.doc.slug, exists: props.isNew !== true }));
 
   createEffect(
-    () => deep(editor.state.page),
+    () => deep(editor.state.doc),
     // Braces: a returned value would be taken as the effect's cleanup (e.g. a signal setter's result).
-    (page) => {
-      props.onChange?.(snapshot(page));
+    (doc) => {
+      props.onChange?.(snapshot(doc));
     },
     { defer: true },
   );
 
   /** Adds after the selected entry, or at the end. */
   const add = (brickName: string) => {
-    const index = editor.state.page.entries.findIndex((e) => e.id === editor.state.selected);
+    const index = entries().findIndex((e) => e.id === editor.state.selected);
     editor.addEntry(brickName, index === -1 ? undefined : index + 1);
+  };
+
+  const slugProblem = () => {
+    const slug = editor.state.doc.slug;
+    if (!isValidSlug(slug)) return 'Use lowercase letters and digits, with single dashes between (e.g. about-us).';
+    if (props.collection.reservedSlugs.includes(slug)) return `"${slug}" is reserved.`;
+    return undefined;
   };
 
   return (
     <div class={styles.editor}>
       <aside class={styles.sidebar}>
-        <div class={styles.toolbar}>
-          <h2 class={styles.heading}>Page</h2>
-          <AddMenu bricks={props.bricks} onAdd={add} />
-        </div>
+        <header class={styles.header}>
+          <h2 class={styles.heading}>{props.collection.label}</h2>
+          <h1 class={styles.title}>{props.collection.titleOf(editor.state.doc)}</h1>
+          <label class={styles.slug}>
+            <span class={styles.slugLabel}>Slug</span>
+            <input
+              ref={(el) => (slugInput = el)}
+              class={styles.slugInput}
+              value={editor.state.doc.slug}
+              aria-invalid={slugProblem() ? 'true' : undefined}
+              onInput={(e) => editor.setSlug(e.currentTarget.value)}
+            />
+            <Show when={slugProblem()}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
+            <Show when={saved().exists && !slugProblem() && editor.state.doc.slug !== saved().slug}>
+              <small class={common.help}>Saving moves this document to a new address; links to the old one will break. References to it are kept.</small>
+            </Show>
+          </label>
+        </header>
         <Show when={props.onSave}>
-          {(onSave) => <SaveBar editor={editor} bricks={props.bricks} meta={props.meta} source={props.page} onSave={onSave()} onDirtyChange={props.onDirtyChange} />}
-        </Show>
-        <Show when={props.meta}>
-          <button
-            type="button"
-            class={[styles.entry, styles.pageSettings]}
-            aria-current={editor.state.selected === PAGE_META ? 'true' : undefined}
-            onClick={() => editor.select(PAGE_META)}
-          >
-            Page settings
-          </button>
-        </Show>
-        <Show when={editor.state.page.entries.length > 0} fallback={<p class={styles.empty}>This page is empty. Add a brick to start.</p>}>
-          <ol class={styles.entries} aria-label="Page entries">
-            <For each={editor.state.page.entries} keyed={(entry) => entry.id}>
-              {(entry, index) => (
-                <EntryRow entry={entry()} index={index()} brick={byName().get(entry().brick)} editor={editor} />
-              )}
-            </For>
-          </ol>
-        </Show>
-        <Show when={editor.state.selected === PAGE_META && props.meta}>
-          {(meta) => (
-            <section aria-label="Edit page settings">
-              <h2 class={styles.heading}>Page settings</h2>
-              <MetaForm meta={meta()} data={editor.state.page.meta ?? {}} editor={editor} />
-            </section>
+          {(onSave) => (
+            <SaveBar
+              editor={editor}
+              bricks={props.bricks}
+              collection={props.collection}
+              source={props.doc}
+              isNew={props.isNew}
+              onSave={onSave()}
+              onSlugIssue={() => slugInput?.focus()}
+              onSaved={(doc) => setSaved({ slug: doc.slug, exists: true })}
+              onDirtyChange={props.onDirtyChange}
+            />
           )}
+        </Show>
+        <button
+          type="button"
+          class={[styles.entry, styles.details]}
+          aria-current={editor.state.selected === FIELDS ? 'true' : undefined}
+          onClick={() => editor.select(FIELDS)}
+        >
+          Details
+        </button>
+        <Show when={props.collection.body}>
+          <div class={styles.toolbar}>
+            <h2 class={styles.heading}>Body</h2>
+            <AddMenu bricks={props.bricks} onAdd={add} />
+          </div>
+          <Show when={entries().length > 0} fallback={<p class={styles.empty}>The body is empty. Add a brick to start.</p>}>
+            <ol class={styles.entries} aria-label="Body entries">
+              <For each={entries()} keyed={(entry) => entry.id}>
+                {(entry, index) => <EntryRow entry={entry()} index={index()} count={entries().length} brick={byName().get(entry().brick)} editor={editor} />}
+              </For>
+            </ol>
+          </Show>
+        </Show>
+        <Show when={editor.state.selected === FIELDS}>
+          <section aria-label="Edit details">
+            <h2 class={styles.heading}>Details</h2>
+            <FieldsForm collection={props.collection} data={editor.state.doc.fields} editor={editor} />
+          </section>
         </Show>
         <Show when={selected()} keyed>
           {(entry) => (
@@ -126,13 +162,13 @@ export function Editor(props: EditorProps) {
           )}
         </Show>
       </aside>
-      <PreviewFrame url={props.previewUrl} page={editor.state.page} />
+      <PreviewFrame url={props.previewUrl} collection={props.collection.name} doc={editor.state.doc} />
     </div>
   );
 }
 
 /** One entry in the sidebar list: select it, or move, duplicate or remove it. */
-function EntryRow(props: { entry: PageEntry; index: number; brick: AnyBrick | undefined; editor: EditorStore }) {
+function EntryRow(props: { entry: PageEntry; index: number; count: number; brick: AnyBrick | undefined; editor: EditorStore }) {
   const label = () => props.brick?.label ?? `Unknown brick "${props.entry.brick}"`;
   // Position makes each action's name unique when a brick appears twice.
   const name = () => `${label()} ${props.index + 1}`;
@@ -164,7 +200,7 @@ function EntryRow(props: { entry: PageEntry; index: number; brick: AnyBrick | un
           type="button"
           class={common.button}
           aria-label={`Move ${name()} down`}
-          disabled={props.index === props.editor.state.page.entries.length - 1}
+          disabled={props.index === props.count - 1}
           onClick={() => props.editor.moveEntry(id(), props.index + 1)}
         >
           ↓
@@ -177,7 +213,7 @@ function EntryRow(props: { entry: PageEntry; index: number; brick: AnyBrick | un
           class={common.button}
           aria-label={`Remove ${name()}`}
           onClick={() => {
-            if (window.confirm(`Remove "${label()}" from the page?`)) props.editor.removeEntry(id());
+            if (window.confirm(`Remove "${label()}" from the body?`)) props.editor.removeEntry(id());
           }}
         >
           ✕

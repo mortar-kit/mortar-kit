@@ -125,7 +125,34 @@
 .addItem:hover {
   background: var(--mortar-bg);
 }
-.pageSettings {
+.details {
   margin: 0 0 1rem;
   font-weight: 600;
+}
+.header {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.slug {
+  display: grid;
+  gap: 0.25rem;
+}
+.slugLabel {
+  font-weight: 600;
+}
+.slugInput {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: 0.375rem;
+  font: inherit;
+  background: white;
+}
+.slugInput[aria-invalid='true'] {
+  border-color: var(--mortar-danger);
 }

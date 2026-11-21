@@ -1,4 +1,4 @@
-// Renders a page: each entry is looked up by brick name and rendered with its
+// Renders brick entries (a page, a document's body): each entry is looked up by brick name and rendered with its
 // data. Entries are keyed by id, so reordering moves existing DOM instead of
 // re-creating it (which matters for the live preview). Each entry's data is
 // normalized into the brick's shape through a projection, so stale or
@@ -8,13 +8,13 @@ import type { JSX } from '@solidjs/web';
 import { createMemo, createProjection, dynamicComponent, For, Show } from 'solid-js';
 
 import { brickMap, type AnyBrick } from './brick.ts';
-import type { Page, PageEntry } from './page.ts';
+import type { PageEntry } from './entries.ts';
 
 export interface PageViewProps {
   /** The bricks this site defines. */
   bricks: readonly AnyBrick[];
-  /** The page whose entries are rendered, in order. */
-  page: Page;
+  /** The entries to render, in order: a page's or a document's body. */
+  entries: readonly PageEntry[];
   /**
    * Rendered in place of an entry whose brick isn't defined (e.g. a brick
    * that was removed from the code). Default: nothing, which suits a public
@@ -23,11 +23,11 @@ export interface PageViewProps {
   fallback?: (entry: PageEntry) => JSX.Element;
 }
 
-/** Renders every entry of `page` with its brick's component. */
+/** Renders every entry with its brick's component. */
 export function PageView(props: PageViewProps) {
   const byName = createMemo(() => brickMap(props.bricks));
   return (
-    <For each={props.page.entries} keyed={(entry) => entry.id}>
+    <For each={props.entries} keyed={(entry) => entry.id}>
       {(entry) => {
         const brick = createMemo(() => byName().get(entry().brick));
         const data = createProjection(() => brick()?.normalize(entry().data) ?? {});
