@@ -14,7 +14,7 @@ import {
   type Referrer,
   type SaveResult,
 } from '@mortar-kit/core';
-import { createEffect, createMemo, createSignal, For, Loading, refresh, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, flush, For, Loading, refresh, Show } from 'solid-js';
 
 import styles from './Admin.module.css';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
@@ -53,12 +53,16 @@ export function Admin(props: AdminProps) {
 
   // A new document not saved yet. A plain variable for the open document (so
   // saving it never makes the editor reload), a signal for the sidebar row.
+  // `pending` is one just created, until the location reaches it (the app's
+  // guard may decline); then it becomes `draft`, the open one.
   let draft: { collection: string; doc: Doc } | undefined;
+  let pending: { collection: string; doc: Doc } | undefined;
   const [draftRow, setDraftRow] = createSignal<{ collection: string; doc: Doc } | null>(null);
+  const isDraft = (d: Doc) => draft?.doc === d || pending?.doc === d;
   const doc = createMemo(() => {
     const { collection: name, id } = loc();
     if (!id || !byName().has(name)) return null;
-    if (draft && draft.collection === name && draft.doc.id === id) return draft.doc;
+    for (const d of [draft, pending]) if (d && d.collection === name && d.doc.id === id) return d.doc;
     return props.content.get(name, { id });
   });
 
@@ -73,11 +77,15 @@ export function Admin(props: AdminProps) {
     props.onDirtyChange?.(value);
   };
 
-  // Leaving an unsaved new document drops it.
+  // Arriving at a new document opens it; leaving an unsaved one drops it.
   createEffect(
     () => loc().id,
     (id) => {
-      if (draft && draft.doc.id !== id) {
+      if (pending && pending.doc.id === id) {
+        draft = pending;
+        pending = undefined;
+        setDraftRow(draft);
+      } else if (draft && draft.doc.id !== id) {
         draft = undefined;
         setDraftRow(null);
       }
@@ -87,25 +95,26 @@ export function Admin(props: AdminProps) {
   /**
    * Goes somewhere: through the app when it keeps the location (its guard
    * decides); otherwise after a save in flight, asking if changes are
-   * unsaved. Resolves false if the admin itself declined.
+   * unsaved (unless `force`).
    */
-  const go = async (to: AdminLocation): Promise<boolean> => {
+  const go = async (to: AdminLocation, force = false): Promise<void> => {
     setBlocked([]);
     if (props.location && props.onNavigate) {
       props.onNavigate(to);
-      return true;
+      return;
     }
     if (saving) await saving.catch(() => {});
-    if (dirty() && !window.confirm('Leave this document? Your unsaved changes will be lost.')) return false;
+    if (!force && dirty() && !window.confirm('Leave this document? Your unsaved changes will be lost.')) return;
     setOwn(to);
-    return true;
   };
 
   const save = (c: AnyCollection, next: Doc): Promise<SaveResult> => {
     const pending = props.content.save(c.name, next).then((result) => {
       if (result.ok) {
         if (draft?.doc.id === next.id) setDraftRow(null);
-        refresh(list);
+        // After the editor has marked itself saved: writes made while the
+        // list refreshes would wait for it, and the app's guard reads them.
+        setTimeout(() => refresh(list));
       }
       return result;
     });
@@ -118,24 +127,23 @@ export function Admin(props: AdminProps) {
   };
 
   /** Opens a new, unsaved document; nothing is stored until its first save. */
-  const create = async (c: AnyCollection, slug: string) => {
-    const previous = draft;
-    const created = { collection: c.name, doc: c.create(slug) };
-    draft = created;
-    setDraftRow(created);
-    if (!(await go({ collection: c.name, id: created.doc.id }))) {
-      draft = previous;
-      setDraftRow(previous ?? null);
-    }
+  const create = (c: AnyCollection, slug: string) => {
+    pending = { collection: c.name, doc: c.create(slug) };
+    void go({ collection: c.name, id: pending.doc.id });
+  };
+
+  /** Back to the collection's list with nothing unsaved (the document is gone), so neither the admin nor the app asks. */
+  const leaveRemoved = (c: AnyCollection) => {
+    reportDirty(false);
+    // Apply the dirty change now: the app's guard reads it as soon as it navigates.
+    flush();
+    void go({ collection: c.name }, true);
   };
 
   const remove = async (c: AnyCollection, target: Doc) => {
     if (!window.confirm(`Delete "${c.titleOf(target)}"? This can't be undone.`)) return;
     if (draft?.doc.id === target.id && draftRow()) {
-      draft = undefined;
-      setDraftRow(null);
-      reportDirty(false);
-      void go({ collection: c.name });
+      leaveRemoved(c);
       return;
     }
     const result = await props.content.remove(c.name, target.id);
@@ -143,11 +151,11 @@ export function Admin(props: AdminProps) {
       setBlocked(result.referencedBy);
       return;
     }
-    // Nothing is unsaved any more: the app's guard mustn't ask.
-    reportDirty(false);
+    // Leave first: refreshing the list starts an async refresh, and writes
+    // made while it is in flight (the dirty change) would wait for it.
+    leaveRemoved(c);
     refresh(list);
     setRefreshes((n) => n + 1);
-    void go({ collection: c.name });
   };
 
   const api: AdminApi = {
@@ -215,7 +223,7 @@ export function Admin(props: AdminProps) {
                       )}
                     </For>
                   </ol>
-                  <NewForm collection={c()} taken={list().map((d) => d.slug)} onCreate={(slug) => void create(c(), slug)} />
+                  <NewForm collection={c()} taken={list().map((d) => d.slug)} onCreate={(slug) => create(c(), slug)} />
                 </Loading>
               </section>
             )}
@@ -253,7 +261,7 @@ export function Admin(props: AdminProps) {
                         bricks={props.bricks}
                         collection={c()}
                         doc={d}
-                        isNew={draft?.doc === d}
+                        isNew={isDraft(d)}
                         previewUrl={props.previewUrl}
                         refresh={refreshes()}
                         onSave={(next) => save(c(), next)}

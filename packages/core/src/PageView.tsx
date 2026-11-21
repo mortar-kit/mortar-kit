@@ -31,7 +31,9 @@ export interface PageViewProps {
   /**
    * Shown in place of a brick whose load failed. Without it, the error
    * reaches the app's own error boundary (a server render fails with it);
-   * the admin preview passes one. It clears when the brick's data changes.
+   * the admin preview passes one. It clears when the brick loads again: when
+   * data its loader read before its first `await` changes, or the source's
+   * `track` signal does.
    */
   errorFallback?: (entry: PageEntry, error: unknown) => JSX.Element;
 }
@@ -51,6 +53,7 @@ export function PageView(props: PageViewProps) {
           const b = brick();
           if (!b?.load) return undefined;
           if (!source) throw new Error(`Mortar: brick "${b.name}" loads data; provide a ContentContext around the page`);
+          source.track?.();
           return b.load(data, contentReader(source));
         });
         const view = () => (

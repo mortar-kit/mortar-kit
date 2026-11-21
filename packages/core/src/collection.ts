@@ -1,7 +1,7 @@
 // defineCollection: a named set of documents sharing one schema, such as
 // posts, products or a site's pages. Each document has typed `fields` (what
 // lists and pickers show) and, when the collection has a `body`, brick
-// entries edited like a page.
+// entries: a body made of bricks.
 import { keepExtra, schemaOps, type SchemaOps } from './brick.ts';
 import type { Doc } from './doc.ts';
 import { fieldInfo, type Fields, type InferFields } from './fields.ts';
@@ -21,7 +21,7 @@ export interface CollectionDefinition<F extends Fields> {
   label?: string;
   /** The fields every document has, built with `fields.*`. */
   fields: F;
-  /** Whether documents also have brick entries (a body edited like a page). Default false. */
+  /** Whether documents also have brick entries (a body made of bricks). Default false. */
   body?: boolean;
   /**
    * A `text` field shown as the document's title in lists and pickers.

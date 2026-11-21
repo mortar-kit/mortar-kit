@@ -15,6 +15,8 @@ export interface PreviewFrameProps {
   url: string;
   /** The edited document's collection, by name. */
   collection: string;
+  /** Whether that collection has a body. Without one, the preview ignores stored entries, as the site does. */
+  body: boolean;
   doc: Doc;
   /** Bump it after saved content changes (a save, a delete): the preview reloads what bricks loaded. */
   refresh?: number;
@@ -40,7 +42,7 @@ export function PreviewFrame(props: PreviewFrameProps) {
     () => (handshakes() > 0 ? deep(props.doc) : undefined),
     (doc) => {
       if (!doc) return;
-      const message: DocMessage = { type: 'mortar:doc', collection: props.collection, doc: snapshot(doc) };
+      const message: DocMessage = { type: 'mortar:doc', collection: props.collection, body: props.body, doc: snapshot(doc) };
       frame?.contentWindow?.postMessage(message, location.origin);
     },
   );

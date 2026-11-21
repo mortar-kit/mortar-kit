@@ -17,7 +17,7 @@ export interface BrickProps<D, L = undefined> {
 
 /** What a developer passes to `defineBrick`. */
 export interface BrickDefinition<F extends Fields, L = undefined> {
-  /** Stable identifier stored in page data. Lowercase, e.g. `hero` or `feature-grid`. */
+  /** Stable identifier stored in entries. Lowercase, e.g. `hero` or `feature-grid`. */
   name: string;
   /** Human-readable name for the admin panel. Defaults to `name`. */
   label?: string;
@@ -27,9 +27,9 @@ export interface BrickDefinition<F extends Fields, L = undefined> {
    * Loads what the brick shows besides its own data, e.g. the latest posts.
    * Runs on the server when the page renders (pages without JavaScript
    * included) and in the browser in the admin preview, where it reads
-   * saved content (not unsaved edits to other documents). Read the `data`
-   * fields it depends on before the first `await`: changing those loads
-   * again, changing others doesn't. Return plain JSON. Write it before
+   * saved content (not unsaved edits to other documents), again after each
+   * save. Read the `data` fields it depends on before the first `await`:
+   * changing those loads again, changing others doesn't. Return plain JSON. Write it before
    * `component`, so `props.loaded` gets its type.
    */
   load?: (data: InferFields<F>, content: ContentReader) => L | Promise<L>;
@@ -46,7 +46,7 @@ export interface Issue {
 /** Result of `brick.validate(data)`. */
 export type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] };
 
-/** A registered brick. `defaults()` is used when the brick is added to a page. */
+/** A registered brick. `defaults()` is used when the brick is added to a body. */
 export interface Brick<F extends Fields = Fields, L = undefined> extends SchemaOps<F> {
   readonly name: string;
   readonly label: string;
@@ -76,7 +76,7 @@ export function defineBrick<const F extends Fields, L = undefined>(def: BrickDef
   };
 }
 
-/** What bricks and page metadata share: defaults, validation and normalization for a record of fields. */
+/** What bricks and collections share: defaults, validation and normalization for a record of fields. */
 export interface SchemaOps<F extends Fields> {
   /** Fresh default data. */
   defaults(): InferFields<F>;
@@ -91,7 +91,7 @@ export interface SchemaOps<F extends Fields> {
   normalize(data: unknown): InferFields<F>;
 }
 
-/** Builds the `SchemaOps` for a record of fields. Internal: used by `defineBrick` and `definePageMeta`. */
+/** Builds the `SchemaOps` for a record of fields. Internal: used by `defineBrick` and `defineCollection`. */
 export function schemaOps<F extends Fields>(schema: F): SchemaOps<F> {
   const validator = v.object(schema);
   return {

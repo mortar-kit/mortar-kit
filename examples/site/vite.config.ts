@@ -4,7 +4,8 @@ import { defineConfig } from 'vite';
 // Example Mortar site: start mode with SSR. The entries are authored
 // (src/entry-server.tsx, src/entry-client.tsx) so public pages can be sent
 // without JavaScript; src/client.ts decides which pages hydrate. Server
-// functions (src/server/) load and save pages as JSON files in content/pages.
+// functions (src/server/) load and save documents as JSON files in
+// content/<collection>/<slug>.json.
 //
 // renderMode 'async' sends each page as one settled document: the content
 // and its head tags (title, description) are in the HTML itself, so crawlers

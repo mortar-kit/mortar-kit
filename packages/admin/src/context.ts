@@ -10,6 +10,7 @@ export interface AdminLocation {
   id?: string;
 }
 
+/** What <Admin> provides to the inputs inside its editor (internal). */
 export interface AdminApi {
   collections: readonly AnyCollection[];
   content: Content;

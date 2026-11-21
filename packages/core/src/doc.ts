@@ -1,5 +1,5 @@
 // The document model: one item of a collection (a post, a product, a page).
-// Plain JSON, like pages: `{ id, slug, fields, entries? }`. Also the two
+// Plain JSON: `{ id, slug, fields, entries? }`. Also the two
 // checks every document goes through: normalize when loading (be
 // forgiving, never crash) and validate when saving (be strict, report
 // every problem).

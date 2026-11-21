@@ -36,7 +36,7 @@ const typeInto = (label: string, value: string) => {
 const type = (value: string) => typeInto('Text', value);
 /** Lets the action's promise settle, then applies its writes. */
 async function settle() {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
+  for (let i = 0; i < 30; i++) await Promise.resolve();
   flush();
 }
 

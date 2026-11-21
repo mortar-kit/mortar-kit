@@ -28,8 +28,14 @@ function seed() {
   return { store, content: createContent({ store, collections, bricks }) };
 }
 
+/** Lets pending promises and timers (the list refresh after a save) run, then applies their writes. */
 async function settle() {
-  for (let i = 0; i < 10; i++) await Promise.resolve();
+  for (let round = 0; round < 2; round++) {
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    flush();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  for (let i = 0; i < 30; i++) await Promise.resolve();
   flush();
 }
 
@@ -361,5 +367,83 @@ describe('the reference picker', () => {
     expect(options()).toEqual(['None', 'Missing document (gone-id)', 'Ada', 'Grace']);
     expect(picker()).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByText('The selected document no longer exists. Pick another, or None.')).toBeInTheDocument();
+  });
+});
+
+describe('review fixes', () => {
+  it('asks once when deleting a document with unsaved changes, and once for an unsaved new one', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    setup();
+    await settle();
+    await open('Authors', 'Grace');
+    typeInto('Slug', 'grace-2');
+    await click(screen.getByRole('button', { name: 'Delete' }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(docTitles('Authors')).toEqual(['Ada']);
+
+    fireEvent.input(screen.getByLabelText('New document slug'), { target: { value: 'draft' } });
+    flush();
+    await click(screen.getByRole('button', { name: 'Create' }));
+    await click(screen.getByRole('button', { name: 'Delete' }));
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Open a document, or create one.')).toBeInTheDocument();
+  });
+
+  it("reports nothing unsaved before asking the app to leave a deleted document", async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const [location, setLocation] = createSignal<AdminLocation>({ collection: 'authors', id: 'grace-id' });
+    const [dirty, setDirty] = createSignal(false);
+    const dirtyWhenAsked: boolean[] = [];
+    const { content } = seed();
+    render(() => (
+      <Admin
+        bricks={bricks}
+        collections={collections}
+        content={content}
+        previewUrl="/preview"
+        location={location()}
+        onNavigate={(to) => {
+          dirtyWhenAsked.push(dirty());
+          setLocation(to);
+        }}
+        onDirtyChange={setDirty}
+      />
+    ));
+    await settle();
+    typeInto('Slug', 'grace-2');
+    await click(screen.getByRole('button', { name: 'Delete' }));
+    expect(dirtyWhenAsked).toEqual([false]);
+  });
+
+  it('leaves no new document behind when the app declines to open it', async () => {
+    const onNavigate = vi.fn<(to: AdminLocation) => void>();
+    setup({ location: () => ({ collection: 'pages', id: 'home-id' }), onNavigate });
+    await settle();
+    fireEvent.input(screen.getByLabelText('New document slug'), { target: { value: 'contact' } });
+    flush();
+    await click(screen.getByRole('button', { name: 'Create' }));
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(docTitles('Pages')).toEqual(['About', 'Home']);
+    expect(editorTitle()).toBe('Home');
+  });
+
+  it('shows the form while a reference picker is still loading its documents', async () => {
+    const { content } = seed();
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => (open = resolve));
+    const list = content.list;
+    content.list = async (collection, options) => {
+      if (collection === 'authors') await gate;
+      return list(collection, options);
+    };
+    setup({ content, location: () => ({ collection: 'quotes', id: 'q1' }), onNavigate: () => {} });
+    await settle();
+    expect(editorTitle()).toBe('Hello');
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    await settle();
+    expect(screen.getByText('Loading Authors…')).toBeInTheDocument();
+    open();
+    await settle();
+    expect((screen.getByLabelText('By') as HTMLSelectElement).value).toBe('ada-id');
   });
 });
