@@ -357,3 +357,33 @@ describe('after a save', () => {
     expect(note()).toBeInTheDocument();
   });
 });
+
+describe('the preview after a save', () => {
+  it('tells the preview to refresh after a successful save, and when the app bumps refresh', async () => {
+    const [refresh, setRefresh] = createSignal(0);
+    const onSave: OnSave = async () => ({ ok: true });
+    const { container } = render(() => <Editor bricks={bricks} collection={pages} doc={doc()} previewUrl="/preview" refresh={refresh()} onSave={onSave} />);
+    flush();
+    const post = vi.spyOn(container.querySelector('iframe')!.contentWindow!, 'postMessage');
+    const refreshes = () => post.mock.calls.filter(([message]) => (message as { type: string }).type === 'mortar:refresh').length;
+    type('Changed');
+    expect(refreshes()).toBe(0);
+    fireEvent.click(saveButton());
+    await settle();
+    expect(refreshes()).toBe(1);
+    setRefresh(1);
+    flush();
+    expect(refreshes()).toBe(2);
+  });
+
+  it('does not refresh after a rejected save', async () => {
+    const onSave: OnSave = async () => ({ ok: false, issues: [{ path: [], message: 'No' }] });
+    const { container } = render(() => <Editor bricks={bricks} collection={pages} doc={doc()} previewUrl="/preview" onSave={onSave} />);
+    flush();
+    const post = vi.spyOn(container.querySelector('iframe')!.contentWindow!, 'postMessage');
+    type('Changed');
+    fireEvent.click(saveButton());
+    await settle();
+    expect(post.mock.calls.some(([message]) => (message as { type: string }).type === 'mortar:refresh')).toBe(false);
+  });
+});
