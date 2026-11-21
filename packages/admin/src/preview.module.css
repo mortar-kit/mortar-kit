@@ -1,0 +1,9 @@
+/* Placeholder the preview shows for an entry whose brick isn't defined. The
+   preview carries only the site's CSS, so this sets everything it needs. */
+.missing {
+  margin: 1rem;
+  padding: 1rem;
+  border: 2px dashed #b91c1c;
+  color: #b91c1c;
+  font: 14px/1.4 system-ui, sans-serif;
+}

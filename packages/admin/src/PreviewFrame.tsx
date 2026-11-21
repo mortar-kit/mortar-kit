@@ -6,6 +6,7 @@
 import type { Page } from '@mortar-kit/core';
 import { createEffect, createSignal, deep, onSettled, snapshot } from 'solid-js';
 
+import styles from './PreviewFrame.module.css';
 import { isReadyMessage, type HelloMessage, type PageMessage } from './protocol.ts';
 
 export interface PreviewFrameProps {
@@ -39,5 +40,5 @@ export function PreviewFrame(props: PreviewFrameProps) {
     },
   );
 
-  return <iframe ref={(el) => (frame = el)} class="mortar-preview" src={props.url} title="Page preview" />;
+  return <iframe ref={(el) => (frame = el)} class={styles.preview} src={props.url} title="Page preview" />;
 }

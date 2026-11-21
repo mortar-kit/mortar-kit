@@ -32,6 +32,9 @@ Solid APIs against the installed sources, not memory.
    app's `saveEditedPage` (`src/pages.ts`) drops the cached page after a
    save (`query.delete`, not `revalidate`, which would re-seed the editor),
    so back/forward never shows or edits the pre-save page.
+   Styles: example bricks and the admin UI use CSS modules. Theme the editor
+   by setting `--mortar-*` custom properties on any ancestor (defaults are on
+   `:where(:root)`, so they never win).
 
 Verified in a browser on the production build: live preview, entry
 operations with keyed DOM reuse in the preview, save to disk, public SSR

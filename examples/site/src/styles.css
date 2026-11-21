@@ -1,4 +1,5 @@
-/* Example site styles. Bricks are plain HTML; style them however you like. */
+/* Example site base styles. Each brick styles itself with a CSS module next
+   to it (bricks/*.module.css). */
 :root {
   font-family: system-ui, sans-serif;
   color: #1c1917;
@@ -6,60 +7,4 @@
 }
 body {
   margin: 0;
-}
-.hero {
-  padding: 6rem 1.5rem;
-  max-width: 48rem;
-  margin: 0 auto;
-}
-.hero[data-align='center'] {
-  text-align: center;
-}
-.hero h1 {
-  font-size: clamp(2.5rem, 6vw, 4rem);
-  margin: 0 0 1rem;
-}
-.hero p {
-  font-size: 1.25rem;
-  color: #57534e;
-}
-.button {
-  display: inline-block;
-  margin-top: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  background: #c2410c;
-  color: white;
-  text-decoration: none;
-}
-.features {
-  padding: 4rem 1.5rem;
-  max-width: 64rem;
-  margin: 0 auto;
-}
-.features h2 {
-  font-size: 2rem;
-  text-align: center;
-}
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--columns, 3), minmax(0, 1fr));
-  gap: 1.5rem;
-}
-.feature {
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  background: white;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-}
-.feature img {
-  width: 100%;
-  border-radius: 0.5rem;
-}
-.feature h3 {
-  margin: 0 0 0.5rem;
-}
-.feature p {
-  margin: 0;
-  color: #57534e;
 }

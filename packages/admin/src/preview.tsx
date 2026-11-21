@@ -5,6 +5,7 @@
 import { PageView, type AnyBrick, type Page } from '@mortar-kit/core';
 import { createStore, onSettled, reconcile } from 'solid-js';
 
+import styles from './preview.module.css';
 import { isHelloMessage, isPageMessage, type ReadyMessage } from './protocol.ts';
 
 export interface PreviewPageProps {
@@ -35,13 +36,10 @@ export function PreviewPage(props: PreviewPageProps) {
   return <PageView bricks={props.bricks} page={state.page} fallback={(entry) => <MissingBrick name={entry.brick} />} />;
 }
 
-/** Placeholder for an entry whose brick isn't defined. Inline styles: the preview carries only the site's CSS. */
+/** Placeholder for an entry whose brick isn't defined. */
 function MissingBrick(props: { name: string }) {
   return (
-    <div
-      role="note"
-      style={{ margin: '1rem', padding: '1rem', border: '2px dashed #b91c1c', color: '#b91c1c', font: '14px/1.4 system-ui, sans-serif' }}
-    >
+    <div role="note" class={styles.missing}>
       Unknown brick "{props.name}": it isn't defined, so the public site renders nothing here.
     </div>
   );

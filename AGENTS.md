@@ -57,7 +57,12 @@ keep every other name plain and conventional (no further construction puns).
 
 ## Code style
 
-Single quotes, semicolons, 2-space indent, trailing commas. A short header
+Single quotes, semicolons, 2-space indent, trailing commas. Styles are CSS
+modules next to their component (`Foo.module.css`, camelCase class names,
+`class={styles.foo}`); no global class names. Admin modules don't override
+each other's classes (no cross-file `composes`, which also makes postcss warn);
+the editor is themed by setting the `--mortar-*` custom properties on any
+ancestor (defaults live on `:where(:root)`). A short header
 comment per file explaining its purpose; JSDoc on exported API. `import type`
 for types. Never destructure props. Reference sources:
 `node_modules/solid-js/CHEATSHEET.md`, `node_modules/solid-js/skills/`.

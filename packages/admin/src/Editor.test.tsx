@@ -2,7 +2,7 @@
 // entries can be added, moved, duplicated and removed, and the preview
 // iframe receives the page after its ready handshake.
 import type { Page } from '@mortar-kit/core';
-import { fireEvent, render, screen } from '@solidjs/testing-library';
+import { fireEvent, render, screen, within } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -17,8 +17,13 @@ function setup(source: Page = page()) {
 }
 
 const input = (label: string) => screen.getByLabelText(label, { exact: false }) as HTMLInputElement;
+/** The select button of each entry in the sidebar list, in order. */
+const entryButtons = () =>
+  within(screen.getByRole('list', { name: 'Page entries' }))
+    .getAllByRole('listitem')
+    .map((item) => within(item).getAllByRole('button')[0]!);
 /** Labels of the entries in the sidebar list, in order. */
-const entries = () => [...document.querySelectorAll('.mortar-entry')].map((b) => b.textContent);
+const entries = () => (screen.queryByRole('list', { name: 'Page entries' }) ? entryButtons().map((b) => b.textContent) : []);
 const click = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name }));
   flush();
@@ -122,10 +127,10 @@ describe('<Editor>', () => {
     const { last } = setup();
     click('Add Tags');
     expect(entries()).toEqual(['Heading', 'Tags', 'Tags']);
-    expect(screen.getByRole('button', { name: 'Tags', current: true })).toBe(document.querySelectorAll('.mortar-entry')[1]);
+    expect(screen.getByRole('button', { name: 'Tags', current: true })).toBe(entryButtons()[1]);
     expect(last()?.entries[1]?.data).toEqual({ items: [] });
     expect(screen.getByRole('button', { name: 'Add Tag' })).toBeInTheDocument();
-    expect((document.querySelector('.mortar-add-menu') as HTMLDetailsElement).open).toBe(false);
+    expect((screen.getByText('Add brick').closest('details') as HTMLDetailsElement).open).toBe(false);
   });
 
   it('moves and duplicates entries', () => {

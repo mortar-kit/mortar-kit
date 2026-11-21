@@ -2,6 +2,8 @@
 import { defineBrick, fields } from '@mortar-kit/core';
 import { Show } from 'solid-js';
 
+import styles from './hero.module.css';
+
 export const hero = defineBrick({
   name: 'hero',
   label: 'Hero',
@@ -13,13 +15,13 @@ export const hero = defineBrick({
     align: fields.select({ label: 'Alignment', options: { center: 'Centre', left: 'Left' } }),
   },
   component: (props) => (
-    <section class="hero" data-align={props.data.align}>
+    <section class={styles.hero} data-align={props.data.align}>
       <h1>{props.data.heading}</h1>
       <Show when={props.data.intro}>
         <p>{props.data.intro}</p>
       </Show>
       <Show when={props.data.ctaLabel && props.data.ctaHref}>
-        <a class="button" href={props.data.ctaHref}>
+        <a class={styles.button} href={props.data.ctaHref}>
           {props.data.ctaLabel}
         </a>
       </Show>

@@ -6,6 +6,8 @@
 import { brickMap, normalizePage, validatePage, type AnyBrick, type Page, type PageIssue, type SaveResult } from '@mortar-kit/core';
 import { action, createEffect, createMemo, createOptimistic, createSignal, For, onSettled, Show, snapshot } from 'solid-js';
 
+import styles from './SaveBar.module.css';
+import common from './common.module.css';
 import type { EditorStore } from './state.ts';
 
 export interface SaveBarProps {
@@ -78,19 +80,19 @@ export function SaveBar(props: SaveBarProps) {
   });
 
   return (
-    <div class="mortar-savebar">
-      <div class="mortar-savebar-row">
-        <span role="status" class={['mortar-save-status', { 'mortar-dirty': dirty() }]}>
+    <div class={styles.saveBar}>
+      <div class={styles.row}>
+        <span role="status" class={[styles.status, dirty() && styles.dirty]}>
           {saving() ? 'Saving…' : dirty() ? 'Unsaved changes' : 'All changes saved'}
         </span>
-        <button type="button" class="mortar-save" disabled={!canSave()} onClick={() => void save()}>
+        <button type="button" class={styles.save} disabled={!canSave()} onClick={() => void save()}>
           Save
         </button>
       </div>
-      <Show when={error()}>{(message) => <p role="alert" class="mortar-issue">Couldn't save: {message()}</p>}</Show>
+      <Show when={error()}>{(message) => <p role="alert" class={common.issue}>Couldn't save: {message()}</p>}</Show>
       <Show when={issues().length > 0}>
-        <div role="alert" class="mortar-issues">
-          <p class="mortar-issue">Not saved: fix {issues().length === 1 ? 'this problem' : `these ${issues().length} problems`} first.</p>
+        <div role="alert" class={styles.issues}>
+          <p class={common.issue}>Not saved: fix {issues().length === 1 ? 'this problem' : `these ${issues().length} problems`} first.</p>
           <ul>
             <For each={issues()}>{(issue) => <IssueItem issue={issue} editor={props.editor} bricks={props.bricks} />}</For>
           </ul>
@@ -115,7 +117,7 @@ function IssueItem(props: { issue: PageIssue; editor: EditorStore; bricks: reado
     <li>
       <Show when={where()} fallback={props.issue.message}>
         {(text) => (
-          <button type="button" class="mortar-issue-link" onClick={() => props.editor.select(props.issue.entryId ?? null)}>
+          <button type="button" class={styles.issueLink} onClick={() => props.editor.select(props.issue.entryId ?? null)}>
             {text()}: {props.issue.message}
           </button>
         )}
