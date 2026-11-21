@@ -3,9 +3,10 @@
 // store on every keystroke so the preview updates live.
 import { defaultOf, fieldInfo, type AnyField, type FieldInfo, type Image } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
-import { createMemo, createSignal, For, Match, Show, Switch } from 'solid-js';
+import { createMemo, createSignal, For, Loading, Match, Show, Switch } from 'solid-js';
 
 import common from '../common.module.css';
+import { useAdmin, type AdminApi } from '../context.ts';
 import type { Path } from '../state.ts';
 import styles from './FieldInput.module.css';
 import { useForm } from './context.ts';
@@ -172,12 +173,77 @@ function DateInput(props: InputProps) {
   );
 }
 
-/** The referenced document's id, read-only until the picker lands. */
+/**
+ * Picks a document of the referenced collection, by title. Needs <Admin>
+ * around the editor (for the documents); a standalone editor shows the
+ * stored id, read-only.
+ */
 function ReferenceInput(props: InputProps) {
+  const admin = useAdmin();
   return (
-    <Labelled info={props.info} path={props.path}>
-      <input type="text" class={styles.input} value={asString(props.value)} readonly />
-    </Labelled>
+    <Show
+      when={admin}
+      fallback={
+        <Labelled info={props.info} path={props.path}>
+          <input type="text" class={styles.input} value={asString(props.value)} readonly />
+        </Labelled>
+      }
+    >
+      {(a) => <ReferencePicker info={props.info} path={props.path} value={props.value} admin={a()} />}
+    </Show>
+  );
+}
+
+function ReferencePicker(props: InputProps & { admin: AdminApi }) {
+  const form = useForm();
+  const name = () => props.info.collection ?? '';
+  const target = createMemo(() => props.admin.collections.find((c) => c.name === name()));
+  // Each picker reads on its own: no promise shared between components.
+  const docs = createMemo(() => props.admin.content.list(name()));
+  const value = () => asString(props.value);
+  const missing = () => value() !== '' && !docs().some((d) => d.id === value());
+  return (
+    <div class={styles.field}>
+      <Labelled info={props.info} path={props.path}>
+        <Loading fallback={<span class={common.help}>Loading {target()?.label ?? name()}…</span>}>
+          <span class={styles.reference}>
+            <select
+              class={styles.input}
+              aria-invalid={form.issue(props.path) || missing() ? 'true' : undefined}
+              onChange={(e) => form.setValue(props.path, e.currentTarget.value)}
+            >
+              <option value="" selected={value() === ''}>
+                None
+              </option>
+              <Show when={missing()}>
+                <option value={value()} selected>
+                  Missing document ({value()})
+                </option>
+              </Show>
+              <For each={docs()}>
+                {(d) => (
+                  <option value={d.id} selected={value() === d.id}>
+                    {target()?.titleOf(d) ?? d.slug}
+                  </option>
+                )}
+              </For>
+            </select>
+            <button
+              type="button"
+              class={common.button}
+              disabled={value() === '' || missing()}
+              aria-label={`Open the selected ${props.info.label.toLowerCase()}`}
+              onClick={() => props.admin.go({ collection: name(), id: value() })}
+            >
+              Open
+            </button>
+          </span>
+        </Loading>
+      </Labelled>
+      <Show when={missing()}>
+        <small class={common.issue}>The selected document no longer exists. Pick another, or None.</small>
+      </Show>
+    </div>
   );
 }
 
