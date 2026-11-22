@@ -3,13 +3,15 @@
 // site's own styles and shows whatever document the editor posts to it,
 // inside the app's layout for that collection when it passes one. Bricks
 // that load data read `content`, again after every save. Kept free of
-// editor code so the route stays small.
-import { ContentContext, PageView, type AnyBrick, type ContentSource, type Doc } from '@mortar-kit/core';
+// editor code so the route stays small. Clicking a brick selects it in the
+// editor, and links are followed with ⌘/Ctrl-click (see PreviewPicker).
+import { brickMap, ContentContext, PageView, type AnyBrick, type ContentSource, type Doc } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
-import { createSignal, createStore, Errored, onSettled, reconcile, Show } from 'solid-js';
+import { createMemo, createSignal, createStore, Errored, onSettled, reconcile, Show } from 'solid-js';
 
 import styles from './preview.module.css';
-import { isDocMessage, isHelloMessage, isRefreshMessage, type ReadyMessage } from './protocol.ts';
+import { PreviewPicker } from './PreviewPicker.tsx';
+import { isDocMessage, isHelloMessage, isRefreshMessage, isSelectMessage, type LinkMessage, type ReadyMessage, type SelectMessage } from './protocol.ts';
 
 /** Renders a document of one collection the way the site does, around its rendered body. */
 export type PreviewLayout = (doc: Doc, body: JSX.Element) => JSX.Element;
@@ -35,6 +37,22 @@ export function PreviewPage(props: PreviewPageProps) {
   const [state, setState] = createStore<{ collection: string; body: boolean; doc: Doc | null }>({ collection: '', body: false, doc: null });
   // Bumped on every save: loaders read it, so they load again.
   const [version, setVersion] = createSignal(0);
+  // The selected entry's id, as the editor last said (or a click here, until it answers).
+  const [selected, setSelected] = createSignal<string | null>(null);
+  const byName = createMemo(() => brickMap(props.bricks));
+  const label = (id: string) => {
+    const entry = state.doc?.entries?.find((e) => e.id === id);
+    return entry ? (byName().get(entry.brick)?.label ?? `Unknown brick "${entry.brick}"`) : '';
+  };
+  const select = (id: string) => {
+    setSelected(id);
+    const message: SelectMessage = { type: 'mortar:select', id };
+    window.parent.postMessage(message, location.origin);
+  };
+  const follow = (href: string) => {
+    const message: LinkMessage = { type: 'mortar:link', href };
+    window.parent.postMessage(message, location.origin);
+  };
   const versioned: ContentSource = {
     list: (collection, options) => props.content!.list(collection, options),
     get: (collection, ref) => props.content!.get(collection, ref),
@@ -49,6 +67,7 @@ export function PreviewPage(props: PreviewPageProps) {
       if (event.origin !== location.origin || event.source !== window.parent) return;
       if (isHelloMessage(event.data)) window.parent.postMessage(ready, location.origin);
       if (isRefreshMessage(event.data)) setVersion((v) => v + 1);
+      if (isSelectMessage(event.data)) setSelected(event.data.id);
       if (!isDocMessage(event.data)) return;
       const { collection, body, doc } = event.data;
       setState((s) => {
@@ -77,6 +96,11 @@ export function PreviewPage(props: PreviewPageProps) {
               fallback={(entry) => <MissingBrick name={entry.brick} />}
               loadingFallback={() => <div class={styles.note}>Loading…</div>}
               errorFallback={(entry, error) => <BrickError name={entry.brick} error={error} />}
+              wrap={(id, view) => (
+                <div data-mortar-entry={id} class={styles.entry}>
+                  {view}
+                </div>
+              )}
             />
           );
           return (
@@ -95,6 +119,7 @@ export function PreviewPage(props: PreviewPageProps) {
           );
         }}
       </Show>
+      <PreviewPicker selected={selected()} label={label} onSelect={select} onLink={follow} />
     </ContentContext>
   );
 }
@@ -117,4 +142,4 @@ function BrickError(props: { name: string; error: unknown }) {
   );
 }
 
-export type { DocMessage, HelloMessage, ReadyMessage, RefreshMessage } from './protocol.ts';
+export type { DocMessage, HelloMessage, LinkMessage, ReadyMessage, RefreshMessage, SelectMessage } from './protocol.ts';

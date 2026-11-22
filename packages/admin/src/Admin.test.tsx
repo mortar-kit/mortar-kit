@@ -483,3 +483,43 @@ describe('review fixes', () => {
     expect((screen.getByLabelText('By') as HTMLSelectElement).value).toBe('ada-id');
   });
 });
+
+describe('<Admin> links in the preview', () => {
+  it('opens the document a ⌘/Ctrl-clicked link shows, and opens other links in a new tab', async () => {
+    const onNavigate = vi.fn<(to: AdminLocation) => void>();
+    const resolveLink = (url: URL) => {
+      const match = /^\/pages\/([^/]+)$/.exec(url.pathname);
+      return match ? { collection: 'pages', slug: match[1]! } : undefined;
+    };
+    const { content } = seed();
+    const { container } = render(() => (
+      <Admin
+        bricks={bricks}
+        collections={collections}
+        content={content}
+        previewUrl="/preview"
+        location={{ collection: 'pages', id: 'home-id' }}
+        onNavigate={onNavigate}
+        resolveLink={resolveLink}
+      />
+    ));
+    await settle();
+    const follow = async (href: string) => {
+      const frame = container.querySelector('iframe')!;
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:link', href }, origin: location.origin, source: frame.contentWindow }));
+      await settle();
+    };
+    const openTab = vi.spyOn(window, 'open').mockReturnValue(null);
+
+    await follow(`${location.origin}/pages/about`);
+    expect(onNavigate).toHaveBeenCalledWith({ collection: 'pages', id: 'about-id' });
+    expect(openTab).not.toHaveBeenCalled();
+
+    // A slug with no document, and a URL the app doesn't map, open in a new tab.
+    await follow(`${location.origin}/pages/missing`);
+    await follow(`${location.origin}/elsewhere`);
+    expect(openTab.mock.calls.map(([href]) => href)).toEqual([`${location.origin}/pages/missing`, `${location.origin}/elsewhere`]);
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    openTab.mockRestore();
+  });
+});

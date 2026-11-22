@@ -55,6 +55,13 @@ export interface AdminProps {
   onNavigate?: (to: AdminLocation) => void;
   /** Whether the open document has unsaved changes; see `EditorProps.onDirtyChange`. */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * Maps a URL of the site to the document it shows, e.g. `/posts/hello` to
+   * `{ collection: 'posts', slug: 'hello' }` (routing is the app's). With it,
+   * ⌘/Ctrl-clicking a link in the preview opens that document in the admin;
+   * a link it doesn't map (or without it) opens in a new tab.
+   */
+  resolveLink?: (url: URL) => { collection: string; slug: string } | undefined;
 }
 
 export function Admin(props: AdminProps) {
@@ -195,6 +202,14 @@ export function Admin(props: AdminProps) {
     go: (to) => void go(to),
     outline: () => outline(),
     showList: () => setListing(true),
+  };
+
+  /** A link ⌘/Ctrl-clicked in the preview: open the document it shows, or a new tab. */
+  const followLink = async (url: URL) => {
+    const target = props.resolveLink?.(url);
+    const found = target && byName().has(target.collection) ? await props.content.get(target.collection, { slug: target.slug }) : null;
+    if (target && found) void go({ collection: target.collection, id: found.id });
+    else window.open(url.href, '_blank', 'noopener');
   };
 
   /** A rail button: the open collection's shows its document list again; another opens that collection. */
@@ -349,6 +364,7 @@ export function Admin(props: AdminProps) {
                         onSave={(next) => save(c(), next)}
                         onRemove={() => void remove(c(), d)}
                         onDirtyChange={reportDirty}
+                        onFollowLink={(url) => void followLink(url)}
                       />
                     )}
                   </Show>

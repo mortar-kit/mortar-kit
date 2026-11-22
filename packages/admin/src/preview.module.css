@@ -14,3 +14,47 @@
   color: #78716c;
   font: 14px/1.4 system-ui, sans-serif;
 }
+/* The element around each entry, so clicks can find it: no box of its own. */
+.entry {
+  display: contents;
+}
+/* The outline layer over the page (see PreviewPicker). It takes no clicks.
+   Outlines are drawn inside each box, so a full-width brick's edges show. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+.selected,
+.hover {
+  position: absolute;
+  box-sizing: border-box;
+}
+.selected {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.hover {
+  outline: 1px dashed #2563eb;
+  outline-offset: -1px;
+  background: rgb(37 99 235 / 0.06);
+}
+/* The hovered brick's name, above its top-left corner (inside when there's no room). */
+.tag {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #2563eb;
+  color: white;
+  font: 600 11px/1.4 system-ui, sans-serif;
+  white-space: nowrap;
+}
+.tagInside {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  border-radius: 0 0 3px 0;
+}

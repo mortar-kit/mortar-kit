@@ -18,6 +18,12 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown('```\n<div>\n```', highlighter())).toBe('<pre><code>&lt;div&gt;</code></pre>\n');
   });
 
+  it('leaves links to the llms files to the browser', () => {
+    expect(renderMarkdown('[a](/llms.txt) [b](/docs/x.md#y) [c](/docs/x)')).toBe(
+      '<p><a href="/llms.txt" rel="external">a</a> <a href="/docs/x.md#y" rel="external">b</a> <a href="/docs/x">c</a></p>\n',
+    );
+  });
+
   it('links words in highlighted code', () => {
     const html = highlighter()!('function f(a: Brick): void', 'ts', (word) => (word === 'Brick' ? '/reference/Brick' : undefined));
     expect(html).toContain('<a href="/reference/Brick">Brick</a>');

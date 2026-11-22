@@ -128,3 +128,32 @@ describe('<PageView>', () => {
     expect(after[1]).toBe(two);
   });
 });
+
+describe('<PageView> wrap', () => {
+  it('renders around each entry, unknown bricks included, and keeps the wrapper and brick DOM across edits and moves', () => {
+    const [list, setList] = createStore<Page>({ entries: [...entries(), { brick: 'gone', id: 'c', data: {} }] });
+    const { container } = render(() => (
+      <PageView
+        bricks={[heading]}
+        entries={list.entries}
+        fallback={() => <p>missing</p>}
+        wrap={(id, view) => <section data-id={id}>{view}</section>}
+      />
+    ));
+    flush();
+    const ids = () => [...container.querySelectorAll('section')].map((s) => s.dataset.id);
+    expect(ids()).toEqual(['a', 'b', 'c']);
+    expect(container.querySelector('[data-id="c"]')).toHaveTextContent('missing');
+    const second = container.querySelector('[data-id="b"]');
+    const h2 = second?.querySelector('h2');
+    setList((p) => {
+      p.entries[1]!.data.text = 'Edited';
+      p.entries.reverse();
+    });
+    flush();
+    expect(ids()).toEqual(['c', 'b', 'a']);
+    expect(container.querySelector('[data-id="b"]')).toBe(second);
+    expect(second?.querySelector('h2')).toBe(h2);
+    expect(h2).toHaveTextContent('Edited');
+  });
+});

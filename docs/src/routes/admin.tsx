@@ -13,6 +13,13 @@ import { editableContent, resetCount } from '../content/content.ts';
 import { EditsBar } from '../layouts/EditsBar.tsx';
 import styles from '../layouts/layouts.module.css';
 
+/** The document a URL of the docs site shows (see router.ts), so ⌘/Ctrl-clicking a link in the preview opens it. */
+function resolveLink(url: URL): { collection: string; slug: string } | undefined {
+  if (url.pathname === '/') return { collection: 'pages', slug: 'home' };
+  const guide = /^\/docs\/([^/]+)\/?$/.exec(url.pathname);
+  return guide ? { collection: 'docs', slug: guide[1]! } : undefined;
+}
+
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export default function AdminRoute() {
@@ -53,6 +60,7 @@ export default function AdminRoute() {
               location={location()}
               onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null, view: to.view ?? null })}
               onDirtyChange={setDirty}
+              resolveLink={resolveLink}
             />
           )}
         </For>

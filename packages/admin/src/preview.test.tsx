@@ -2,7 +2,7 @@
 // documents, and reuses brick DOM across updates of the same document.
 import { defineBrick, defineCollection, fields, type ContentSource, type Doc, type PageEntry } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
-import { render } from '@solidjs/testing-library';
+import { fireEvent, render } from '@solidjs/testing-library';
 import { flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -114,7 +114,7 @@ describe('<PreviewPage>', () => {
     expect(after[0]).toBe(a);
     expect(after[1]).toBe(b);
     expect(after[1]).toHaveTextContent('B');
-    expect(container.firstElementChild?.tagName).toBe('UL');
+    expect(container.firstElementChild?.firstElementChild?.tagName).toBe('UL');
   });
 
   it('replaces the content when another document is posted', () => {
@@ -128,6 +128,77 @@ describe('<PreviewPage>', () => {
     post(doc(), location.origin, 'other');
     expect(container.querySelector('h2')).toHaveTextContent('Welcome');
     expect(container.querySelector('ul')).not.toBeNull();
+  });
+});
+
+describe('<PreviewPage> click to select', () => {
+  const entryOf = (el: Element | null) => el?.closest('[data-mortar-entry]')?.getAttribute('data-mortar-entry');
+  const sent = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map(([m]) => m);
+  const withLink = (href: string): Doc => withEntries([{ brick: 'link', id: 'l', data: { href } }, ...doc().entries!]);
+  const link = defineBrick({
+    name: 'link',
+    label: 'Link',
+    schema: { href: fields.text({ label: 'Href' }) },
+    component: (props) => (
+      <p>
+        <a href={props.data.href}>Go</a>
+      </p>
+    ),
+  });
+
+  it('marks each entry with its id, around its DOM', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    post(doc());
+    expect(entryOf(container.querySelector('h2'))).toBe('h');
+    expect(entryOf(container.querySelector('li'))).toBe('t');
+  });
+
+  it('tells the editor which entry was clicked', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} />);
+    flush();
+    post(doc());
+    const spy = vi.spyOn(window.parent, 'postMessage');
+    fireEvent.click(container.querySelectorAll('li')[1]!);
+    expect(spy).toHaveBeenCalledWith({ type: 'mortar:select', id: 't' }, location.origin);
+    spy.mockRestore();
+  });
+
+  it("doesn't follow a plain-clicked link: it selects the brick", () => {
+    const { container } = render(() => <PreviewPage bricks={[...bricks, link]} />);
+    flush();
+    post(withLink('/posts/hello'));
+    const spy = vi.spyOn(window.parent, 'postMessage');
+    const anchor = container.querySelector('a')!;
+    expect(fireEvent.click(anchor)).toBe(false);
+    expect(sent(spy)).toEqual([{ type: 'mortar:select', id: 'l' }]);
+    spy.mockRestore();
+  });
+
+  it('sends a ⌘/Ctrl-clicked same-origin link to the editor, and opens other links in a new tab', () => {
+    const { container } = render(() => <PreviewPage bricks={[...bricks, link]} />);
+    flush();
+    post(withLink('/posts/hello'));
+    const spy = vi.spyOn(window.parent, 'postMessage');
+    expect(fireEvent.click(container.querySelector('a')!, { metaKey: true })).toBe(false);
+    expect(sent(spy)).toEqual([{ type: 'mortar:link', href: `${location.origin}/posts/hello` }]);
+
+    post(withLink('https://example.com/'));
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    spy.mockClear();
+    expect(fireEvent.click(container.querySelector('a')!, { ctrlKey: true })).toBe(false);
+    expect(open).toHaveBeenCalledWith('https://example.com/', '_blank', 'noopener');
+    expect(sent(spy)).toEqual([]);
+    open.mockRestore();
+    spy.mockRestore();
+  });
+
+  it("doesn't submit forms", () => {
+    const form = defineBrick({ name: 'form', schema: {}, component: () => <form action="/subscribe"><button type="submit">Join</button></form> });
+    const { container } = render(() => <PreviewPage bricks={[form]} />);
+    flush();
+    post(withEntries([{ brick: 'form', id: 'f', data: {} }]));
+    expect(fireEvent.submit(container.querySelector('form')!)).toBe(false);
   });
 });
 
