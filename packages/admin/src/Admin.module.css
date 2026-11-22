@@ -34,15 +34,6 @@
   background: var(--mortar-rail);
   color: var(--mortar-on-rail);
 }
-.mark {
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: var(--mortar-radius);
-  background: var(--mortar-accent);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
-}
 .collections {
   list-style: none;
   margin: 0;

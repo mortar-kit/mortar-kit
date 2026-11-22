@@ -27,6 +27,7 @@ import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
 import { Editor } from './Editor.tsx';
 import common from './common.module.css';
 import { CloseIcon } from './icons.tsx';
+import { Mark } from './Mark.tsx';
 import { referrerLabel } from './referrer.ts';
 
 /** The asset library's filters, in the panel. */
@@ -233,7 +234,7 @@ export function Admin(props: AdminProps) {
     <AdminContext value={api}>
       <div class={styles.admin}>
         <nav class={styles.rail} aria-label="Content">
-          <span class={styles.mark} aria-hidden="true" />
+          <Mark />
           <ul class={styles.collections}>
             <For each={props.collections}>
               {(c) => (

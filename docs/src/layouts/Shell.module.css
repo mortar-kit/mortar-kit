@@ -15,11 +15,8 @@
   border-bottom: 1px solid var(--docs-border);
 }
 .logo {
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: -0.01em;
+  display: flex;
   color: var(--docs-text);
-  text-decoration: none;
 }
 .nav {
   flex: 1;

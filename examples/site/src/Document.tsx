@@ -3,6 +3,8 @@
 import { HydrationScript } from '@solidjs/web';
 import { Show, type ParentProps } from 'solid-js';
 
+import { faviconHref } from './favicon.ts';
+
 /**
  * @param props.hydrate Whether this page loads the client entry.
  * @param props.nonce The request's CSP script nonce, if any (server only).
@@ -14,6 +16,7 @@ export default function Document(props: ParentProps<{ hydrate: boolean; nonce?: 
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Mortar example</title>
+        <link rel="icon" type="image/svg+xml" href={faviconHref} />
         <Show when={props.hydrate}>
           <HydrationScript />
           {/* The plugin rewrites this path to the built entry's URL. */}

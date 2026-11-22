@@ -1,0 +1,11 @@
+/* The mark's size and colours, from the --mortar-* tokens. */
+.mark {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+.accent {
+  fill: var(--mortar-accent);
+}

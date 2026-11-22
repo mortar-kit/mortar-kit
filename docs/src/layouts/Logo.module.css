@@ -1,0 +1,11 @@
+/* The logo's colours: the text colour, and the brand green for the brick
+   being edited. */
+.logo {
+  display: block;
+  height: 1.5rem;
+  width: auto;
+  fill: currentColor;
+}
+.accent {
+  fill: var(--docs-brand);
+}
