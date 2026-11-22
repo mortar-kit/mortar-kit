@@ -12,6 +12,11 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      # `nix build .#docs`: the docs site, ready for `node result/server/node.js`.
+      packages = forAllSystems (pkgs: {
+        docs = pkgs.callPackage ./nix/docs.nix { };
+      });
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [ pkgs.nodejs_24 pkgs.pnpm ];

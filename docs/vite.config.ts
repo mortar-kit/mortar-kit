@@ -8,7 +8,16 @@ import { defineConfig } from 'vite';
 // so this tab's edits, kept in session storage by the admin, replace it.
 // There are no server functions: the site needs no database or file
 // access, only something to run the built server.
+//
+// Production: `start.nodeServer` emits dist/server/node.js, which serves
+// dist/client and renders everything else (`node dist/server/node.js`, PORT
+// and HOST). `ssr.noExternal` bundles the dependencies into the server
+// build, so dist/ runs on its own with no node_modules beside it.
 export default defineConfig({
-  plugins: [solid({ start: { renderMode: 'async' }, ssr: true }), mortarKit({ theme: midnight })],
+  plugins: [
+    solid({ start: { renderMode: 'async', nodeServer: true }, ssr: true }),
+    mortarKit({ theme: midnight }),
+  ],
+  ssr: { noExternal: true },
   server: { port: Number(process.env.PORT ?? 3100) },
 });

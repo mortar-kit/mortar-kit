@@ -1,0 +1,44 @@
+name: Notify config
+
+# After a merge to main that can change the docs site, ask
+# albrighton-dev/config to bump its `mortar-kit` flake input (web-1 serves
+# the docs from `packages.docs`). The config repo does the update and opens a
+# PR labelled `automerge`; see docs/site-flake-bumps.md there for the setup.
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - packages/**
+      - nix/**
+      - flake.nix
+      - flake.lock
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Get a GitHub App token for config
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.FLAKE_BOT_APP_ID }}
+          private-key: ${{ secrets.FLAKE_BOT_PRIVATE_KEY }}
+          owner: albrighton-dev
+          repositories: config
+
+      - name: Send repository_dispatch to config
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api "repos/albrighton-dev/config/dispatches" \
+            -f event_type=site-updated \
+            -f "client_payload[repository]=${{ github.repository }}" \
+            -f "client_payload[sha]=${{ github.sha }}"

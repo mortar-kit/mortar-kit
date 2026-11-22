@@ -99,6 +99,13 @@ further construction puns).
 ## Tooling
 
 - Node and pnpm come from the nix flake: `nix develop -c pnpm <script>`.
+- `nix build .#docs` (`nix/docs.nix`): the docs site for production,
+  `bin/mortar-docs` running `dist/server/node.js` (the vite plugin's
+  `start.nodeServer`; `ssr.noExternal` bundles every dependency, so no
+  node_modules ship). After changing dependencies, update `pnpmDeps.hash`
+  there (set `lib.fakeHash`, build, copy the hash it prints). web-1 in
+  albrighton-dev/config serves it at docs.mortar-kit.dev;
+  `.github/workflows/notify-config.yml` asks config to bump it on merge.
 - Scripts (root): `typecheck`, `lint`, `test`, `dev` (example site), `docs`
   (docs site, port 3100), `reference` (regenerate the API reference), `build`.
   Keep all green at every step.
