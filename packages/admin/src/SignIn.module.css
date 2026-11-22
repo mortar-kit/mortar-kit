@@ -1,0 +1,120 @@
+/* The sign-in page: one card in the middle of the admin's background.
+   Every value comes from the --mortar-* tokens (tokens.css). */
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 1rem;
+  box-sizing: border-box;
+  font: var(--mortar-font-size) / 1.45 var(--mortar-font);
+  color: var(--mortar-text);
+  background: var(--mortar-bg);
+}
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+.card {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 22rem);
+  padding: 1.75rem;
+  border-radius: var(--mortar-preview-radius);
+  background: var(--mortar-panel);
+  box-shadow: var(--mortar-preview-shadow);
+}
+.mark {
+  width: 2rem;
+  height: 2rem;
+  background: var(--mortar-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.title {
+  margin: 0;
+  font-family: var(--mortar-font-heading);
+  font-size: 1.5em;
+  font-weight: 600;
+}
+.error {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mortar-danger);
+  border-radius: var(--mortar-radius);
+  color: var(--mortar-danger);
+}
+.form {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+.field {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 500;
+}
+.input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  font: inherit;
+  font-weight: 400;
+  color: inherit;
+  background: var(--mortar-input);
+}
+.input:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--mortar-accent);
+  outline-offset: 1px;
+}
+.primary,
+.secondary {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--mortar-radius);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.primary {
+  border: 1px solid var(--mortar-accent);
+  background: var(--mortar-accent);
+  color: var(--mortar-on-accent);
+}
+.secondary {
+  border: 1px solid var(--mortar-border);
+  background: var(--mortar-input);
+  color: inherit;
+}
+.secondary:hover {
+  border-color: var(--mortar-accent);
+}
+.or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  color: var(--mortar-muted);
+}
+.or::before,
+.or::after {
+  content: '';
+  flex-grow: 1;
+  border-top: 1px solid var(--mortar-border);
+}
+.help {
+  margin: 0;
+  color: var(--mortar-muted);
+}
+.help strong {
+  color: var(--mortar-text);
+}
+.link {
+  justify-self: start;
+  color: var(--mortar-accent);
+}

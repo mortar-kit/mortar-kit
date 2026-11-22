@@ -211,6 +211,9 @@ importers:
       '@mortar-kit/admin':
         specifier: workspace:*
         version: link:../packages/admin
+      '@mortar-kit/auth':
+        specifier: workspace:*
+        version: link:../packages/auth
       '@mortar-kit/core':
         specifier: workspace:*
         version: link:../packages/core
@@ -260,6 +263,9 @@ importers:
       '@mortar-kit/admin':
         specifier: workspace:*
         version: link:../../packages/admin
+      '@mortar-kit/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@mortar-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -309,6 +315,12 @@ importers:
       vite:
         specifier: 8.3.8
         version: 8.3.8(@types/node@24.19.2)(yaml@2.9.1)
+
+  packages/auth:
+    devDependencies:
+      '@mortar-kit/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/core:
     dependencies:

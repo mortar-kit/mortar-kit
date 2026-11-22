@@ -20,6 +20,7 @@ import {
 } from '@mortar-kit/core';
 import { createEffect, createMemo, createSignal, flush, For, Loading, onSettled, refresh, Show } from 'solid-js';
 
+import { Account, type AdminUser } from './Account.tsx';
 import styles from './Admin.module.css';
 import { AssetLibrary } from './AssetLibrary.tsx';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
@@ -62,6 +63,10 @@ export interface AdminProps {
    * a link it doesn't map (or without it) opens in a new tab.
    */
   resolveLink?: (url: URL) => { collection: string; slug: string } | undefined;
+  /** The signed-in user (`auth.user()` from `@mortar-kit/auth`): shown at the foot of the rail, with Sign out. */
+  user?: AdminUser | null;
+  /** Where Sign out posts. Default `/admin/auth/sign-out`. */
+  signOutUrl?: string;
 }
 
 export function Admin(props: AdminProps) {
@@ -246,17 +251,20 @@ export function Admin(props: AdminProps) {
               )}
             </For>
           </ul>
-          <Show when={props.content.assets}>
-            <button
-              type="button"
-              class={[styles.collection, styles.assets]}
-              data-initial="As"
-              aria-current={inAssets() ? 'true' : undefined}
-              onClick={() => void go({ collection: loc().collection, view: 'assets' })}
-            >
-              Assets
-            </button>
-          </Show>
+          <div class={styles.foot}>
+            <Show when={props.content.assets}>
+              <button
+                type="button"
+                class={styles.collection}
+                data-initial="As"
+                aria-current={inAssets() ? 'true' : undefined}
+                onClick={() => void go({ collection: loc().collection, view: 'assets' })}
+              >
+                Assets
+              </button>
+            </Show>
+            <Show when={props.user}>{(user) => <Account user={user()} signOutUrl={props.signOutUrl ?? '/admin/auth/sign-out'} />}</Show>
+          </div>
         </nav>
         <aside class={styles.panel}>
           <Show when={inAssets()}>

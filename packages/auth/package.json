@@ -1,0 +1,33 @@
+{
+  "name": "@mortar-kit/auth",
+  "version": "0.0.0",
+  "description": "Mortar auth: sign-in methods (Google, email), signed cookie sessions and route guards for the admin",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "solid": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/source/index.d.ts",
+        "solid": "./dist/source/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@mortar-kit/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@mortar-kit/core": "workspace:*"
+  }
+}

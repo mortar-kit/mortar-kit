@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@mortar-kit/admin": "workspace:*",
+    "@mortar-kit/auth": "workspace:*",
     "@mortar-kit/core": "workspace:*",
     "@mortar-kit/theme-midnight": "workspace:*",
     "@mortar-kit/theme-mono": "workspace:*",

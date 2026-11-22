@@ -44,7 +44,8 @@ further construction puns).
   layouts are the app's code; Mortar stays out of routing.
 - **Packages**: `@mortar-kit/core` (fields, bricks, collections, documents,
   storage rules, `PageView`, content context) and `@mortar-kit/admin`
-  (`<Admin>`, `<Editor>`). Admin code never reaches the public site bundle.
+  (`<Admin>`, `<Editor>`, `<SignIn>`), plus `@mortar-kit/auth` (server-only
+  sign-in). Admin code never reaches the public site bundle.
 - **Admin layout and themes** (2026-11-22): the admin is laid out as a
   collections rail, a panel (the open collection's documents, or the open
   document's outline: slug, Details, body entries), a top bar (breadcrumb,
@@ -60,10 +61,24 @@ further construction puns).
   preview is a same-origin iframe rendering the real bricks inside the app's
   layouts (`PreviewPage` `layouts`). The admin's location can live in the
   app's URL (`location` + `onNavigate`).
+- **Auth** (2026-11-22): `createAuth({ methods: [google(), email()], authorize, secret })`
+  in `@mortar-kit/auth`, Fetch `Request` in, `Response` out (framework-neutral).
+  Methods are an array of `{ id, label, input, start, callback }` that verify an
+  `Identity` (`{ email, name?, method }`); the app's `authorize({ identity })`
+  returns its user or null (Thomas chose this over an allowlist option;
+  `allowEmails([...])` is the ready-made one). It runs at sign-in and on every
+  guarded request. Sessions are a stateless HMAC-signed cookie (Web Crypto;
+  `secret` may be an array to rotate). Email sends a code and a link in one
+  message through a `Mailer` (`consoleMailer()` for dev); pending sign-ins are
+  hashes in a ContentStore under `mortar-auth-tokens`. The link opens the
+  sign-in page, which posts it (mail scanners can't use it up). `auth.handle`
+  goes first in `start.middleware` (auth routes under `/admin/auth`, redirects
+  for `protect`ed `/admin`); every writing server function calls
+  `auth.require(request)` itself, since middleware can't tell the admin's calls.
 
 ## Layout
 
-- `packages/core`, `packages/admin`: published under `@mortar-kit`. In the
+- `packages/core`, `packages/admin`, `packages/auth`: published under `@mortar-kit`. In the
   workspace, `exports` point at `src/` (the `solid` condition) so no build is
   needed for dev/tests; `publishConfig.exports` points at `dist/`.
 - `packages/theme-*`: plain JS packages (no build): `theme.css` sets
@@ -114,8 +129,12 @@ further construction puns).
   each page as Markdown (`/index.md`, `/docs/<slug>.md`, `/reference.md`,
   `/reference/<name>.md`). Every brick needs a converter in
   `src/llms/markdown.ts` (a test fails without one).
-- No auth: `/admin` and the save/delete functions are unprotected. Guarding them is
-  the consuming app's job (e.g. `start.middleware`).
+- Auth in the example: `src/server/auth.ts` (env: `MORTAR_AUTH_SECRET`,
+  `MORTAR_ADMINS`, optional `GOOGLE_CLIENT_ID`/`_SECRET`, `MORTAR_BASE_URL`;
+  emails print to the console), `src/middleware.ts`, `/admin/sign-in`
+  (`src/routes/sign-in.tsx`), and `requireAdmin()` in every write (save, delete, upload, remove asset). Pending email
+  sign-ins live in `examples/site/.data/` (git-ignored). Dev default admin:
+  `admin@example.com`.
 
 ## Tooling
 

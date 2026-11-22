@@ -20,6 +20,7 @@ export const Router = createRouter({
     { path: '/categories/:slug', component: Category },
     { path: '/admin', component: lazy(() => import('./routes/admin.tsx')) },
     { path: '/admin/preview', component: lazy(() => import('./routes/admin-preview.tsx')) },
+    { path: '/admin/sign-in', component: lazy(() => import('./routes/sign-in.tsx')) },
     { path: '/:slug', component: Page },
   ],
 });

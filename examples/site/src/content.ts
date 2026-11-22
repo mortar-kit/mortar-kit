@@ -7,6 +7,7 @@ import { query } from '@solidjs/router';
 import { GET } from '@solidjs/web/server-functions';
 
 import { getStoredDoc, listAssets, listStoredDocs, removeAsset, removeStoredDoc, saveStoredDoc, uploadAsset } from './server/content.ts';
+import { getSignedInUser, getSignInMethods } from './server/session.ts';
 
 const listFresh = GET(listStoredDocs);
 const getFresh = GET(getStoredDoc);
@@ -42,3 +43,9 @@ export const adminContent: Content = {
   },
   assets: { list: listAssetsFresh, upload: uploadAsset, remove: removeAsset },
 };
+
+/** The signed-in admin, or null (fresh: the admin shows who is signed in now). */
+export const getUser = GET(getSignedInUser);
+
+/** The sign-in page's methods (cached per request). */
+export const getMethods = query(GET(getSignInMethods), 'sign-in-methods');
