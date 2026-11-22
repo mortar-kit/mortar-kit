@@ -9,8 +9,9 @@
   --docs-accent: #2f6fde;
   --docs-accent-text: #ffffff;
   --docs-code-bg: #f3f4f7;
-  --docs-pre-bg: #14161b;
-  --docs-pre-text: #e6e8ee;
+  /* Code blocks match their highlighting themes (GitHub light and dark). */
+  --docs-pre-bg: #f6f8fa;
+  --docs-pre-text: #1f2328;
   --docs-note: #2f6fde;
   --docs-tip: #1f9d6b;
   --docs-warning: #c77a12;
@@ -32,7 +33,8 @@
     --docs-accent: #6ea2ff;
     --docs-accent-text: #0b1020;
     --docs-code-bg: #1d212a;
-    --docs-pre-bg: #0b0d11;
+    --docs-pre-bg: #0d1117;
+    --docs-pre-text: #e6edf3;
     --docs-note: #6ea2ff;
     --docs-tip: #43c58f;
     --docs-warning: #e6a23c;
@@ -49,4 +51,14 @@ a {
 code {
   font-family: var(--docs-mono);
   font-size: 0.9em;
+}
+/* Highlighted code (src/highlight/): each token span carries both themes'
+   colours; the colour scheme picks one. */
+pre span {
+  color: var(--shiki-light);
+}
+@media (prefers-color-scheme: dark) {
+  pre span {
+    color: var(--shiki-dark);
+  }
 }

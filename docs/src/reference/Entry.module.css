@@ -50,6 +50,7 @@ h2.name {
   padding: 0.9rem 1.1rem;
   overflow-x: auto;
   border-radius: var(--docs-radius);
+  border: 1px solid var(--docs-border);
   background: var(--docs-pre-bg);
   color: var(--docs-pre-text);
   font-size: 0.86rem;
@@ -68,6 +69,7 @@ h2.name {
   padding: 0.9rem 1.1rem;
   overflow-x: auto;
   border-radius: var(--docs-radius);
+  border: 1px solid var(--docs-border);
   background: var(--docs-pre-bg);
   color: var(--docs-pre-text);
   font-size: 0.86rem;

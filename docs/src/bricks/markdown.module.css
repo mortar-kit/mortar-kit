@@ -29,6 +29,7 @@
   padding: 1rem 1.15rem;
   overflow-x: auto;
   border-radius: var(--docs-radius);
+  border: 1px solid var(--docs-border);
   background: var(--docs-pre-bg);
   color: var(--docs-pre-text);
   font-size: 0.88rem;
