@@ -6,7 +6,12 @@
   grid-template-columns: 16rem minmax(0, 1fr) var(--inspector-width, 20rem);
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--mortar-gap);
-  height: 100vh;
+  /* As for <Admin>: fill the viewport (or a shorter box) and let the
+     panes scroll, never the page, so the top bar stays in view. */
+  box-sizing: border-box;
+  height: 100dvh;
+  max-height: 100%;
+  min-height: 0;
   padding: var(--mortar-inset);
   font: var(--mortar-font-size) / 1.45 var(--mortar-font);
   color: var(--mortar-text);
