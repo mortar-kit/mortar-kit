@@ -6,6 +6,7 @@
 // app: the route passes `auth.methods` and the page's search parameters.
 import { For, Match, Show, Switch } from 'solid-js';
 
+import { Mark } from './Mark.tsx';
 import styles from './SignIn.module.css';
 import './tokens.css';
 import './theme-slot.css';
@@ -65,7 +66,7 @@ export function SignIn(props: SignInProps) {
   return (
     <main class={styles.page}>
       <div class={styles.card}>
-        <span class={styles.mark} aria-hidden="true" />
+        <Mark />
         <h1 class={styles.title}>{props.title ?? 'Sign in'}</h1>
         <Show when={props.params.error}>
           {(error) => (

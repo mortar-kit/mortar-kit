@@ -8,6 +8,8 @@
   --docs-border: #e3e5ea;
   --docs-accent: #2f6fde;
   --docs-accent-text: #ffffff;
+  /* The logo's green (the brick being edited). */
+  --docs-brand: #047857;
   --docs-code-bg: #f3f4f7;
   /* Code blocks match their highlighting themes (GitHub light and dark). */
   --docs-pre-bg: #f6f8fa;
@@ -32,6 +34,7 @@
     --docs-border: #272b35;
     --docs-accent: #6ea2ff;
     --docs-accent-text: #0b1020;
+    --docs-brand: #34d399;
     --docs-code-bg: #1d212a;
     --docs-pre-bg: #0d1117;
     --docs-pre-text: #e6edf3;
