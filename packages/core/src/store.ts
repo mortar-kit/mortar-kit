@@ -5,11 +5,15 @@
 // used: normalize on read, validate and keep slugs unique on save, list
 // with filters and order, and refuse to delete a document others reference.
 // Writes through one `createContent` run one at a time, so those checks
-// hold; several server processes sharing one store need it to lock.
+// hold; several server processes sharing one store need it to lock. With a
+// `BlobStore` it also keeps assets: uploads are checked, documents store
+// an asset's key (its URL is filled in on read), and an asset documents
+// use can't be deleted.
+import { assetInfo, assetKeyFor, isValidAssetKey, type Asset, type BlobStore } from './assets.ts';
 import { brickMap, type AnyBrick } from './brick.ts';
 import { collectionMap, type AnyCollection, type SortOrder } from './collection.ts';
 import { isValidSlug, normalizeDoc, validateDoc, type Doc, type DocIssue, type DocRef, type DocSummary } from './doc.ts';
-import { referencedCollections, referencesIn } from './fields.ts';
+import { assetsIn, assetValuesIn, hasAssetFields, referencedCollections, referencesIn, type Fields } from './fields.ts';
 
 /**
  * Where documents live: raw data by collection name and slug. Implement it
@@ -67,6 +71,19 @@ export interface Referrer {
 /** Result of `Content.remove`. */
 export type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] };
 
+/** Result of `Assets.upload`. */
+export type UploadResult = { ok: true; asset: Asset } | { ok: false; message: string };
+
+/** Uploaded files: what the admin's library and pickers need. */
+export interface Assets {
+  /** Every uploaded file, newest first. */
+  list(): Promise<Asset[]>;
+  /** Checks a file (type by its name's extension, size) and stores it under a fresh key. Problems are returned, not thrown. */
+  upload(file: File): Promise<UploadResult>;
+  /** Deletes a file by key, unless documents use it (then they are returned). */
+  remove(key: string): Promise<RemoveResult>;
+}
+
 /** Reading and writing documents: what the admin needs. */
 export interface Content extends ContentSource {
   /**
@@ -77,6 +94,8 @@ export interface Content extends ContentSource {
   save(collection: string, doc: unknown): Promise<SaveResult>;
   /** Deletes a document by id, unless other documents reference it (then they are returned). */
   remove(collection: string, id: string): Promise<RemoveResult>;
+  /** Uploaded files; only when content has a blob store. */
+  assets?: Assets;
 }
 
 /** A store that keeps documents in memory (tests, demos). Documents are copied in and out. */
@@ -110,7 +129,13 @@ export interface ContentOptions {
   store: ContentStore;
   collections: readonly AnyCollection[];
   bricks: readonly AnyBrick[];
+  /** Where uploaded files live. Without it there are no `assets`, and asset URLs aren't filled in on read. */
+  blobs?: BlobStore;
+  /** Largest upload in bytes. Default 25 MB. (A server function's own body limit applies too.) */
+  maxAssetSize?: number;
 }
+
+const DEFAULT_MAX_ASSET_SIZE = 25 * 1024 * 1024;
 
 /**
  * The rules around a store. Collection names are checked on every call (a
@@ -118,7 +143,8 @@ export interface ContentOptions {
  * Throws at creation if a reference field names an unknown collection.
  */
 export function createContent(options: ContentOptions): Content {
-  const { store, bricks } = options;
+  const { store, bricks, blobs } = options;
+  const maxAssetSize = options.maxAssetSize ?? DEFAULT_MAX_ASSET_SIZE;
   const collections = collectionMap(options.collections);
   const byBrick = brickMap(bricks);
   for (const [where, schema] of [
@@ -139,6 +165,26 @@ export function createContent(options: ContentOptions): Content {
   /** Every stored copy of every document, normalized, by slug. */
   async function copies(c: AnyCollection): Promise<Doc[]> {
     return (await store.list(c.name)).map((raw) => normalizeDoc(c, bricks, raw)).sort((a, b) => compare(a.slug, b.slug));
+  }
+
+  /** Calls `fn` for each image and file value in a document (fields, then body entries). */
+  function eachAssetValue(c: AnyCollection, doc: Doc, fn: (value: { src: string; asset: string }) => void) {
+    for (const { value } of assetValuesIn(c.fields, doc.fields)) fn(value);
+    if (!c.body) return;
+    for (const entry of doc.entries ?? []) {
+      const brick = byBrick.get(entry.brick);
+      if (brick) for (const { value } of assetValuesIn(brick.schema, entry.data)) fn(value);
+    }
+  }
+
+  /** Fills in the URL of every uploaded asset a (normalized, unshared) document uses. */
+  function withUrls<D extends Doc>(c: AnyCollection, doc: D): D {
+    if (blobs) {
+      eachAssetValue(c, doc, (value) => {
+        if (value.asset !== '') value.src = blobs.url(value.asset);
+      });
+    }
+    return doc;
   }
 
   /**
@@ -169,7 +215,7 @@ export function createContent(options: ContentOptions): Content {
       const docs = (await all(c)).filter((doc) => Object.entries(where).every(([key, value]) => valueOf(doc, key) === value));
       const direction = sort.order === 'desc' ? -1 : 1;
       docs.sort((a, b) => direction * compare(valueOf(a, sort.field), valueOf(b, sort.field)) || compare(a.slug, b.slug));
-      return docs.slice(0, limit).map(withoutBody);
+      return docs.slice(0, limit).map((doc) => withUrls(c, withoutBody(doc)));
     },
 
     async get(name, ref) {
@@ -177,9 +223,10 @@ export function createContent(options: ContentOptions): Content {
       if ('slug' in ref) {
         if (typeof ref.slug !== 'string' || !isValidSlug(ref.slug)) return null;
         const raw = await store.get(c.name, ref.slug);
-        return raw === undefined ? null : normalizeDoc(c, bricks, raw);
+        return raw === undefined ? null : withUrls(c, normalizeDoc(c, bricks, raw));
       }
-      return (await all(c)).find((doc) => doc.id === ref.id) ?? null;
+      const doc = (await all(c)).find((d) => d.id === ref.id);
+      return doc ? withUrls(c, doc) : null;
     },
 
     async save(name, raw) {
@@ -187,6 +234,10 @@ export function createContent(options: ContentOptions): Content {
       const result = validateDoc(c, bricks, raw);
       if (!result.success) return { ok: false, issues: result.issues };
       const doc = result.doc;
+      // An asset's URL is filled in on read, so a move to another bucket or domain never leaves stale links.
+      eachAssetValue(c, doc, (value) => {
+        if (value.asset !== '') value.src = '';
+      });
       return oneAtATime(async (): Promise<SaveResult> => {
         // Read the target slug itself, so an unreadable file there fails the save instead of being overwritten.
         const occupant = await store.get(c.name, doc.slug);
@@ -204,36 +255,92 @@ export function createContent(options: ContentOptions): Content {
       const c = need(name);
       return oneAtATime(() => removeNow(c, id));
     },
+
+    assets: blobs && {
+      async list() {
+        const files = (await blobs.list()).filter((file) => isValidAssetKey(file.key));
+        files.sort((a, b) => compare(b.modified ?? '', a.modified ?? '') || compare(a.key, b.key));
+        return files.map((file) => toAsset(blobs, file.key, file.size, file.modified));
+      },
+      async upload(file) {
+        if (typeof file !== 'object' || file === null || typeof (file as File).name !== 'string' || typeof (file as File).size !== 'number') {
+          return { ok: false, message: 'Not a file' };
+        }
+        const key = assetKeyFor(file.name);
+        if (!key) return { ok: false, message: `"${file.name}" isn't a file type the site accepts (images, video, audio or PDF)` };
+        if (file.size === 0) return { ok: false, message: `"${file.name}" is empty` };
+        if (file.size > maxAssetSize) return { ok: false, message: `"${file.name}" is larger than ${formatSize(maxAssetSize)}` };
+        await blobs.put(key, file);
+        return { ok: true, asset: toAsset(blobs, key, file.size, new Date().toISOString()) };
+      },
+      remove(key) {
+        if (!isValidAssetKey(key)) return Promise.resolve({ ok: true } as const);
+        return oneAtATime(async (): Promise<RemoveResult> => {
+          const referencedBy = await usesOf(
+            (schema) => hasAssetFields(schema),
+            (schema, data) => assetsIn(schema, data).filter((found) => found.key === key),
+          );
+          if (referencedBy.length > 0) return { ok: false, referencedBy };
+          await blobs.remove(key);
+          return { ok: true };
+        });
+      },
+    },
   };
 
-  async function removeNow(c: AnyCollection, id: string): Promise<RemoveResult> {
-    const target = (await all(c)).find((doc) => doc.id === id);
-    if (!target) return { ok: true };
-    const referencedBy: Referrer[] = [];
-    const bodyRefs = bricks.some((b) => referencedCollections(b.schema).has(c.name));
+  /**
+   * Every place a document uses something: `find` lists the matching paths
+   * in some data; `relevant` says whether a schema could hold any (to skip
+   * collections that can't). `skip` leaves out one document.
+   */
+  async function usesOf(
+    relevant: (schema: Fields) => boolean,
+    find: (schema: Fields, data: unknown) => { path: (string | number)[] }[],
+    skip?: { collection: string; id: string },
+  ): Promise<Referrer[]> {
+    const found: Referrer[] = [];
+    const inBodies = bricks.some((b) => relevant(b.schema));
     for (const k of collections.values()) {
-      const inFields = referencedCollections(k.fields).has(c.name);
-      if (!inFields && !(k.body && bodyRefs)) continue;
+      if (!relevant(k.fields) && !(k.body && inBodies)) continue;
       for (const doc of await all(k)) {
-        if (k === c && doc.id === id) continue;
+        if (skip && k.name === skip.collection && doc.id === skip.id) continue;
         const at = { collection: k.name, id: doc.id, slug: doc.slug, title: k.titleOf(doc) };
-        for (const ref of referencesIn(k.fields, doc.fields)) {
-          if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, path: ['fields', ...ref.path] });
-        }
+        for (const use of find(k.fields, doc.fields)) found.push({ ...at, path: ['fields', ...use.path] });
         if (!k.body) continue;
         for (const entry of doc.entries ?? []) {
           const brick = byBrick.get(entry.brick);
           if (!brick) continue;
-          for (const ref of referencesIn(brick.schema, entry.data)) {
-            if (ref.collection === c.name && ref.id === id) referencedBy.push({ ...at, entryId: entry.id, path: ref.path });
-          }
+          for (const use of find(brick.schema, entry.data)) found.push({ ...at, entryId: entry.id, path: use.path });
         }
       }
     }
+    return found;
+  }
+
+  async function removeNow(c: AnyCollection, id: string): Promise<RemoveResult> {
+    const target = (await all(c)).find((doc) => doc.id === id);
+    if (!target) return { ok: true };
+    const referencedBy = await usesOf(
+      (schema) => referencedCollections(schema).has(c.name),
+      (schema, data) => referencesIn(schema, data).filter((ref) => ref.collection === c.name && ref.id === id),
+      { collection: c.name, id },
+    );
     if (referencedBy.length > 0) return { ok: false, referencedBy };
     for (const copy of await copies(c)) if (copy.id === id) await store.remove(c.name, copy.slug);
     return { ok: true };
   }
+}
+
+function toAsset(blobs: BlobStore, key: string, size: number, modified?: string): Asset {
+  const info = assetInfo(key) as NonNullable<ReturnType<typeof assetInfo>>;
+  const asset: Asset = { key, name: info.name, kind: info.kind, type: info.type, size, src: blobs.url(key) };
+  if (modified !== undefined) asset.modified = modified;
+  return asset;
+}
+
+/** "25 MB", "300 KB". */
+function formatSize(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${Math.round(bytes / 1024 / 1024)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 /** Checks list options from an untrusted caller and fills in the defaults. Throws on bad options. */
@@ -268,7 +375,7 @@ function rank(value: unknown): number {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? 0 : 1;
 }
 
-function withoutBody(doc: Doc): DocSummary {
+function withoutBody(doc: Doc): Doc {
   const { entries: _, ...summary } = doc;
   return summary;
 }

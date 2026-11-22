@@ -1,0 +1,69 @@
+{
+  "id": "assets",
+  "fields": {
+    "title": "Assets",
+    "description": "Uploaded images, video, audio and PDFs: a blob store beside the content store, and fields that point at files.",
+    "section": "advanced",
+    "order": 15
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "intro",
+      "data": {
+        "source": "Documents and files are kept apart. A **content store** keeps documents (JSON files, a database); a **blob store** keeps the bytes of uploaded files (a folder, a bucket). Pick each on its own: JSON files with S3, or a database with a folder. `createContent` takes both and applies the rules.\n\n```ts\nimport { createContent } from '@mortar-kit/core';\nimport { createFileBlobStore, createJsonFileStore } from '@mortar-kit/core/server';\n\nconst content = createContent({\n  store: createJsonFileStore({ dir: 'content' }),\n  blobs: createFileBlobStore({ dir: 'uploads', baseUrl: '/uploads/' }),\n  collections,\n  bricks,\n});\n```\n\nWith a blob store, `content.assets` has `list`, `upload` and `remove`, and the admin shows its asset library.\n\n## Keys, not records\n\nAn uploaded file is stored under a **key** made from its name: `Hero Photo.png` becomes `hero-photo-x7k2q9.png`. The six random characters keep two uploads of the same name apart, and the extension says what the file is. There's no table of assets: a store only has to list its files, which any folder or bucket can do.\n\n## The rules\n\n`content.assets`, whatever the blob store:\n\n- **checks the type** by extension: images (JPEG, PNG, GIF, WebP, AVIF), video (MP4, WebM, MOV), audio (MP3, M4A, Ogg, WAV) and PDF. SVG is refused, since it can carry script and uploads are served from your own origin;\n- **checks the size**, 25 MB by default (`maxAssetSize`);\n- returns problems (`{ ok: false, message }`) instead of throwing;\n- **refuses to delete** a file while documents use it, and returns those documents, as for references.\n\n## Fields that point at files\n\n`fields.image` stores `{ src, alt, asset }` and `fields.file({ accept })` stores `{ src, asset }`. For an upload, `asset` is the key, and `createContent` stores `src` empty and fills it in from `blobs.url(asset)` on every read. So bricks render `src` and nothing else, and moving files to a CDN only changes `url`. A plain URL still works: `asset` is then `''`.\n\n```tsx\nconst video = defineBrick({\n  name: 'video',\n  schema: { video: fields.file({ label: 'Video', accept: ['video'], required: true }) },\n  component: (props) => <video src={props.data.video.src} controls />,\n});\n```"
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "serving",
+      "data": {
+        "source": "## Serving files\n\nA folder isn't public by itself. `serveBlob(blobs, key, request)` answers a request for one file: its type from the key, `nosniff`, a long cache (keys never change content) and byte ranges, so video can seek. Mount it on a route or a middleware:\n\n```ts\n// src/middleware.ts (start.middleware)\nimport { serveBlob } from '@mortar-kit/core';\n\nexport default (event, next) => {\n  const path = new URL(event.request.url).pathname;\n  if (event.request.method === 'GET' && path.startsWith('/uploads/')) {\n    return serveBlob(blobs, path.slice('/uploads/'.length), event.request);\n  }\n  return next();\n};\n```\n\nUploads cross a server function as a `File`. Server functions accept 1 MiB by default, so raise `bodySizeLimit` with `configureServerFunctionsServer` in your `serverFunctions.serverSetup` module."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "try",
+      "data": {
+        "tone": "tip",
+        "title": "Try it here",
+        "body": "This site's admin uploads into the tab's session storage, so files up to 1 MB stay with your other edits until you reset them. Add a **Figure** brick to a guide and choose an image."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "writing",
+      "data": {
+        "source": "## Writing a blob store\n\nA blob store is five methods. Keep it dumb: `createContent` checks types, sizes and keys before calling it.\n\n```ts\ninterface BlobStore {\n  list(): Promise<{ key: string; size: number; modified?: string }[]>;\n  get(key: string): Promise<Blob | undefined>;\n  put(key: string, data: Blob): Promise<void>;\n  remove(key: string): Promise<void>;\n  url(key: string): string;\n}\n```\n\n`url` is synchronous: it's computed, not looked up. For S3 it's the bucket's or CDN's URL plus the key; for a folder, the path you serve it at.\n\n| Blob store | Where | Use |\n| --- | --- | --- |\n| `createFileBlobStore({ dir, baseUrl? })` | `@mortar-kit/core/server` | One file per asset in a folder. Writes are atomic. |\n| `createMemoryBlobStore({ baseUrl? })` | `@mortar-kit/core` | In memory: tests and demos. |"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-blob-store",
+      "data": {
+        "name": "BlobStore"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-assets",
+      "data": {
+        "name": "Assets"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-file-blob-store",
+      "data": {
+        "name": "createFileBlobStore"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-serve-blob",
+      "data": {
+        "name": "serveBlob"
+      }
+    }
+  ]
+}

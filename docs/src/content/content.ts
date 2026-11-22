@@ -6,17 +6,31 @@
 // Pages render the published content first (that is what the server sent,
 // and hydration adopts it), then `showEdits()` swaps in this tab's edits:
 // every read goes through `version`, so bumping it reads again.
-import { createContent, createMemoryStore, type Content, type ContentSource } from '@mortar-kit/core';
+//
+// Uploads work the same way: a session storage blob store in the browser
+// (an empty one in memory on the server, so the admin renders alike on
+// both), small files only, forgotten with the edits.
+import { createContent, createMemoryBlobStore, createMemoryStore, type Assets, type Content, type ContentSource } from '@mortar-kit/core';
 import { isServer } from '@solidjs/web';
 import { createSignal } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
 import { collections } from '../collections.ts';
 import { baseline } from './baseline.ts';
+import { createSessionStorageBlobStore, type SessionStorageBlobStore } from './session-blob-store.ts';
 import { createSessionStorageStore, type SessionStorageStore } from './session-store.ts';
 
 const session: SessionStorageStore | undefined = isServer ? undefined : createSessionStorageStore({ baseline, key: 'mortar-docs:changes' });
-const content = createContent({ store: session ?? createMemoryStore(baseline), collections, bricks });
+const files: SessionStorageBlobStore | undefined = isServer ? undefined : createSessionStorageBlobStore({ key: 'mortar-docs:files' });
+const content = createContent({
+  store: session ?? createMemoryStore(baseline),
+  blobs: files ?? createMemoryBlobStore(),
+  // Session storage holds a few megabytes, and files are kept as base64.
+  maxAssetSize: 1024 * 1024,
+  collections,
+  bricks,
+});
+const assets = content.assets as Assets;
 
 const [version, setVersion] = createSignal(0);
 const [edited, setEdited] = createSignal(false);
@@ -50,17 +64,38 @@ export const editableContent: Content = {
   },
   async remove(collection, id) {
     const result = await content.remove(collection, id);
-    if (result.ok) setEdited(session?.hasChanges() ?? false);
+    if (result.ok) setEdited(hasAnything());
     return result;
   },
+  assets: {
+    list() {
+      version();
+      return assets.list();
+    },
+    async upload(file) {
+      const result = await assets.upload(file);
+      if (result.ok) setEdited(true);
+      return result;
+    },
+    async remove(key) {
+      const result = await assets.remove(key);
+      if (result.ok) setEdited(hasAnything());
+      return result;
+    },
+  },
 };
+
+/** Whether this tab has saved edits or uploads. */
+function hasAnything(): boolean {
+  return (session?.hasChanges() ?? false) || (files?.hasFiles() ?? false);
+}
 
 /** Whether this tab has edits (false on the server and until `showEdits()`). */
 export const hasEdits = edited;
 
 /** After hydration: if this tab has edits, read everything again to show them. */
 export function showEdits(): void {
-  if (!session?.hasChanges()) return;
+  if (!hasAnything()) return;
   setEdited(true);
   setVersion((v) => v + 1);
 }
@@ -68,9 +103,10 @@ export function showEdits(): void {
 /** How many times the edits were reset: the admin starts afresh on each. */
 export const resetCount = resets;
 
-/** Forgets this tab's edits and reads everything again: the published site. */
+/** Forgets this tab's edits and uploads and reads everything again: the published site. */
 export function resetEdits(): void {
   session?.clear();
+  files?.clear();
   setEdited(false);
   setVersion((v) => v + 1);
   setResets((n) => n + 1);

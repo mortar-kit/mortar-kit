@@ -28,6 +28,14 @@ further construction puns).
   run one at a time (per process). Default adapter: **JSON files**
   `content/<collection>/<slug>.json` (the slug is the file name, not stored
   inside); listing reads the whole folder (fine for small sites).
+- **Assets** (2026-11-22): uploaded files live in a `BlobStore` adapter
+  (`list/get/put/remove/url`), separate from `ContentStore`, passed to
+  `createContent({ blobs })`, which checks type (extension allowlist, no
+  SVG), size and key, and refuses deletes while documents use a file. No
+  asset records: keys are `<name>-<6 random>.<ext>`. Image and file fields
+  store the key in `asset`; `src` is stored empty and filled from
+  `blobs.url` on read. Adapters: memory (core), folder (`core/server`),
+  served by the app with `serveBlob`.
 - **Loading data**: a brick may declare `load(data, content)`; it reads
   through a typed `ContentReader` from the `ContentSource` the app provides
   with `ContentContext` (`useContent()` in layouts). It runs on the server

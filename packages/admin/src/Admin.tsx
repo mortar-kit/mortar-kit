@@ -5,10 +5,12 @@
 // again). The rest is the <Editor> for the open document. Where it is (collection and
 // document id) can live in the app's URL (`location` + `onNavigate`, so
 // the app's own leave guard covers switching documents) or in the admin
-// itself, which then asks before leaving unsaved changes.
+// itself, which then asks before leaving unsaved changes. With a blob store
+// (`content.assets`), the rail's Assets button opens the asset library.
 import {
   collectionMap,
   isValidSlug,
+  type AssetKind,
   type AnyBrick,
   type AnyCollection,
   type Content,
@@ -19,10 +21,21 @@ import {
 import { createEffect, createMemo, createSignal, flush, For, Loading, onSettled, refresh, Show } from 'solid-js';
 
 import styles from './Admin.module.css';
+import { AssetLibrary } from './AssetLibrary.tsx';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
 import { Editor } from './Editor.tsx';
 import common from './common.module.css';
 import { CloseIcon } from './icons.tsx';
+import { referrerLabel } from './referrer.ts';
+
+/** The asset library's filters, in the panel. */
+const KINDS: readonly [label: string, kind: AssetKind | undefined][] = [
+  ['All files', undefined],
+  ['Images', 'image'],
+  ['Video', 'video'],
+  ['Audio', 'audio'],
+  ['Documents', 'document'],
+];
 
 export interface AdminProps {
   /** The bricks this site defines. */
@@ -47,11 +60,13 @@ export interface AdminProps {
 export function Admin(props: AdminProps) {
   const [own, setOwn] = createSignal<AdminLocation>(() => ({ collection: props.collections[0]?.name ?? '' }));
   const loc = () => props.location ?? own();
+  const inAssets = () => loc().view === 'assets' && props.content.assets !== undefined;
+  const [kind, setKind] = createSignal<AssetKind | undefined>(undefined);
   const byName = createMemo(() => collectionMap(props.collections));
   const collection = createMemo(() => byName().get(loc().collection));
   const list = createMemo(() => {
     const c = collection();
-    return c ? props.content.list(c.name) : [];
+    return c && !inAssets() ? props.content.list(c.name) : [];
   });
 
   // A new document not saved yet. A plain variable for the open document (so
@@ -64,7 +79,7 @@ export function Admin(props: AdminProps) {
   const isDraft = (d: Doc) => draft?.doc === d || pending?.doc === d;
   const doc = createMemo(() => {
     const { collection: name, id } = loc();
-    if (!id || !byName().has(name)) return null;
+    if (!id || !byName().has(name) || inAssets()) return null;
     for (const d of [draft, pending]) if (d && d.collection === name && d.doc.id === id) return d.doc;
     return props.content.get(name, { id });
   });
@@ -184,7 +199,7 @@ export function Admin(props: AdminProps) {
 
   /** A rail button: the open collection's shows its document list again; another opens that collection. */
   const pick = (c: AnyCollection) => {
-    if (loc().collection === c.name && loc().id) setListing(true);
+    if (loc().collection === c.name && loc().id && !inAssets()) setListing(true);
     else void go({ collection: c.name });
   };
 
@@ -207,7 +222,7 @@ export function Admin(props: AdminProps) {
                     type="button"
                     class={styles.collection}
                     data-initial={c.label.slice(0, 2)}
-                    aria-current={loc().collection === c.name ? 'true' : undefined}
+                    aria-current={loc().collection === c.name && !inAssets() ? 'true' : undefined}
                     onClick={() => pick(c)}
                   >
                     {c.label}
@@ -216,9 +231,36 @@ export function Admin(props: AdminProps) {
               )}
             </For>
           </ul>
+          <Show when={props.content.assets}>
+            <button
+              type="button"
+              class={[styles.collection, styles.assets]}
+              data-initial="As"
+              aria-current={inAssets() ? 'true' : undefined}
+              onClick={() => void go({ collection: loc().collection, view: 'assets' })}
+            >
+              Assets
+            </button>
+          </Show>
         </nav>
         <aside class={styles.panel}>
-          <div class={styles.list} hidden={!showList()}>
+          <Show when={inAssets()}>
+            <section aria-label="Assets" class={styles.listSection}>
+              <h2 class={styles.heading}>Assets</h2>
+              <ul class={styles.docs} aria-label="Show">
+                <For each={KINDS}>
+                  {([label, k]) => (
+                    <li>
+                      <button type="button" class={styles.doc} aria-current={kind() === k ? 'true' : undefined} onClick={() => setKind(k)}>
+                        {label}
+                      </button>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </section>
+          </Show>
+          <div class={styles.list} hidden={!showList() || inAssets()}>
             <Show when={collection()} fallback={<p class={[styles.pad, common.issue]}>Unknown collection "{loc().collection}".</p>}>
               {(c) => (
                 <section aria-label={c().label} class={styles.listSection}>
@@ -260,7 +302,7 @@ export function Admin(props: AdminProps) {
               )}
             </Show>
           </div>
-          <div class={styles.outline} hidden={showList()} ref={(el) => (outlineSlot = el)} />
+          <div class={styles.outline} hidden={showList() || inAssets()} ref={(el) => (outlineSlot = el)} />
         </aside>
         <main class={styles.main}>
           <Show when={blocked().length > 0}>
@@ -284,7 +326,14 @@ export function Admin(props: AdminProps) {
               </ul>
             </div>
           </Show>
-          <Show when={collection()}>
+          <Show when={inAssets() && props.content.assets}>
+            {(assets) => (
+              <div class={styles.library}>
+                <AssetLibrary assets={assets()} accept={kind() ? [kind() as AssetKind] : undefined} />
+              </div>
+            )}
+          </Show>
+          <Show when={!inAssets() && collection()}>
             {(c) => (
               <Show when={loc().id} fallback={<p class={styles.placeholder}>Open a document, or create one.</p>}>
                 <Loading fallback={<p class={styles.placeholder}>Loading…</p>}>
@@ -311,12 +360,6 @@ export function Admin(props: AdminProps) {
       </div>
     </AdminContext>
   );
-}
-
-/** "Products › Blue mug › Category" for a reference in a document's fields or one of its bricks. */
-function referrerLabel(c: AnyCollection | undefined, r: Referrer): string {
-  const where = r.entryId === undefined ? r.path.slice(1) : ['body', ...r.path];
-  return [c?.label ?? r.collection, r.title, ...where].join(' › ');
 }
 
 /** Creates a document from a slug, checked as it is typed. Nothing is stored until the first save. */

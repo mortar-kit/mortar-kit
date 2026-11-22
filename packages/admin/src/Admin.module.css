@@ -88,6 +88,11 @@
   background: var(--mortar-rail-active);
 }
 
+/* The Assets button sits at the foot of the rail, apart from the collections. */
+.assets {
+  margin-top: auto;
+}
+
 /* The panel. */
 .panel {
   display: flex;
@@ -177,6 +182,17 @@
 }
 .input[aria-invalid='true'] {
   border-color: var(--mortar-danger);
+}
+
+/* The asset library, in the editor's area. */
+.library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: var(--mortar-panel-radius);
+  background: var(--mortar-panel);
+  box-shadow: var(--mortar-panel-shadow);
 }
 
 /* The editor's area. */

@@ -1,0 +1,14 @@
+.figure {
+  margin: 0 0 1.5rem;
+}
+.figure img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+}
+.figure figcaption {
+  margin-top: 0.5rem;
+  color: var(--docs-muted);
+  font-size: 0.92rem;
+}
