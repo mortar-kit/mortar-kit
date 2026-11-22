@@ -1,0 +1,2265 @@
+{
+  "modules": [
+    "@mortar-kit/core",
+    "@mortar-kit/core/server",
+    "@mortar-kit/admin",
+    "@mortar-kit/admin/preview",
+    "@mortar-kit/admin/vite"
+  ],
+  "entries": [
+    {
+      "name": "Admin",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "",
+      "signature": "function Admin(props: AdminProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "AdminProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "AdminLocation",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Which collection the admin shows, and which document of it is open (by id).",
+      "signature": "interface AdminLocation",
+      "members": [
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "id",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "AdminProps",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface AdminProps",
+      "members": [
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[]",
+          "doc": "The bricks this site defines."
+        },
+        {
+          "name": "collections",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyCollection[]",
+          "doc": "The site's collections, in the order the sidebar lists them."
+        },
+        {
+          "name": "content",
+          "optional": false,
+          "readonly": false,
+          "type": "Content",
+          "doc": "Reads and writes. Reads should be uncached, so the admin always shows\nwhat is saved (the app's server functions, or `createContent` in tests)."
+        },
+        {
+          "name": "previewUrl",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "URL of the app route that renders `<PreviewPage>` from `@mortar-kit/admin/preview`."
+        },
+        {
+          "name": "location",
+          "optional": true,
+          "readonly": false,
+          "type": "AdminLocation",
+          "doc": "Where the admin is, when the app keeps it (e.g. in the URL). Without it the admin keeps it itself."
+        },
+        {
+          "name": "onNavigate",
+          "optional": true,
+          "readonly": false,
+          "type": "(to: AdminLocation) => void",
+          "doc": "With `location`: called to go somewhere; the app updates `location` (or doesn't, e.g. when its guard says no)."
+        },
+        {
+          "name": "onDirtyChange",
+          "optional": true,
+          "readonly": false,
+          "type": "(dirty: boolean) => void",
+          "doc": "Whether the open document has unsaved changes; see `EditorProps.onDirtyChange`."
+        }
+      ]
+    },
+    {
+      "name": "BrickForm",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The form for one entry, from its brick's schema.",
+      "signature": "function BrickForm(props: BrickFormProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "BrickFormProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "BrickFormProps",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface BrickFormProps",
+      "members": [
+        {
+          "name": "brick",
+          "optional": false,
+          "readonly": false,
+          "type": "AnyBrick",
+          "doc": ""
+        },
+        {
+          "name": "entry",
+          "optional": false,
+          "readonly": false,
+          "type": "PageEntry",
+          "doc": ""
+        },
+        {
+          "name": "editor",
+          "optional": false,
+          "readonly": false,
+          "type": "EditorStore",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "createEditorStore",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Creates the editor store. It is seeded from `doc()` (normalized, so every\nform input has a value to bind; the source is never modified) and\nre-seeded if `bricks()`, `collection()` or `doc()` change, e.g. when a\ndifferent document is loaded. Edits live in the store until then. The\nfirst entry is selected, or the fields when there is no body.",
+      "signature": "function createEditorStore(bricks: () => readonly AnyBrick[], collection: () => AnyCollection, doc: () => Doc): EditorStore",
+      "params": [
+        {
+          "name": "bricks",
+          "type": "() => readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "collection",
+          "type": "() => AnyCollection",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "doc",
+          "type": "() => Doc",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "EditorStore",
+      "examples": []
+    },
+    {
+      "name": "Editor",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "",
+      "signature": "function Editor(props: EditorProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "EditorProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "EditorProps",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface EditorProps",
+      "members": [
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[]",
+          "doc": "The bricks this site defines."
+        },
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "AnyCollection",
+          "doc": "The collection the document belongs to."
+        },
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc",
+          "doc": "The document to edit. Edits are kept in the editor; a new `doc` value replaces them."
+        },
+        {
+          "name": "isNew",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "A new document that was never saved: it starts unsaved, and the first save creates it (the editor then treats it as saved)."
+        },
+        {
+          "name": "previewUrl",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "URL of the app route that renders `<PreviewPage>` from `@mortar-kit/admin/preview`."
+        },
+        {
+          "name": "refresh",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "Bump it after saved content changes elsewhere, so bricks in the preview load again. Saves here do it already."
+        },
+        {
+          "name": "onChange",
+          "optional": true,
+          "readonly": false,
+          "type": "(doc: Doc) => void",
+          "doc": "Called with a plain copy of the document after every change."
+        },
+        {
+          "name": "onSave",
+          "optional": true,
+          "readonly": false,
+          "type": "(doc: Doc) => Promise<void | SaveResult>",
+          "doc": "Saves the document; without it there is no Save button. Resolve with a\n`SaveResult` (e.g. from `Content.save`) to report validation problems,\nor reject if saving failed. The editor validates before calling it too."
+        },
+        {
+          "name": "onRemove",
+          "optional": true,
+          "readonly": false,
+          "type": "() => void",
+          "doc": "Deletes the document; without it there is no Delete button. The editor doesn't ask first: the handler does."
+        },
+        {
+          "name": "onDirtyChange",
+          "optional": true,
+          "readonly": false,
+          "type": "(dirty: boolean) => void",
+          "doc": "Called with whether there are unsaved changes, initially and whenever\nthat changes (only with `onSave`), and with false if the save controls\ngo away while dirty (the editor unmounts or `onSave` is removed). Use it\nto guard in-app navigation, e.g. with the router's `useBeforeLeave`;\nclosing the tab is already guarded."
+        }
+      ]
+    },
+    {
+      "name": "EditorState",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface EditorState",
+      "members": [
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc",
+          "doc": ""
+        },
+        {
+          "name": "selected",
+          "optional": false,
+          "readonly": false,
+          "type": "Target | null",
+          "doc": "Whose form is shown: an entry's id, FIELDS, or null."
+        }
+      ]
+    },
+    {
+      "name": "EditorStore",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "The editor's state and the only ways to change it.",
+      "signature": "interface EditorStore",
+      "members": [
+        {
+          "name": "state",
+          "optional": false,
+          "readonly": true,
+          "type": "EditorState",
+          "doc": ""
+        },
+        {
+          "name": "select",
+          "optional": false,
+          "readonly": false,
+          "type": "(target: Target | null) => void",
+          "doc": ""
+        },
+        {
+          "name": "setSlug",
+          "optional": false,
+          "readonly": false,
+          "type": "(slug: string) => void",
+          "doc": "Sets the document's slug (checked when saving)."
+        },
+        {
+          "name": "addEntry",
+          "optional": false,
+          "readonly": false,
+          "type": "(brickName: string, index?: number) => string | undefined",
+          "doc": "Adds an entry of the named brick with its default data at `index`\n(default: the end) and selects it. Returns the new id, or undefined if\nno brick has that name or the collection has no body."
+        },
+        {
+          "name": "removeEntry",
+          "optional": false,
+          "readonly": false,
+          "type": "(id: string) => void",
+          "doc": "Removes an entry. If it was selected, a neighbour (or the fields) is selected."
+        },
+        {
+          "name": "moveEntry",
+          "optional": false,
+          "readonly": false,
+          "type": "(id: string, toIndex: number) => void",
+          "doc": "Moves an entry to `toIndex`. Indexes past either end are ignored."
+        },
+        {
+          "name": "duplicateEntry",
+          "optional": false,
+          "readonly": false,
+          "type": "(id: string) => string | undefined",
+          "doc": "Inserts a copy of an entry (new id, cloned data) after it and selects it. Returns the new id."
+        },
+        {
+          "name": "setValue",
+          "optional": false,
+          "readonly": false,
+          "type": "(target: Target, path: Path, value: unknown) => void",
+          "doc": "Sets the value at `path` in an entry's data or the document's fields."
+        },
+        {
+          "name": "insertItem",
+          "optional": false,
+          "readonly": false,
+          "type": "(target: Target, path: Path, index: number, value: unknown) => void",
+          "doc": "Inserts `value` into the list at `path`."
+        },
+        {
+          "name": "removeItem",
+          "optional": false,
+          "readonly": false,
+          "type": "(target: Target, path: Path, index: number) => void",
+          "doc": "Removes item `index` from the list at `path`."
+        },
+        {
+          "name": "moveItem",
+          "optional": false,
+          "readonly": false,
+          "type": "(target: Target, path: Path, from: number, to: number) => void",
+          "doc": "Moves an item of the list at `path` from one index to another."
+        }
+      ]
+    },
+    {
+      "name": "FIELDS",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "variable",
+      "summary": "Selects (and addresses writes to) the document's fields instead of an entry.",
+      "signature": "const FIELDS: unique symbol"
+    },
+    {
+      "name": "Path",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A location inside an entry's data (or the document's fields).",
+      "signature": "type Path = readonly (string | number)[]"
+    },
+    {
+      "name": "PreviewFrame",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "",
+      "signature": "function PreviewFrame(props: PreviewFrameProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "PreviewFrameProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "PreviewFrameProps",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface PreviewFrameProps",
+      "members": [
+        {
+          "name": "url",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "URL of the app route that renders `<PreviewPage>`."
+        },
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The edited document's collection, by name."
+        },
+        {
+          "name": "body",
+          "optional": false,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Whether that collection has a body. Without one, the preview ignores stored entries, as the site does."
+        },
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc",
+          "doc": ""
+        },
+        {
+          "name": "refresh",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "Bump it after saved content changes (a save, a delete): the preview reloads what bricks loaded."
+        }
+      ]
+    },
+    {
+      "name": "Target",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "What a write is addressed to: an entry, by id, or the document's fields.",
+      "signature": "type Target = string | typeof FIELDS"
+    },
+    {
+      "name": "DocMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Editor → preview: the full document to render, its collection's name and whether that collection has a body (sent on every change).",
+      "signature": "interface DocMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:doc\"",
+          "doc": ""
+        },
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "body",
+          "optional": false,
+          "readonly": false,
+          "type": "boolean",
+          "doc": ""
+        },
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "HelloMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Editor → preview: the editor is listening now; answer with `mortar:ready`.\nCovers a preview that loaded (and announced itself) before the editor\nhydrated, since the iframe is in the server-rendered HTML.",
+      "signature": "interface HelloMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:hello\"",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "PreviewLayout",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Renders a document of one collection the way the site does, around its rendered body.",
+      "signature": "type PreviewLayout = (doc: Doc, body: JSX.Element) => JSX.Element"
+    },
+    {
+      "name": "PreviewPage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Renders the document the parent editor posts; empty until the first message.",
+      "signature": "function PreviewPage(props: PreviewPageProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "PreviewPageProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "PreviewPageProps",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface PreviewPageProps",
+      "members": [
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[]",
+          "doc": "The same bricks the editor uses."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "readonly": false,
+          "type": "ContentSource",
+          "doc": "Where bricks with `load` read content: use uncached reads, so the\npreview shows what is saved now. Without it such bricks show an error."
+        },
+        {
+          "name": "layouts",
+          "optional": true,
+          "readonly": false,
+          "type": "Readonly<Record<string, PreviewLayout>>",
+          "doc": "The site's layout for each collection, by name, e.g. a post's title\nand date around its body. Without one, a collection with a body\npreviews the body alone."
+        }
+      ]
+    },
+    {
+      "name": "ReadyMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Preview → editor: the preview has mounted and wants the current document.",
+      "signature": "interface ReadyMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:ready\"",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "RefreshMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Editor → preview: saved content changed; data that bricks loaded should be fetched again.",
+      "signature": "interface RefreshMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:refresh\"",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "mortarKit",
+      "module": "@mortar-kit/admin/vite",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Mortar's Vite plugin. Add it next to `@solidjs/vite-plugin`:\n\n```ts\nimport { mortarKit } from '@mortar-kit/admin/vite';\nimport midnight from '@mortar-kit/theme-midnight';\n\nexport default defineConfig({ plugins: [solid({ ... }), mortarKit({ theme: midnight })] });\n```",
+      "signature": "function mortarKit(options?: MortarKitOptions): Plugin",
+      "params": [
+        {
+          "name": "options",
+          "type": "MortarKitOptions",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Plugin",
+      "examples": []
+    },
+    {
+      "name": "MortarKitOptions",
+      "module": "@mortar-kit/admin/vite",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface MortarKitOptions",
+      "members": [
+        {
+          "name": "theme",
+          "optional": true,
+          "readonly": false,
+          "type": "MortarTheme | { default: MortarTheme }",
+          "doc": "The admin's theme: a theme package's export, as `import midnight from\n'@mortar-kit/theme-midnight'` or `require('@mortar-kit/theme-midnight')`\ngives it. Without one the admin uses its default look."
+        }
+      ]
+    },
+    {
+      "name": "MortarTheme",
+      "module": "@mortar-kit/admin/vite",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A theme for the admin: what a theme package (e.g. `@mortar-kit/theme-midnight`) exports.",
+      "signature": "interface MortarTheme",
+      "members": [
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The theme's name, for messages."
+        },
+        {
+          "name": "stylesheet",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Absolute path of its stylesheet, which sets --mortar-* custom properties on `:root`."
+        }
+      ]
+    },
+    {
+      "name": "AnyBrick",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A brick of any schema, e.g. in a list of bricks.",
+      "signature": "type AnyBrick = Brick<any, any>"
+    },
+    {
+      "name": "AnyCollection",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A collection of any schema, e.g. in a list of collections.",
+      "signature": "type AnyCollection = Collection<any>"
+    },
+    {
+      "name": "AnyField",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "",
+      "signature": "type AnyField = v.GenericSchema<any, any>"
+    },
+    {
+      "name": "Brick",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A registered brick. `defaults()` is used when the brick is added to a body.",
+      "signature": "interface Brick<F extends Fields = Fields, L = undefined> extends SchemaOps<F>",
+      "members": [
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "schema",
+          "optional": false,
+          "readonly": true,
+          "type": "F",
+          "doc": ""
+        },
+        {
+          "name": "load",
+          "optional": false,
+          "readonly": true,
+          "type": "((data: InferFields<F>, content: ContentReader) => L | Promise<L>) | undefined",
+          "doc": ""
+        },
+        {
+          "name": "component",
+          "optional": false,
+          "readonly": true,
+          "type": "Component<BrickProps<InferFields<F>, L>>",
+          "doc": ""
+        },
+        {
+          "name": "defaults",
+          "optional": false,
+          "readonly": false,
+          "type": "() => InferFields<F>",
+          "doc": "Fresh default data."
+        },
+        {
+          "name": "validate",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => ValidateResult<InferFields<F>>",
+          "doc": "Validates (and fills defaults into) unknown data."
+        },
+        {
+          "name": "normalize",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => InferFields<F>",
+          "doc": "Coerces unknown data into the schema's shape for rendering: missing fields\nget defaults, and fields of the wrong type are replaced by their default.\nValues that are the right type but break a rule (an empty required text)\nare kept, so a preview shows what the editor typed."
+        }
+      ]
+    },
+    {
+      "name": "BrickDefinition",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What a developer passes to `defineBrick`.",
+      "signature": "interface BrickDefinition<F extends Fields, L = undefined>",
+      "members": [
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Stable identifier stored in entries. Lowercase, e.g. `hero` or `feature-grid`."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Human-readable name for the admin panel. Defaults to `name`."
+        },
+        {
+          "name": "schema",
+          "optional": false,
+          "readonly": false,
+          "type": "F",
+          "doc": "The editable fields, built with `fields.*`."
+        },
+        {
+          "name": "load",
+          "optional": true,
+          "readonly": false,
+          "type": "(data: InferFields<F>, content: ContentReader) => L | Promise<L>",
+          "doc": "Loads what the brick shows besides its own data, e.g. the latest posts.\nRuns on the server when the page renders (pages without JavaScript\nincluded) and in the browser in the admin preview, where it reads\nsaved content (not unsaved edits to other documents), again after each\nsave. Read the `data` fields it depends on before the first `await`:\nchanging those loads again, changing others doesn't. Return plain JSON. Write it before\n`component`, so `props.loaded` gets its type."
+        },
+        {
+          "name": "component",
+          "optional": false,
+          "readonly": false,
+          "type": "Component<BrickProps<InferFields<F>, L>>",
+          "doc": "Renders the brick. Read `props.data.x` (and `props.loaded`); don't destructure props."
+        }
+      ]
+    },
+    {
+      "name": "brickMap",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Indexes bricks by name, rejecting duplicates.",
+      "signature": "function brickMap(bricks: readonly AnyBrick[]): ReadonlyMap<string, AnyBrick>",
+      "params": [
+        {
+          "name": "bricks",
+          "type": "readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ReadonlyMap<string, AnyBrick>",
+      "examples": []
+    },
+    {
+      "name": "BrickProps",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Props every brick component receives.",
+      "signature": "interface BrickProps<D, L = undefined>",
+      "members": [
+        {
+          "name": "data",
+          "optional": false,
+          "readonly": false,
+          "type": "D",
+          "doc": "The brick's data: the right shape, with defaults filled in (see `Brick.normalize`)."
+        },
+        {
+          "name": "loaded",
+          "optional": false,
+          "readonly": false,
+          "type": "L",
+          "doc": "What the brick's `load` returned; undefined for a brick without one."
+        }
+      ]
+    },
+    {
+      "name": "Collection",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A registered collection. Its `SchemaOps` apply to a document's `fields` (keys outside the schema are kept).",
+      "signature": "interface Collection<F extends Fields = Fields> extends SchemaOps<F>",
+      "members": [
+        {
+          "name": "defaults",
+          "optional": false,
+          "readonly": false,
+          "type": "() => InferFields<F>",
+          "doc": "Fresh default data."
+        },
+        {
+          "name": "validate",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => ValidateResult<InferFields<F>>",
+          "doc": "Validates (and fills defaults into) unknown data."
+        },
+        {
+          "name": "normalize",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => InferFields<F>",
+          "doc": "Coerces unknown data into the schema's shape for rendering: missing fields\nget defaults, and fields of the wrong type are replaced by their default.\nValues that are the right type but break a rule (an empty required text)\nare kept, so a preview shows what the editor typed."
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "fields",
+          "optional": false,
+          "readonly": true,
+          "type": "F",
+          "doc": ""
+        },
+        {
+          "name": "body",
+          "optional": false,
+          "readonly": true,
+          "type": "boolean",
+          "doc": ""
+        },
+        {
+          "name": "title",
+          "optional": false,
+          "readonly": true,
+          "type": "keyof F & string | undefined",
+          "doc": ""
+        },
+        {
+          "name": "sort",
+          "optional": false,
+          "readonly": true,
+          "type": "Required<SortOrder>",
+          "doc": ""
+        },
+        {
+          "name": "reservedSlugs",
+          "optional": false,
+          "readonly": true,
+          "type": "readonly string[]",
+          "doc": ""
+        },
+        {
+          "name": "titleOf",
+          "optional": false,
+          "readonly": false,
+          "type": "(doc: { slug: string; fields: Record<string, unknown> }) => string",
+          "doc": "A document's label in lists: its title field, or its slug when that is empty or there is no title field."
+        },
+        {
+          "name": "create",
+          "optional": false,
+          "readonly": false,
+          "type": "(slug: string) => Doc<InferFields<F>>",
+          "doc": "A new, unsaved document with a fresh id and default fields. Call it from event handlers, not during render."
+        }
+      ]
+    },
+    {
+      "name": "CollectionDefinition",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What a developer passes to `defineCollection`.",
+      "signature": "interface CollectionDefinition<F extends Fields>",
+      "members": [
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Stable identifier, also the storage folder. Lowercase, e.g. `posts` or `case-studies`."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Plural name for the admin panel (\"Posts\"). Defaults to `name`."
+        },
+        {
+          "name": "fields",
+          "optional": false,
+          "readonly": false,
+          "type": "F",
+          "doc": "The fields every document has, built with `fields.*`."
+        },
+        {
+          "name": "body",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Whether documents also have brick entries (a body made of bricks). Default false."
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "readonly": false,
+          "type": "keyof F & string",
+          "doc": "A `text` field shown as the document's title in lists and pickers.\nDefaults to the first `text` field; without one, the slug is shown."
+        },
+        {
+          "name": "sort",
+          "optional": true,
+          "readonly": false,
+          "type": "SortOrder<keyof F & string>",
+          "doc": "The default list order. Defaults to the title field (or the slug), ascending."
+        },
+        {
+          "name": "reservedSlugs",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly string[]",
+          "doc": "Slugs documents may not use, e.g. the app's own route segments next to `/:slug`."
+        }
+      ]
+    },
+    {
+      "name": "collectionMap",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Indexes collections by name, rejecting duplicates.",
+      "signature": "function collectionMap(collections: readonly AnyCollection[]): ReadonlyMap<string, AnyCollection>",
+      "params": [
+        {
+          "name": "collections",
+          "type": "readonly AnyCollection[]",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ReadonlyMap<string, AnyCollection>",
+      "examples": []
+    },
+    {
+      "name": "Content",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Reading and writing documents: what the admin needs.",
+      "signature": "interface Content extends ContentSource",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, options?: ListOptions) => Promise<DocSummary[]>",
+          "doc": "Documents of a collection, without their bodies."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, ref: DocRef) => Promise<Doc<Record<string, unknown>> | null>",
+          "doc": "One document, or null if there is none."
+        },
+        {
+          "name": "track",
+          "optional": true,
+          "readonly": false,
+          "type": "() => void",
+          "doc": "Called before each brick load, where reads are tracked: read a signal\nhere to make every load run again when it changes (the admin preview\ndoes, after each save)."
+        },
+        {
+          "name": "save",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, doc: unknown) => Promise<SaveResult>",
+          "doc": "Validates a document (from an untrusted client) and stores it. Problems\nare returned, not thrown. Renaming its slug moves it. Writes through one\n`Content` run one at a time."
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, id: string) => Promise<RemoveResult>",
+          "doc": "Deletes a document by id, unless other documents reference it (then they are returned)."
+        }
+      ]
+    },
+    {
+      "name": "ContentContext",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "variable",
+      "summary": "Where bricks and layouts read content from. Provide it around the app,\ne.g. `<ContentContext value={source}>`. The admin preview provides its own.",
+      "signature": "const ContentContext: Context<ContentSource | null>"
+    },
+    {
+      "name": "ContentOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface ContentOptions",
+      "members": [
+        {
+          "name": "store",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentStore",
+          "doc": ""
+        },
+        {
+          "name": "collections",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyCollection[]",
+          "doc": ""
+        },
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[]",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "contentReader",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A typed reader over a source. No caching of its own: the source decides.\nOptions left undefined (`{ where: undefined }`) are dropped, so they can\ncross a server function, whose arguments must be plain JSON.",
+      "signature": "function contentReader(source: ContentSource): ContentReader",
+      "params": [
+        {
+          "name": "source",
+          "type": "ContentSource",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ContentReader",
+      "examples": []
+    },
+    {
+      "name": "ContentReader",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Typed reads: pass a collection, get its documents with typed fields.",
+      "signature": "interface ContentReader",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: Collection<F>, options?: ListOptions) => Promise<DocSummary<InferFields<F>>[]>",
+          "doc": "Documents of the collection, without their bodies."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: Collection<F>, ref: DocRef) => Promise<Doc<InferFields<F>> | null>",
+          "doc": "One document of the collection, or null."
+        }
+      ]
+    },
+    {
+      "name": "ContentSource",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Reading documents by collection name: what bricks, layouts and routes need.",
+      "signature": "interface ContentSource",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, options?: ListOptions) => Promise<DocSummary[]>",
+          "doc": "Documents of a collection, without their bodies."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, ref: DocRef) => Promise<Doc<Record<string, unknown>> | null>",
+          "doc": "One document, or null if there is none."
+        },
+        {
+          "name": "track",
+          "optional": true,
+          "readonly": false,
+          "type": "() => void",
+          "doc": "Called before each brick load, where reads are tracked: read a signal\nhere to make every load run again when it changes (the admin preview\ndoes, after each save)."
+        }
+      ]
+    },
+    {
+      "name": "ContentStore",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Where documents live: raw data by collection name and slug. Implement it\nto keep content anywhere (files, a database, an API). Deliberately dumb;\n`createContent` applies every rule.",
+      "signature": "interface ContentStore",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string) => Promise<unknown[]>",
+          "doc": "Every stored document of the collection, raw, each with `slug` set by the store (the key wins). [] if none."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, slug: string) => Promise<unknown>",
+          "doc": "The raw document under `slug` (with `slug` set), or undefined. Throws if it exists but can't be read."
+        },
+        {
+          "name": "put",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, doc: Doc) => Promise<void>",
+          "doc": "Stores `doc` under `doc.slug`, replacing any document there."
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, slug: string) => Promise<void>",
+          "doc": "Removes the document under `slug`; nothing happens if there is none."
+        }
+      ]
+    },
+    {
+      "name": "createContent",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The rules around a store. Collection names are checked on every call (a\nserver function receives them from the client): an unknown one throws.\nThrows at creation if a reference field names an unknown collection.",
+      "signature": "function createContent(options: ContentOptions): Content",
+      "params": [
+        {
+          "name": "options",
+          "type": "ContentOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Content",
+      "examples": []
+    },
+    {
+      "name": "createMemoryStore",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A store that keeps documents in memory (tests, demos). Documents are copied in and out.",
+      "signature": "function createMemoryStore(seed?: Record<string, Doc[]>): ContentStore",
+      "params": [
+        {
+          "name": "seed",
+          "type": "Record<string, Doc[]>",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "ContentStore",
+      "examples": []
+    },
+    {
+      "name": "defaultOf",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A fresh default value for one field.",
+      "signature": "function defaultOf<T>(f: Field<T>): T",
+      "params": [
+        {
+          "name": "f",
+          "type": "Field<T>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "T",
+      "examples": []
+    },
+    {
+      "name": "defaultsOf",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The default data for a record of fields (each field's own default).",
+      "signature": "function defaultsOf<F extends Readonly<Record<string, AnyField>>>(f: F): InferFields<F>",
+      "params": [
+        {
+          "name": "f",
+          "type": "F",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "InferFields<F>",
+      "examples": []
+    },
+    {
+      "name": "defineBrick",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Registers a brick: a named component plus the schema of its data.",
+      "signature": "function defineBrick<F extends Readonly<Record<string, AnyField>>, L = undefined>(def: BrickDefinition<F, L>): Brick<F, L>",
+      "params": [
+        {
+          "name": "def",
+          "type": "BrickDefinition<F, L>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Brick<F, L>",
+      "examples": []
+    },
+    {
+      "name": "defineCollection",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Registers a collection.",
+      "signature": "function defineCollection<F extends Readonly<Record<string, AnyField>>>(def: CollectionDefinition<F>): Collection<F>",
+      "params": [
+        {
+          "name": "def",
+          "type": "CollectionDefinition<F>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Collection<F>",
+      "examples": [
+        "```ts\nexport const posts = defineCollection({\n  name: 'posts',\n  label: 'Posts',\n  fields: { title: fields.text({ label: 'Title', required: true }), date: fields.date({ label: 'Date' }) },\n  body: true,\n  sort: { field: 'date', order: 'desc' },\n});\n```"
+      ]
+    },
+    {
+      "name": "Doc",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "One document of a collection.",
+      "signature": "interface Doc<F = Record<string, unknown>>",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Stable id: references store it, so it never changes (unlike the slug)."
+        },
+        {
+          "name": "slug",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The document's address within its collection, e.g. `hello-world`. Unique per collection."
+        },
+        {
+          "name": "fields",
+          "optional": false,
+          "readonly": false,
+          "type": "F",
+          "doc": "The collection's fields."
+        },
+        {
+          "name": "entries",
+          "optional": true,
+          "readonly": false,
+          "type": "PageEntry[]",
+          "doc": "Brick entries; always an array when the collection has a body."
+        }
+      ]
+    },
+    {
+      "name": "DocIssue",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A problem found when validating a document. With `entryId`, `path` points\ninto that entry's data; without it, `path` points into the document:\n`['id']`, `['slug']`, `['fields', 'title']` or `['entries', 3]`.",
+      "signature": "type DocIssue = EntryIssue"
+    },
+    {
+      "name": "DocOf",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The document type of a collection.",
+      "signature": "type DocOf<C extends AnyCollection> = Doc<InferFields<C[\"fields\"]>>"
+    },
+    {
+      "name": "DocRef",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Which document: by id or by slug.",
+      "signature": "type DocRef = { id: string } | { slug: string }"
+    },
+    {
+      "name": "DocSummary",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A document without its body, as lists return it.",
+      "signature": "type DocSummary<F = Record<string, unknown>> = Omit<Doc<F>, \"entries\">"
+    },
+    {
+      "name": "EntryIssue",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A problem found when validating. With `entryId`, `path` points into that\nentry's data (e.g. `['cards', 2, 'title']`); without it, `path` points\ninto the container being validated (e.g. `['entries', 3]`).",
+      "signature": "interface EntryIssue",
+      "members": [
+        {
+          "name": "entryId",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "path",
+          "optional": false,
+          "readonly": false,
+          "type": "(string | number)[]",
+          "doc": ""
+        },
+        {
+          "name": "message",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "Field",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A Mortar field: a Valibot schema whose output is `T`. The input may be\nmissing (`undefined`), in which case the field's default is used.",
+      "signature": "type Field<T> = v.GenericSchema<T | undefined, T>"
+    },
+    {
+      "name": "fieldInfo",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Reads the UI description from a field, or `undefined` for a non-Mortar schema.",
+      "signature": "function fieldInfo(schema: AnyField): FieldInfo | undefined",
+      "params": [
+        {
+          "name": "schema",
+          "type": "AnyField",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "FieldInfo | undefined",
+      "examples": []
+    },
+    {
+      "name": "FieldInfo",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "UI description of a field, stored in its Valibot metadata under `mortar`.",
+      "signature": "interface FieldInfo",
+      "members": [
+        {
+          "name": "kind",
+          "optional": false,
+          "readonly": true,
+          "type": "FieldKind",
+          "doc": ""
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "help",
+          "optional": true,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "placeholder",
+          "optional": true,
+          "readonly": true,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "readonly": true,
+          "type": "boolean",
+          "doc": "Text-like fields: the value must not be empty."
+        },
+        {
+          "name": "maxLength",
+          "optional": true,
+          "readonly": true,
+          "type": "number",
+          "doc": "Text-like fields: maximum length."
+        },
+        {
+          "name": "options",
+          "optional": true,
+          "readonly": true,
+          "type": "Readonly<Record<string, string>>",
+          "doc": "`select`: option value → option label."
+        },
+        {
+          "name": "min",
+          "optional": true,
+          "readonly": true,
+          "type": "number",
+          "doc": "`number`: input constraints."
+        },
+        {
+          "name": "max",
+          "optional": true,
+          "readonly": true,
+          "type": "number",
+          "doc": ""
+        },
+        {
+          "name": "step",
+          "optional": true,
+          "readonly": true,
+          "type": "number",
+          "doc": ""
+        },
+        {
+          "name": "item",
+          "optional": true,
+          "readonly": true,
+          "type": "AnyField",
+          "doc": "`list`: the field each item is edited with."
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "readonly": true,
+          "type": "Readonly<Record<string, AnyField>>",
+          "doc": "`object`: the nested fields."
+        },
+        {
+          "name": "collection",
+          "optional": true,
+          "readonly": true,
+          "type": "string",
+          "doc": "`reference`: the name of the collection whose documents it points to."
+        }
+      ]
+    },
+    {
+      "name": "FieldKind",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The form widget a field is edited with.",
+      "signature": "type FieldKind = \"text\" | \"textarea\" | \"number\" | \"boolean\" | \"select\" | \"url\" | \"image\" | \"list\" | \"object\" | \"date\" | \"reference\""
+    },
+    {
+      "name": "fields",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "variable",
+      "summary": "Field helpers used to declare the schema of a brick or a collection.",
+      "signature": "const fields: { text, textarea, number, boolean, select, url, image, list, object, date, reference }",
+      "members": [
+        {
+          "name": "text",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: TextOptions) => Field<string>",
+          "doc": ""
+        },
+        {
+          "name": "textarea",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: TextOptions) => Field<string>",
+          "doc": ""
+        },
+        {
+          "name": "number",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<number> & { min?: number; max?: number; step?: number }) => Field<number>",
+          "doc": ""
+        },
+        {
+          "name": "boolean",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<boolean>) => Field<boolean>",
+          "doc": ""
+        },
+        {
+          "name": "select",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<keyof O & string> & { options: O }) => Field<keyof O & string>",
+          "doc": ""
+        },
+        {
+          "name": "url",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<string> & { placeholder?: string; required?: boolean }) => Field<string>",
+          "doc": ""
+        },
+        {
+          "name": "image",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<Image> & { required?: boolean }) => Field<Image>",
+          "doc": ""
+        },
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<T[]> & { of: Field<T>; min?: number; max?: number }) => Field<T[]>",
+          "doc": ""
+        },
+        {
+          "name": "object",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<InferFields<F>> & { fields: F }) => Field<InferFields<F>>",
+          "doc": ""
+        },
+        {
+          "name": "date",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<string> & { required?: boolean }) => Field<string>",
+          "doc": ""
+        },
+        {
+          "name": "reference",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<string> & { collection: string; required?: boolean }) => Field<string>",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "Fields",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A record of named fields: the `schema` of a brick or an `object` field.",
+      "signature": "type Fields = Readonly<Record<string, AnyField>>"
+    },
+    {
+      "name": "FoundReference",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A reference found in some data: where it is, which collection, and the id it holds.",
+      "signature": "interface FoundReference",
+      "members": [
+        {
+          "name": "path",
+          "optional": false,
+          "readonly": false,
+          "type": "(string | number)[]",
+          "doc": ""
+        },
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "Image",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "An image reference.",
+      "signature": "interface Image",
+      "members": [
+        {
+          "name": "src",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "alt",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "InferFields",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The data type described by a record of fields.",
+      "signature": "type InferFields<F extends Fields> = { -readonly [K in keyof F]: v.InferOutput<F[K]> }"
+    },
+    {
+      "name": "Issue",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A validation problem, located by its path inside the brick's data.",
+      "signature": "interface Issue",
+      "members": [
+        {
+          "name": "path",
+          "optional": false,
+          "readonly": false,
+          "type": "(string | number)[]",
+          "doc": ""
+        },
+        {
+          "name": "message",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "isValidDocId",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Whether `id` is a valid document id: 1 to 64 letters, digits, `_` or `-` (a UUID fits).",
+      "signature": "function isValidDocId(id: string): boolean",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
+    },
+    {
+      "name": "isValidSlug",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Whether `slug` is a valid slug: up to 100 lowercase letters and digits, single dashes between (`home`, `about-us`).",
+      "signature": "function isValidSlug(slug: string): boolean",
+      "params": [
+        {
+          "name": "slug",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
+    },
+    {
+      "name": "ListOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for listing documents. Plain JSON, so they can cross a server function.",
+      "signature": "interface ListOptions",
+      "members": [
+        {
+          "name": "where",
+          "optional": true,
+          "readonly": false,
+          "type": "Record<string, string | number | boolean>",
+          "doc": "Keep documents whose `id`, `slug` or top-level field equals each value."
+        },
+        {
+          "name": "sort",
+          "optional": true,
+          "readonly": false,
+          "type": "SortOrder<string>",
+          "doc": "Order. Defaults to the collection's `sort`; ties are ordered by slug."
+        },
+        {
+          "name": "limit",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "At most this many documents: an integer from 1 to 100."
+        }
+      ]
+    },
+    {
+      "name": "normalizeDoc",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Coerces unknown data (a stored file, data from props) into a document that\nrenders and edits safely. A missing or invalid id falls back to the slug,\nso hand-written files need none (the next save stores it). With a body,\nentries are normalized; without one, stored entries are kept as plain\nJSON but never rendered, so turning `body` off loses nothing. The input\nis never modified.",
+      "signature": "function normalizeDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): Doc",
+      "params": [
+        {
+          "name": "collection",
+          "type": "AnyCollection",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "bricks",
+          "type": "readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "raw",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Doc",
+      "examples": []
+    },
+    {
+      "name": "normalizeEntries",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Coerces unknown data into entries that render and edit safely: entries of\nknown bricks get normalized data, entries of unknown bricks keep their\ndata (as plain JSON), and malformed or duplicate entries are dropped.",
+      "signature": "function normalizeEntries(bricks: readonly AnyBrick[], raw: unknown): PageEntry[]",
+      "params": [
+        {
+          "name": "bricks",
+          "type": "readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "raw",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "PageEntry[]",
+      "examples": []
+    },
+    {
+      "name": "PageEntry",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "One brick instance in a body.",
+      "signature": "interface PageEntry",
+      "members": [
+        {
+          "name": "brick",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The `name` of the brick that renders this entry."
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Stable id, created once when the entry is added. Never an array index."
+        },
+        {
+          "name": "data",
+          "optional": false,
+          "readonly": false,
+          "type": "Record<string, unknown>",
+          "doc": "The brick's data. Rendering normalizes it (`Brick.normalize`); saving should validate it."
+        }
+      ]
+    },
+    {
+      "name": "PageView",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Renders every entry with its brick's component. Bricks that load data read `ContentContext`.",
+      "signature": "function PageView(props: PageViewProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "PageViewProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "PageViewProps",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface PageViewProps",
+      "members": [
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[]",
+          "doc": "The bricks this site defines."
+        },
+        {
+          "name": "entries",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly PageEntry[]",
+          "doc": "The entries to render, in order: a page's or a document's body."
+        },
+        {
+          "name": "fallback",
+          "optional": true,
+          "readonly": false,
+          "type": "(entry: PageEntry) => Element",
+          "doc": "Rendered in place of an entry whose brick isn't defined (e.g. a brick\nthat was removed from the code). Default: nothing, which suits a public\nsite; the admin preview shows a placeholder."
+        },
+        {
+          "name": "loadingFallback",
+          "optional": true,
+          "readonly": false,
+          "type": "(entry: PageEntry) => Element",
+          "doc": "Shown while a brick's first load is in flight. Default: nothing."
+        },
+        {
+          "name": "errorFallback",
+          "optional": true,
+          "readonly": false,
+          "type": "(entry: PageEntry, error: unknown) => Element",
+          "doc": "Shown in place of a brick whose load failed. Without it, the error\nreaches the app's own error boundary (a server render fails with it);\nthe admin preview passes one. It clears when the brick loads again: when\ndata its loader read before its first `await` changes, or the source's\n`track` signal does."
+        }
+      ]
+    },
+    {
+      "name": "referencedCollections",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The collections that references in `schema` point to (following objects and lists).",
+      "signature": "function referencedCollections(schema: Fields): Set<string>",
+      "params": [
+        {
+          "name": "schema",
+          "type": "Fields",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Set<string>",
+      "examples": []
+    },
+    {
+      "name": "referencesIn",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Every non-empty reference in `data`, following `object` and `list` fields,\nso a list of references (`fields.list({ of: fields.reference(...) })`) is\nfound item by item.",
+      "signature": "function referencesIn(schema: Fields, data: unknown): FoundReference[]",
+      "params": [
+        {
+          "name": "schema",
+          "type": "Fields",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "data",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "FoundReference[]",
+      "examples": []
+    },
+    {
+      "name": "Referrer",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A document holding a reference, and where. With `entryId`, `path` is inside that entry's data; otherwise it starts with `'fields'`.",
+      "signature": "interface Referrer",
+      "members": [
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "slug",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "title",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "entryId",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "path",
+          "optional": false,
+          "readonly": false,
+          "type": "(string | number)[]",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "RemoveResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `Content.remove`.",
+      "signature": "type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] }"
+    },
+    {
+      "name": "SaveResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `Content.save`.",
+      "signature": "type SaveResult = { ok: true } | { ok: false; issues: DocIssue[] }"
+    },
+    {
+      "name": "SchemaOps",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What bricks and collections share: defaults, validation and normalization for a record of fields.",
+      "signature": "interface SchemaOps<F extends Fields>",
+      "members": [
+        {
+          "name": "defaults",
+          "optional": false,
+          "readonly": false,
+          "type": "() => InferFields<F>",
+          "doc": "Fresh default data."
+        },
+        {
+          "name": "validate",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => ValidateResult<InferFields<F>>",
+          "doc": "Validates (and fills defaults into) unknown data."
+        },
+        {
+          "name": "normalize",
+          "optional": false,
+          "readonly": false,
+          "type": "(data: unknown) => InferFields<F>",
+          "doc": "Coerces unknown data into the schema's shape for rendering: missing fields\nget defaults, and fields of the wrong type are replaced by their default.\nValues that are the right type but break a rule (an empty required text)\nare kept, so a preview shows what the editor typed."
+        }
+      ]
+    },
+    {
+      "name": "SortOrder",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A list order: by a field of the collection or by slug.",
+      "signature": "interface SortOrder<K extends string = string>",
+      "members": [
+        {
+          "name": "field",
+          "optional": false,
+          "readonly": false,
+          "type": "K | \"slug\"",
+          "doc": ""
+        },
+        {
+          "name": "order",
+          "optional": true,
+          "readonly": false,
+          "type": "\"asc\" | \"desc\"",
+          "doc": "Default `'asc'`."
+        }
+      ]
+    },
+    {
+      "name": "useContent",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The content reader for the current component, from `ContentContext`.\nCall it in a component body; read with it in a memo (under `<Loading>`).\nThrows if no source is provided.",
+      "signature": "function useContent(): ContentReader",
+      "params": [],
+      "returns": "ContentReader",
+      "examples": []
+    },
+    {
+      "name": "validateDoc",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Checks a document before it is saved: its id and slug (not one of the\ncollection's reserved slugs), its fields against the collection's schema\n(issues at `['fields', ...]`), and with a body its entries. Unknown\ntop-level keys are dropped. Whether the slug is free is the store's\nquestion, not this one.",
+      "signature": "function validateDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): ValidateDocResult",
+      "params": [
+        {
+          "name": "collection",
+          "type": "AnyCollection",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "bricks",
+          "type": "readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "raw",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ValidateDocResult",
+      "examples": []
+    },
+    {
+      "name": "ValidateDocResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `validateDoc`: the cleaned document, or every issue found.",
+      "signature": "type ValidateDocResult = { success: true; doc: Doc } | { success: false; issues: DocIssue[] }"
+    },
+    {
+      "name": "validateEntries",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Checks entries before they are saved: each entry's shape, unique ids, and\nits data against its brick's schema. Problems are pushed onto `issues`\n(shape problems at `['entries', index]`); the returned entries have each\nknown brick's validated data, and entries of unknown bricks are kept as\nthey are, so retiring a brick never loses content.",
+      "signature": "function validateEntries(bricks: readonly AnyBrick[], raw: readonly unknown[], issues: EntryIssue[]): PageEntry[]",
+      "params": [
+        {
+          "name": "bricks",
+          "type": "readonly AnyBrick[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "raw",
+          "type": "readonly unknown[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "issues",
+          "type": "EntryIssue[]",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "PageEntry[]",
+      "examples": []
+    },
+    {
+      "name": "ValidateResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `brick.validate(data)`.",
+      "signature": "type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] }"
+    },
+    {
+      "name": "createJsonFileStore",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A content store backed by JSON files. Collection names and slugs are\nchecked, so neither can escape `dir`. A file that can't be parsed is\nskipped when listing (and logged), so one bad file doesn't break every\nlist on the site, but reading it directly throws.",
+      "signature": "function createJsonFileStore(options: JsonFileStoreOptions): ContentStore",
+      "params": [
+        {
+          "name": "options",
+          "type": "JsonFileStoreOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ContentStore",
+      "examples": []
+    },
+    {
+      "name": "JsonFileStoreOptions",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface JsonFileStoreOptions",
+      "members": [
+        {
+          "name": "dir",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Directory holding one folder per collection, resolved against the working directory. Created on first save."
+        }
+      ]
+    }
+  ]
+}

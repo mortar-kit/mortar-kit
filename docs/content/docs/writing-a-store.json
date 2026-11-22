@@ -1,0 +1,27 @@
+{
+  "id": "writing-a-store",
+  "fields": {
+    "title": "Writing a store",
+    "description": "Keep content anywhere by implementing four methods. This site's session storage store is the worked example.",
+    "section": "advanced",
+    "order": 20
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "A store is four methods over raw documents, by collection name and slug. `createContent` does everything else: validation, unique slugs, renames, references. So a store stays small.\n\n```ts\ninterface ContentStore {\n  list(collection: string): Promise<unknown[]>;\n  get(collection: string, slug: string): Promise<unknown>;\n  put(collection: string, doc: Doc): Promise<void>;\n  remove(collection: string, slug: string): Promise<void>;\n}\n```\n\n- `list` returns every stored document of the collection, each with `slug` set, or `[]`.\n- `get` returns the document under `slug`, or `undefined`. If it exists but can't be read, throw.\n- `put` stores the document under `doc.slug`, replacing what's there.\n- `remove` deletes the document under `slug`, and does nothing if there's none.\n\nReturn raw data: `createContent` normalizes and validates it.\n\n## Example: session storage\n\nThis site lets anyone edit it without a server. Its admin saves through `createContent` in the browser, over a store kept in the tab's session storage. Here's that store, slightly shortened.\n\nIt stores only **changes** on top of the published content, under one key: a saved document, or `null` for a deleted one. Clearing that key returns the reader to the published site, which is what the **Reset** button does.\n\n```ts\nimport { isValidSlug, type ContentStore, type Doc } from '@mortar-kit/core';\n\ntype Changes = Record<string, Record<string, Doc | null>>;\n\nexport function createSessionStorageStore(options: {\n  baseline: Record<string, Doc[]>;\n  key?: string;\n}): ContentStore & { hasChanges(): boolean; clear(): void } {\n  const key = options.key ?? 'mortar:changes';\n  const baseline = new Map(\n    Object.entries(options.baseline).map(([c, docs]) => [c, new Map(docs.map((d) => [d.slug, d]))]),\n  );\n  const read = (): Changes => JSON.parse(sessionStorage.getItem(key) ?? '{}');\n  const change = (collection: string, slug: string, doc: Doc | null) => {\n    const changes = read();\n    (changes[collection] ??= {})[slug] = doc;\n    sessionStorage.setItem(key, JSON.stringify(changes));\n  };\n\n  return {\n    async list(collection) {\n      const merged = new Map(baseline.get(collection));\n      for (const [slug, doc] of Object.entries(read()[collection] ?? {})) {\n        if (doc === null) merged.delete(slug);\n        else merged.set(slug, doc);\n      }\n      return [...merged].map(([slug, doc]) => ({ ...doc, slug }));\n    },\n    async get(collection, slug) {\n      const changes = read()[collection] ?? {};\n      const doc = slug in changes ? changes[slug] : baseline.get(collection)?.get(slug);\n      return doc ? { ...doc, slug } : undefined;\n    },\n    async put(collection, doc) {\n      if (!isValidSlug(doc.slug)) throw new Error(`Invalid slug \"${doc.slug}\"`);\n      change(collection, doc.slug, doc);\n    },\n    async remove(collection, slug) {\n      change(collection, slug, null);\n    },\n    hasChanges: () => Object.values(read()).some((folder) => Object.keys(folder).length > 0),\n    clear: () => sessionStorage.removeItem(key),\n  };\n}\n```\n\nThe full version is in `docs/src/content/session-store.ts`. It also copies documents in and out, survives storage that's missing or unreadable, and drops the change when you delete a document you created in the same tab.\n\nSession storage belongs to one tab. Edits last while the tab is open and survive reloads. Same-origin iframes in the tab share it, which is how the admin's preview sees your saves. No one else ever sees them.\n\n## Using it\n\n```ts\nconst store = createSessionStorageStore({ baseline });\nconst content = createContent({ store, collections, bricks });\n\n// The admin saves into this tab:\n<Admin content={content} ... />\n\n// Reset to the published site:\nstore.clear();\n```\n\nOn this site, the published documents (`baseline`) are JSON files bundled into the app, and the server renders them. Once a page has loaded in the browser, it reads again through the session storage store, so your edits replace the published content. See [About this site](/docs/about-this-site)."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-2",
+      "data": {
+        "tone": "tip",
+        "title": "Other stores",
+        "body": "The same four methods fit a database table keyed by collection and slug, a key-value store, or a headless API. Keep the rules out of the store: that's what `createContent` is for."
+      }
+    }
+  ]
+}

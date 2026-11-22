@@ -1,0 +1,38 @@
+.hero {
+  padding: 5rem 0 3rem;
+  text-align: center;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 7vw, 4rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.intro {
+  max-width: 38rem;
+  margin: 1.25rem auto 0;
+  font-size: 1.2rem;
+  color: var(--docs-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.primary,
+.secondary {
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--docs-radius);
+  font-weight: 500;
+  text-decoration: none;
+}
+.primary {
+  color: var(--docs-accent-text);
+  background: var(--docs-accent);
+}
+.secondary {
+  color: var(--docs-text);
+  border: 1px solid var(--docs-border);
+}

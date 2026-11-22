@@ -1,0 +1,34 @@
+{
+  "id": "loading-data",
+  "fields": {
+    "title": "Loading data",
+    "description": "Bricks that show other documents, such as the latest posts or a product grid.",
+    "section": "guides",
+    "order": 50
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "Some bricks show more than their own data: the newest posts, the products in a category. Give such a brick a `load` function. It receives the brick's data and a typed reader, and what it returns reaches the component as `props.loaded`.\n\n```tsx\nexport const latestPosts = defineBrick({\n  name: 'latest-posts',\n  label: 'Latest posts',\n  schema: {\n    heading: fields.text({ label: 'Heading', default: 'Latest posts' }),\n    limit: fields.number({ label: 'How many', min: 1, max: 12, default: 3 }),\n  },\n  load: (data, content) => content.list(posts, { limit: data.limit }),\n  component: (props) => (\n    <section>\n      <h2>{props.data.heading}</h2>\n      <ul>\n        <For each={props.loaded}>{(post) => <li><a href={`/posts/${post.slug}`}>{post.fields.title}</a></li>}</For>\n      </ul>\n    </section>\n  ),\n});\n```\n\nWrite `load` before `component`, so `props.loaded` gets its type.\n\n## Where it runs\n\n- **On the server**, when the page renders, so the content is in the HTML. Pages that ship no JavaScript work too.\n- **In the admin preview**, in the browser. It reads saved content, and loads again after each save.\n\nIt reads from the `ContentContext` your app provides.\n\n## What makes it load again\n\nRead the `data` fields your loader depends on **before its first `await`**. Changing those fields loads again, and changing others doesn't. While a new load is in flight, the previous result stays on screen.\n\nA source can also offer `track()`: `PageView` calls it before each load, where reads are tracked, so reading a signal there makes every loader run again when it changes. The admin preview does this after saves, and this site does it to swap in your edits."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-2",
+      "data": {
+        "tone": "note",
+        "title": "Return plain JSON",
+        "body": "What `load` returns may be sent from the server to the browser with the page, so keep it plain data: no functions, class instances or promises inside."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-3",
+      "data": {
+        "name": "ContentReader"
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  background: color-mix(in srgb, var(--docs-warning) 14%, var(--docs-bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--docs-warning) 35%, var(--docs-bg));
+}
+.bar p {
+  margin: 0;
+}
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.reset,
+.cancel {
+  font: inherit;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--docs-radius);
+  cursor: pointer;
+}
+.reset {
+  color: var(--docs-accent-text);
+  background: var(--docs-text);
+  border: 1px solid var(--docs-text);
+}
+.cancel {
+  color: var(--docs-text);
+  background: transparent;
+  border: 1px solid var(--docs-border);
+}

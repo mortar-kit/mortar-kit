@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "pnpm --filter mortar-example-site dev",
+    "docs": "pnpm --filter mortar-docs dev",
+    "reference": "pnpm --filter mortar-docs reference",
     "build": "pnpm -r build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p packages/core/tsconfig.build.json && tsc --noEmit -p packages/admin/tsconfig.build.json",
-    "lint": "oxlint packages examples",
+    "lint": "oxlint packages examples docs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

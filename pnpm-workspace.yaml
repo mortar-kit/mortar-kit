@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - examples/*
+  - docs
 
 # pnpm 12 reads project settings from this file (not package.json#pnpm).
 saveExact: true

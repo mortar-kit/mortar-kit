@@ -1,0 +1,52 @@
+/* The docs site's base styles and colours. Components style themselves with
+   CSS modules next to them; they read these --docs-* values. */
+:root {
+  --docs-bg: #ffffff;
+  --docs-surface: #f6f7f9;
+  --docs-text: #1b1d22;
+  --docs-muted: #5d6370;
+  --docs-border: #e3e5ea;
+  --docs-accent: #2f6fde;
+  --docs-accent-text: #ffffff;
+  --docs-code-bg: #f3f4f7;
+  --docs-pre-bg: #14161b;
+  --docs-pre-text: #e6e8ee;
+  --docs-note: #2f6fde;
+  --docs-tip: #1f9d6b;
+  --docs-warning: #c77a12;
+  --docs-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --docs-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --docs-radius: 8px;
+  color-scheme: light dark;
+  font-family: var(--docs-font);
+  color: var(--docs-text);
+  background: var(--docs-bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --docs-bg: #101217;
+    --docs-surface: #171a21;
+    --docs-text: #e7e9ee;
+    --docs-muted: #9aa1ae;
+    --docs-border: #272b35;
+    --docs-accent: #6ea2ff;
+    --docs-accent-text: #0b1020;
+    --docs-code-bg: #1d212a;
+    --docs-pre-bg: #0b0d11;
+    --docs-note: #6ea2ff;
+    --docs-tip: #43c58f;
+    --docs-warning: #e6a23c;
+  }
+}
+body {
+  margin: 0;
+  background: var(--docs-bg);
+  line-height: 1.6;
+}
+a {
+  color: var(--docs-accent);
+}
+code {
+  font-family: var(--docs-mono);
+  font-size: 0.9em;
+}

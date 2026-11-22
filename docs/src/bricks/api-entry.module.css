@@ -1,0 +1,6 @@
+.missing {
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--docs-border);
+  border-radius: var(--docs-radius);
+  color: var(--docs-muted);
+}

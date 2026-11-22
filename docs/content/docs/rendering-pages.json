@@ -1,0 +1,32 @@
+{
+  "id": "rendering-pages",
+  "fields": {
+    "title": "Rendering pages",
+    "description": "Read documents in your routes and render their bodies with PageView.",
+    "section": "guides",
+    "order": 40
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "Mortar stays out of routing. Your routes decide which document to show, read it, and render it inside your own layout. Mortar renders the body.\n\n## Provide the content\n\nWrap your app in `ContentContext` with a `ContentSource`: two functions that list and get documents, usually your server functions.\n\n```tsx\nimport { ContentContext } from '@mortar-kit/core';\n\n<ContentContext value={{ list: listDocs, get: getDoc }}>\n  <Router>...</Router>\n</ContentContext>\n```\n\n## Read a document\n\n`useContent()` gives a typed reader: pass a collection object and you get documents with typed fields.\n\n```tsx\nimport { PageView, useContent } from '@mortar-kit/core';\nimport { useParams } from '@solidjs/router';\nimport { createMemo, Show } from 'solid-js';\n\nexport default function PostRoute() {\n  const params = useParams<{ slug: string }>();\n  const content = useContent();\n  const post = createMemo(() => content.get(posts, { slug: params.slug }));\n  return (\n    <Show when={post()} fallback={<NotFound />}>\n      {(p) => (\n        <article>\n          <h1>{p().fields.title}</h1>\n          <PageView bricks={bricks} entries={p().entries ?? []} />\n        </article>\n      )}\n    </Show>\n  );\n}\n```\n\nReads return promises. A memo holding a promise is pending until it lands, so put a `<Loading>` boundary around your routes. On the server the page waits for it, so the HTML holds the content.\n\nLists work the same way:\n\n```ts\nconst latest = createMemo(() => content.list(posts, { limit: 5 }));\nconst inCategory = createMemo(() => content.list(products, { where: { category: categoryId() } }));\n```\n\n`where` keeps documents whose `id`, `slug` or top-level field equals each value. `sort` overrides the collection's order, and `limit` takes 1 to 100. Lists leave out bodies.\n\n## Layouts\n\nDetail pages are your code: a post's title and date, a product's price. Keep them in layout components, so the admin's preview can render documents inside the same layouts (see [The admin](/docs/admin)).\n\n## Missing documents\n\n`get` returns `null` when there's no document. Render your own not-found view, and set the status with `httpStatus(404)` from `@solidjs/web` when rendering on the server."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-2",
+      "data": {
+        "name": "PageView"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-3",
+      "data": {
+        "name": "useContent"
+      }
+    }
+  ]
+}

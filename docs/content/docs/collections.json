@@ -1,0 +1,32 @@
+{
+  "id": "collections",
+  "fields": {
+    "title": "Collections",
+    "description": "Sets of documents that share a schema, such as pages, posts and products.",
+    "section": "guides",
+    "order": 30
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "A collection is a named set of documents with the same fields. Pages, posts, products and categories are all collections. Mortar ships none: your site declares what it needs.\n\n```ts\nimport { defineCollection, fields } from '@mortar-kit/core';\n\nexport const posts = defineCollection({\n  name: 'posts',\n  label: 'Posts',\n  fields: {\n    title: fields.text({ label: 'Title', required: true }),\n    date: fields.date({ label: 'Published', required: true }),\n    excerpt: fields.textarea({ label: 'Excerpt' }),\n  },\n  body: true,\n  sort: { field: 'date', order: 'desc' },\n});\n```\n\n| Option | Meaning |\n| --- | --- |\n| `name` | Stable identifier and storage folder. Lowercase, e.g. `posts` or `case-studies`. |\n| `label` | The plural name the admin shows. Defaults to `name`. |\n| `fields` | The fields every document has. |\n| `body` | Whether documents also have a body of bricks. Default `false`. |\n| `title` | The text field shown as a document's title in lists. Defaults to the first text field, then the slug. |\n| `sort` | The default list order: a field (or `'slug'`) and `'asc'` or `'desc'`. Defaults to the title. |\n| `reservedSlugs` | Slugs documents may not use, such as your own route segments next to `/:slug`. |\n\n## Documents\n\nA document is a plain object:\n\n```ts\ninterface Doc {\n  id: string;        // stable: references store it, and it never changes\n  slug: string;      // the address, unique in the collection, e.g. 'hello-world'\n  fields: { ... };   // the collection's fields\n  entries?: PageEntry[]; // the body, when the collection has one\n}\n```\n\nSlugs are lowercase letters and digits with single dashes between, up to 100 characters. Renaming a slug keeps the id, so links by reference still work.\n\nKeys of `fields` that the schema doesn't describe are kept, so other code can store its own data alongside. Use `DocOf<typeof posts>` for a typed document.\n\n## Many collections, one admin\n\nPass them all to `<Admin>` in the order its rail should list them, and to `createContent`, which checks that every reference field names a known collection.\n\n```ts\nexport const collections = [pages, posts, products, categories] as const;\n```"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-2",
+      "data": {
+        "name": "defineCollection"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-3",
+      "data": {
+        "name": "Doc"
+      }
+    }
+  ]
+}

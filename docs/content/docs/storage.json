@@ -1,0 +1,55 @@
+{
+  "id": "storage",
+  "fields": {
+    "title": "Storage",
+    "description": "Where documents live, and the rules Mortar applies whichever store you use.",
+    "section": "advanced",
+    "order": 10
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "Storage has two layers. A **store** keeps raw documents and is deliberately dumb. `createContent` wraps any store and applies every rule.\n\n```ts\nimport { createContent } from '@mortar-kit/core';\nimport { createJsonFileStore } from '@mortar-kit/core/server';\n\nconst content = createContent({ store: createJsonFileStore({ dir: 'content' }), collections, bricks });\n```\n\n## The rules\n\n`createContent` returns a `Content`, with `list`, `get`, `save` and `remove`. Whatever the store, it:\n\n- **normalizes on read**, so pages always get documents of the right shape;\n- **validates on save**, and returns problems (`{ ok: false, issues }`) instead of throwing, so the admin can show them;\n- keeps **slugs unique** in each collection;\n- **moves the document on a rename** and keeps its id;\n- supports `where`, `sort` and `limit` when listing;\n- **refuses to delete** a document while others reference it, and returns those documents;\n- runs writes through one `createContent` **one at a time**, so those checks still hold when the write lands.\n\nCollection names are checked on every call, since a server function receives them from the browser.\n\n## The stores Mortar ships\n\n| Store | Where | Use |\n| --- | --- | --- |\n| `createJsonFileStore({ dir })` | `@mortar-kit/core/server` | One pretty-printed file per document, `<dir>/<collection>/<slug>.json`. Content can live in git. Writes are atomic. |\n| `createMemoryStore(seed?)` | `@mortar-kit/core` | In memory: tests and demos. |\n\nThe JSON-file store reads the whole folder to list a collection, which is fine for small sites."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-2",
+      "data": {
+        "tone": "note",
+        "title": "Server functions belong in your app",
+        "body": "The Solid Vite plugin compiles `'use server'` only outside `node_modules`, so Mortar exports plain functions and your app wraps them in its own server functions."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "md-3",
+      "data": {
+        "source": "## Several processes\n\nWrites are serialized within one `createContent`. If several server processes share a store, the store itself needs to lock.\n\nWant to keep content somewhere else? See [Writing a store](/docs/writing-a-store)."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-4",
+      "data": {
+        "name": "ContentStore"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-5",
+      "data": {
+        "name": "createContent"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-6",
+      "data": {
+        "name": "createJsonFileStore"
+      }
+    }
+  ]
+}

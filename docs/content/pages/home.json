@@ -1,0 +1,60 @@
+{
+  "id": "home",
+  "fields": {
+    "title": "Mortar",
+    "description": "A small website framework on Solid 2: bricks, collections and a live-preview admin."
+  },
+  "entries": [
+    {
+      "brick": "hero",
+      "id": "hero",
+      "data": {
+        "heading": "Build sites from bricks",
+        "intro": "Mortar is a small website framework on Solid 2. Define your sections and collections in code, and get pages rendered on the server and an admin with a live preview.",
+        "primaryLabel": "Get started",
+        "primaryHref": "/docs/introduction",
+        "secondaryLabel": "Edit this site",
+        "secondaryHref": "/admin"
+      }
+    },
+    {
+      "brick": "cards",
+      "id": "ways-in",
+      "data": {
+        "heading": "",
+        "items": [
+          {
+            "title": "Bricks",
+            "text": "Sections as Solid components with a typed schema. The admin builds their forms for you.",
+            "href": "/docs/bricks"
+          },
+          {
+            "title": "Collections",
+            "text": "Pages, posts, products: documents with typed fields and a body of bricks.",
+            "href": "/docs/collections"
+          },
+          {
+            "title": "The admin",
+            "text": "A schema-driven editor whose preview is your real site, with your own layouts and styles.",
+            "href": "/docs/admin"
+          },
+          {
+            "title": "Storage you can swap",
+            "text": "JSON files by default. Write a store in four methods; this site keeps your edits in session storage.",
+            "href": "/docs/writing-a-store"
+          },
+          {
+            "title": "API reference",
+            "text": "Every export, generated from the packages' TypeScript sources.",
+            "href": "/reference"
+          },
+          {
+            "title": "Try it here",
+            "text": "Open the admin and change anything on this site. Only you see it, and you can reset it.",
+            "href": "/admin"
+          }
+        ]
+      }
+    }
+  ]
+}

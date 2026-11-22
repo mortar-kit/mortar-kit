@@ -142,6 +142,18 @@ loading bricks in the preview (and reloading on a picker change).
    `MORTAR_THEME=<name>`. Fonts named by themes are not loaded by Mortar
    (system fallbacks unless the app loads them).
 
+10. Docs site (user's request, 2026-11-22): `docs/`, written in Mortar,
+   with guides as content, a generated API reference, and a session storage
+   store so anyone can edit the site in their own tab, with a reset back to
+   the published content (see AGENTS.md). Verified in a browser on the
+   production build: every route, edit → save → the edit on public pages
+   (client navigation and reload) → reset. Not done yet: syntax
+   highlighting, a collapsible sidebar on phones, search, deployment (it needs
+   a Node server, or a prerender step, since nothing is server-side but the
+   render). The admin logs hydration key misses when opened on a document
+   deep link (`?collection=&id=`); the example site does too, so it's in
+   `@mortar-kit/admin` (the outline portal), not the docs.
+
 ## Open / not built, and future plans
 
 How the user works: they pick the next feature; small loose ends get done

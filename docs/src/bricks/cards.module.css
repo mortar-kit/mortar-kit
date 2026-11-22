@@ -1,0 +1,30 @@
+.cards {
+  padding: 1rem 0 2rem;
+}
+.cards h2 {
+  font-size: 1.4rem;
+  text-align: center;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--docs-border);
+  border-radius: var(--docs-radius);
+  background: var(--docs-surface);
+  color: var(--docs-text);
+  text-decoration: none;
+}
+.card span {
+  font-size: 0.93rem;
+  color: var(--docs-muted);
+}
+a.card:hover {
+  border-color: var(--docs-accent);
+}
