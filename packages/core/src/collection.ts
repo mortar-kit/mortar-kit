@@ -1,7 +1,8 @@
 // defineCollection: a named set of documents sharing one schema, such as
 // posts, products or a site's pages. Each document has typed `fields` (what
 // lists and pickers show) and, when the collection has a `body`, brick
-// entries: a body made of bricks.
+// entries: a body made of bricks. An `orderable` collection is kept in a
+// manual order.
 import { keepExtra, schemaOps, type SchemaOps } from './brick.ts';
 import type { Doc } from './doc.ts';
 import { fieldInfo, type Fields, type InferFields } from './fields.ts';
@@ -28,8 +29,19 @@ export interface CollectionDefinition<F extends Fields> {
    * Defaults to the first `text` field; without one, the slug is shown.
    */
   title?: keyof F & string;
-  /** The default list order. Defaults to the title field (or the slug), ascending. */
+  /**
+   * The default list order. Defaults to the title field (or the slug),
+   * ascending. With `orderable`, lists follow the manual order instead and
+   * this orders only documents that have no place in it yet.
+   */
   sort?: SortOrder<keyof F & string>;
+  /**
+   * Whether editors put the documents in order by hand (drag or move
+   * up/down in the admin). Lists then follow that order unless they pass a
+   * `sort`, and new documents go to the end. The order is kept in each
+   * document's `position`, which `createContent` manages. Default false.
+   */
+  orderable?: boolean;
   /** Slugs documents may not use, e.g. the app's own route segments next to `/:slug`. */
   reservedSlugs?: readonly string[];
 }
@@ -42,6 +54,8 @@ export interface Collection<F extends Fields = Fields> extends SchemaOps<F> {
   readonly body: boolean;
   readonly title: (keyof F & string) | undefined;
   readonly sort: Required<SortOrder>;
+  /** Whether documents are in a manual order (see `CollectionDefinition.orderable`). */
+  readonly orderable: boolean;
   readonly reservedSlugs: readonly string[];
   /** A document's label in lists: its title field, or its slug when that is empty or there is no title field. */
   titleOf(doc: { slug: string; fields: Record<string, unknown> }): string;
@@ -87,6 +101,7 @@ export function defineCollection<const F extends Fields>(def: CollectionDefiniti
     body,
     title: title as (keyof F & string) | undefined,
     sort: { field: sortField, order: def.sort?.order ?? 'asc' },
+    orderable: def.orderable ?? false,
     reservedSlugs: def.reservedSlugs ?? [],
     ...ops,
     titleOf(doc) {

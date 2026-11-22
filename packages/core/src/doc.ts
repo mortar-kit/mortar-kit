@@ -1,5 +1,5 @@
 // The document model: one item of a collection (a post, a product, a page).
-// Plain JSON: `{ id, slug, fields, entries? }`. Also the two
+// Plain JSON: `{ id, slug, position?, fields, entries? }`. Also the two
 // checks every document goes through: normalize when loading (be
 // forgiving, never crash) and validate when saving (be strict, report
 // every problem).
@@ -13,6 +13,12 @@ export interface Doc<F = Record<string, unknown>> {
   id: string;
   /** The document's address within its collection, e.g. `hello-world`. Unique per collection. */
   slug: string;
+  /**
+   * Where the document is in its collection's manual order (lower first),
+   * when the collection is `orderable`. `createContent` sets it: on the
+   * first save and on `move`; saves keep the stored one.
+   */
+  position?: number;
   /** The collection's fields. */
   fields: F;
   /** Brick entries; always an array when the collection has a body. */
@@ -53,7 +59,8 @@ export function isValidDocId(id: string): boolean {
  * renders and edits safely. A missing or invalid id falls back to the slug,
  * so hand-written files need none (the next save stores it). With a body,
  * entries are normalized; without one, stored entries are kept as plain
- * JSON but never rendered, so turning `body` off loses nothing. The input
+ * JSON but never rendered, so turning `body` off loses nothing. A
+ * `position` is kept when it is a finite number. The input
  * is never modified.
  */
 export function normalizeDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): Doc {
@@ -61,6 +68,7 @@ export function normalizeDoc(collection: AnyCollection, bricks: readonly AnyBric
   const slug = typeof source.slug === 'string' ? source.slug : '';
   const id = typeof source.id === 'string' && isValidDocId(source.id) ? source.id : slug;
   const doc: Doc = { id, slug, fields: collection.normalize(isRecord(source.fields) ? toJson(source.fields, 'drop') : {}) };
+  if (typeof source.position === 'number' && Number.isFinite(source.position)) doc.position = source.position;
   if (collection.body) doc.entries = normalizeEntries(bricks, source.entries);
   else if (Array.isArray(source.entries)) doc.entries = toJson(source.entries, 'drop') as PageEntry[];
   return doc;
@@ -70,7 +78,8 @@ export function normalizeDoc(collection: AnyCollection, bricks: readonly AnyBric
  * Checks a document before it is saved: its id and slug (not one of the
  * collection's reserved slugs), its fields against the collection's schema
  * (issues at `['fields', ...]`), and with a body its entries. Unknown
- * top-level keys are dropped. Whether the slug is free is the store's
+ * top-level keys are dropped, and so is `position` (`createContent` keeps
+ * the stored one). Whether the slug is free is the store's
  * question, not this one.
  */
 export function validateDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): ValidateDocResult {

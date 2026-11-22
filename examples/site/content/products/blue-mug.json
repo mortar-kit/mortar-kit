@@ -1,5 +1,6 @@
 {
   "id": "blue-mug",
+  "position": 2,
   "fields": {
     "name": "Blue mug",
     "price": 14,
