@@ -1,0 +1,55 @@
+/* Typography for rendered Markdown (also used by callouts and the reference). */
+.markdown {
+  font-size: 1rem;
+}
+.markdown :global(h2) {
+  margin: 2.25rem 0 0.75rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+.markdown :global(h3) {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.15rem;
+}
+.markdown :global(p),
+.markdown :global(ul),
+.markdown :global(ol) {
+  margin: 0 0 1rem;
+}
+.markdown :global(li) + :global(li) {
+  margin-top: 0.25rem;
+}
+.markdown :global(:not(pre) > code) {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--docs-code-bg);
+}
+.markdown :global(pre) {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  border-radius: var(--docs-radius);
+  background: var(--docs-pre-bg);
+  color: var(--docs-pre-text);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+.markdown :global(table) {
+  width: 100%;
+  margin: 0 0 1.25rem;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.markdown :global(th),
+.markdown :global(td) {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--docs-border);
+  vertical-align: top;
+}
+.markdown :global(blockquote) {
+  margin: 0 0 1rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--docs-border);
+  color: var(--docs-muted);
+}

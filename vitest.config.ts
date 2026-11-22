@@ -14,7 +14,7 @@ export default defineConfig({
         test: {
           name: 'client',
           environment: 'jsdom',
-          include: ['packages/*/src/**/*.test.tsx', 'examples/*/src/**/*.test.tsx'],
+          include: ['packages/*/src/**/*.test.tsx', 'examples/*/src/**/*.test.tsx', 'docs/src/**/*.test.tsx'],
           exclude: ['**/*.ssr.test.tsx', '**/node_modules/**'],
         },
       },
@@ -28,6 +28,8 @@ export default defineConfig({
             'packages/*/src/**/*.ssr.test.tsx',
             'examples/*/src/**/*.test.ts',
             'examples/*/src/**/*.ssr.test.tsx',
+            'docs/src/**/*.test.ts',
+            'docs/src/**/*.ssr.test.tsx',
           ],
         },
       },

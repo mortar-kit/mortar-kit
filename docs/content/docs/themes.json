@@ -1,0 +1,25 @@
+{
+  "id": "themes",
+  "fields": {
+    "title": "Themes",
+    "description": "Change the admin's look with a theme package or your own custom properties.",
+    "section": "admin",
+    "order": 20
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "The admin's look comes from `--mortar-*` CSS custom properties: colours, fonts, radii and gaps. A theme only sets those values. It never changes the layout.\n\n## Using a theme package\n\nMortar ships four themes: `@mortar-kit/theme-midnight`, `-warm`, `-soft` and `-mono`. Pick one in `vite.config` with the `mortarKit()` plugin:\n\n```ts\nimport { mortarKit } from '@mortar-kit/admin/vite';\nimport warm from '@mortar-kit/theme-warm';\n\nexport default defineConfig({\n  plugins: [solid({ ... }), mortarKit({ theme: warm })],\n});\n```\n\nThe theme's stylesheet is served only with the admin's CSS, so it never lands on your public pages. This site's admin uses `midnight`.\n\n## Your own values\n\nThe defaults sit at zero specificity, so any rule wins over them. Override a few on an element around the admin:\n\n```css\n.admin {\n  --mortar-accent: #e11d48;\n  --mortar-radius: 4px;\n}\n```\n\n## Making a theme package\n\nA theme package is plain JavaScript with no build: a `theme.css` that sets `--mortar-*` on `:root`, and an `index.js` that exports its name and the stylesheet's path:\n\n```js\nimport { fileURLToPath } from 'node:url';\n\nexport const name = 'forest';\nexport const stylesheet = fileURLToPath(new URL('./theme.css', import.meta.url));\nexport default { name, stylesheet };\n```\n\nThe full list of tokens, with the default values, is in `packages/admin/src/tokens.css`. Fonts that a theme names aren't loaded by Mortar, so load them in your app or let the fallbacks apply."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-2",
+      "data": {
+        "name": "mortarKit"
+      }
+    }
+  ]
+}
