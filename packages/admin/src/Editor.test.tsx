@@ -241,7 +241,7 @@ describe('<Editor>', () => {
 describe('<Editor> header', () => {
   it('shows the collection label and the document title, which follows the title field', () => {
     setup();
-    expect(screen.getByRole('heading', { level: 2, name: 'Pages' })).toBeInTheDocument();
+    expect(screen.getByText('Pages')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Home');
     click('Details');
     fireEvent.input(input('Title'), { target: { value: 'Welcome home' } });
@@ -334,7 +334,7 @@ describe('<Editor> slug', () => {
 describe('<Editor> without a body', () => {
   it('shows only the details: no entries list or Add menu', () => {
     const { last } = setup(author(), { collection: authors });
-    expect(screen.getByRole('heading', { level: 2, name: 'Authors' })).toBeInTheDocument();
+    expect(screen.getByText('Authors')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ada');
     expect(screen.queryByRole('list', { name: 'Body entries' })).toBeNull();
     expect(screen.queryByText('Add brick')).toBeNull();

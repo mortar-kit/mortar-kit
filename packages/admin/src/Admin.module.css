@@ -1,99 +1,211 @@
-/* Layout of the admin: the content sidebar (collections, documents, the
-   new-document form) beside the editor. Colours come from the --mortar-*
-   custom properties (defaults in Editor.module.css). */
+/* Layout of the admin: the collections rail, the panel (a collection's
+   documents, or the open document's outline) and the editor. Every value
+   comes from the --mortar-* tokens (tokens.css). */
 .admin {
   display: grid;
-  grid-template-columns: minmax(12rem, 16rem) 1fr;
+  grid-template-columns: 4.75rem 16rem minmax(0, 1fr);
+  gap: var(--mortar-gap);
   height: 100vh;
-  font: 14px/1.4 system-ui, sans-serif;
+  padding: var(--mortar-inset);
+  font: var(--mortar-font-size) / 1.45 var(--mortar-font);
   color: var(--mortar-text);
-  background: var(--mortar-bg);
+  background: var(--mortar-frame);
 }
 .admin *,
 .admin *::before,
 .admin *::after {
   box-sizing: border-box;
 }
-.nav {
-  overflow-y: auto;
-  padding: 1rem;
-  border-right: 1px solid var(--mortar-border);
-  background: var(--mortar-bg);
+.rail,
+.panel {
+  min-height: 0;
+  border-radius: var(--mortar-panel-radius);
+  box-shadow: var(--mortar-panel-shadow);
 }
-.collections,
+
+/* The rail: one button per collection, an initial over its label. */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.25rem;
+  overflow-y: auto;
+  background: var(--mortar-rail);
+  color: var(--mortar-on-rail);
+}
+.mark {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill-rule='evenodd' d='M7 0h18a7 7 0 0 1 7 7v18a7 7 0 0 1-7 7H7a7 7 0 0 1-7-7V7a7 7 0 0 1 7-7Zm0 8v5h8V8Zm10 0v5h8V8Zm-5 10v5h8v-5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.collections {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+}
+.collection {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.3rem 0.1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.78em;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+/* The initial, drawn by CSS so the button's name stays the label. */
+.collection::before {
+  content: attr(data-initial);
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--mortar-radius);
+  font-size: 1.3em;
+  font-weight: 600;
+}
+.collection:hover::before {
+  background: color-mix(in srgb, var(--mortar-rail-active) 50%, transparent);
+}
+.collection[aria-current='true'] {
+  color: var(--mortar-on-rail-active);
+}
+.collection[aria-current='true']::before {
+  background: var(--mortar-rail-active);
+}
+
+/* The panel. */
+.panel {
+  display: flex;
+  overflow-y: auto;
+  background: var(--mortar-panel);
+}
+.list,
+.outline {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.list[hidden],
+.outline[hidden] {
+  display: none;
+}
+.listSection {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 0.75rem 0.5rem;
+}
+.pad {
+  margin: 0;
+  padding: 0.5rem;
+}
+.heading {
+  margin: 0;
+  padding: 0.25rem 0.5rem 0.75rem;
+  font-family: var(--mortar-font-heading);
+  font-size: 1.15em;
+  font-weight: 600;
+}
 .docs {
   list-style: none;
   margin: 0 0 1rem;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 1px;
 }
-.collection,
 .doc {
   width: 100%;
+  min-height: 2.25rem;
   padding: 0.4rem 0.6rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
+  border: 0;
+  border-radius: var(--mortar-radius);
   background: none;
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.collection {
+.doc:hover {
+  background: var(--mortar-hover);
+}
+.doc[aria-current='true'] {
+  background: var(--mortar-selected);
+  color: var(--mortar-on-selected);
   font-weight: 600;
 }
-.collection[aria-current='true'],
-.doc[aria-current='true'] {
-  border-color: var(--mortar-accent);
-  background: var(--mortar-panel);
-}
-.heading {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--mortar-muted);
+.new {
+  opacity: 0.75;
+  font-weight: 400;
 }
 .newForm {
   display: grid;
   gap: 0.4rem;
+  margin-top: auto;
+  padding: 0.75rem 0.5rem 0.25rem;
+  border-top: 1px solid var(--mortar-border);
 }
 .newLabel {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.35rem;
   font-weight: 600;
 }
 .input {
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.6rem;
   border: 1px solid var(--mortar-border);
-  border-radius: 0.375rem;
+  border-radius: var(--mortar-radius);
   font: inherit;
-  background: white;
+  font-weight: 400;
+  color: inherit;
+  background: var(--mortar-input);
 }
 .input[aria-invalid='true'] {
   border-color: var(--mortar-danger);
 }
+
+/* The editor's area. */
 .main {
   position: relative;
+  display: grid;
   min-width: 0;
-  overflow: hidden;
+  min-height: 0;
 }
 .placeholder {
-  margin: 2rem;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: var(--mortar-panel-radius);
+  background: var(--mortar-bg);
+  box-shadow: var(--mortar-panel-shadow);
   color: var(--mortar-muted);
 }
 .blocked {
   position: absolute;
-  z-index: 2;
-  top: 0.75rem;
+  z-index: 4;
+  top: 4rem;
   right: 0.75rem;
   max-width: 28rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--mortar-danger);
-  border-radius: 0.5rem;
+  border-radius: var(--mortar-radius);
   background: var(--mortar-panel);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
 }
 .blockedHead {
   display: flex;

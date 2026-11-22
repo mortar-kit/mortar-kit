@@ -1,6 +1,7 @@
-// What <Admin> shares with the inputs inside its editor: the site's
+// What <Admin> shares with its editor and the inputs inside it: the site's
 // collections, the content they read (the reference picker lists
-// documents), and navigation to another document.
+// documents), navigation to another document, and where the editor puts
+// its outline (the admin's panel).
 import type { AnyCollection, Content } from '@mortar-kit/core';
 import { createContext, useContext } from 'solid-js';
 
@@ -16,6 +17,10 @@ export interface AdminApi {
   content: Content;
   /** Opens another collection or document (asking first if there are unsaved changes). */
   go(to: AdminLocation): void;
+  /** The admin panel's slot for the open editor's outline (slug, Details, body entries); unset until it mounts. */
+  outline(): HTMLElement | undefined;
+  /** Shows the open collection's document list in the panel (the editor stays open). */
+  showList(): void;
 }
 
 export const AdminContext = createContext<AdminApi | null>(null);

@@ -57,7 +57,19 @@ function setup(options: { content?: Content; location?: () => AdminLocation; onN
 }
 
 const nav = () => within(screen.getByRole('navigation', { name: 'Content' }));
-const docList = (label: string) => within(screen.getByRole('list', { name: `${label} documents` }));
+/** The document list of the open collection, showing it first if the panel shows a document's outline. */
+const docList = (label: string) => {
+  if (!screen.queryByRole('list', { name: `${label} documents` })) {
+    fireEvent.click(nav().getByRole('button', { name: label, current: true }));
+    flush();
+  }
+  return within(screen.getByRole('list', { name: `${label} documents` }));
+};
+/** Back from the document list to the open document's outline (its row in the list). */
+const showOutline = (label: string) => {
+  fireEvent.click(docList(label).getByRole('button', { current: true }));
+  flush();
+};
 const docTitles = (label: string) => docList(label).queryAllByRole('button').map((b) => b.textContent);
 const click = async (element: HTMLElement) => {
   fireEvent.click(element);
@@ -167,6 +179,7 @@ describe('creating documents', () => {
     expect(docTitles('Pages')).toEqual(['Untitled (new, unsaved)', 'About', 'Home']);
     expect(status()).toBe('Unsaved changes');
     expect(await store.get('pages', 'contact')).toBeUndefined();
+    showOutline('Pages');
     fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     flush();
     typeInto(/^Title/, 'Contact');
@@ -175,6 +188,7 @@ describe('creating documents', () => {
     expect(docTitles('Pages')).toEqual(['About', 'Contact', 'Home']);
     expect(((await store.get('pages', 'contact')) as Doc).fields.title).toBe('Contact');
     // Now it exists: renaming it shows the note.
+    showOutline('Pages');
     typeInto('Slug', 'contact-us');
     expect(screen.getByText(/Saving moves this document to a new address/)).toBeInTheDocument();
   });
@@ -259,6 +273,25 @@ describe('deleting documents', () => {
 });
 
 describe('navigation', () => {
+  it("shows the open document's outline in the panel, and the list again from the rail, without leaving", async () => {
+    const confirm = vi.spyOn(window, 'confirm');
+    setup();
+    await settle();
+    await open('Pages', 'Home');
+    expect(screen.queryByRole('list', { name: 'Pages documents' })).toBeNull();
+    expect(screen.getByRole('list', { name: 'Body entries' })).toBeInTheDocument();
+    typeInto('Slug', 'home-2');
+    fireEvent.click(nav().getByRole('button', { name: 'Pages', current: true }));
+    flush();
+    expect(screen.queryByRole('list', { name: 'Body entries' })).toBeNull();
+    expect(docList('Pages').getByRole('button', { name: 'Home', current: true })).toBeInTheDocument();
+    // Still the same editor, edits kept; its row goes back to the outline.
+    expect(status()).toBe('Unsaved changes');
+    showOutline('Pages');
+    expect((screen.getByLabelText(/^Slug/) as HTMLInputElement).value).toBe('home-2');
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
   it('asks before leaving unsaved changes', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     setup();
@@ -419,6 +452,9 @@ describe('review fixes', () => {
     const onNavigate = vi.fn<(to: AdminLocation) => void>();
     setup({ location: () => ({ collection: 'pages', id: 'home-id' }), onNavigate });
     await settle();
+    // The panel shows the open document's outline; its rail button shows the list again.
+    fireEvent.click(nav().getByRole('button', { name: 'Pages', current: true }));
+    flush();
     fireEvent.input(screen.getByLabelText('New document slug'), { target: { value: 'contact' } });
     flush();
     await click(screen.getByRole('button', { name: 'Create' }));
