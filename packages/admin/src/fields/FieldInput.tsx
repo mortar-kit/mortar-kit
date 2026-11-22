@@ -298,16 +298,24 @@ function Group(props: { info: FieldInfo; children: JSX.Element }) {
 
 /**
  * An image or file field: an uploaded asset chosen from the library (when
- * the admin has a blob store) or a URL, plus alt text for an image.
+ * the admin has a blob store) or a URL, plus a title and, for an image,
+ * alt text. Picking an asset fills in its default title and alt text (from
+ * the library), keeping what is typed where the asset has none.
  */
 function AssetInput(props: InputProps) {
   const form = useForm();
   const admin = useAdmin();
   const [picking, setPicking] = createSignal(false);
-  const value = () => ({ src: '', asset: '', alt: '', ...(props.value as object | undefined) }) as { src: string; asset: string; alt: string };
+  const value = () =>
+    ({ src: '', asset: '', alt: '', title: '', ...(props.value as object | undefined) }) as { src: string; asset: string; alt: string; title: string };
   const isImage = () => props.info.kind === 'image';
   const assets = () => admin?.content.assets;
-  const set = (patch: { src: string; asset: string }) => form.setValue(props.path, { ...value(), ...patch });
+  const set = (patch: Partial<ReturnType<typeof value>>) => {
+    const next = { ...value(), ...patch };
+    // A file field has no alt text.
+    if (!isImage()) delete (next as Partial<typeof next>).alt;
+    form.setValue(props.path, next);
+  };
   return (
     <Group info={props.info}>
       <Show when={value().src || value().asset}>
@@ -358,6 +366,9 @@ function AssetInput(props: InputProps) {
           <input type="text" class={styles.input} value={value().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
         </Labelled>
       </Show>
+      <Labelled info={{ kind: 'text', label: 'Title' }} path={[...props.path, 'title']}>
+        <input type="text" class={styles.input} value={value().title} onInput={(e) => form.setValue([...props.path, 'title'], e.currentTarget.value)} />
+      </Labelled>
       <Show when={picking() && assets()}>
         {(library) => (
           <AssetPicker
@@ -365,7 +376,7 @@ function AssetInput(props: InputProps) {
             accept={props.info.accept}
             label={props.info.label}
             onPick={(asset) => {
-              set({ src: asset.src, asset: asset.key });
+              set({ src: asset.src, asset: asset.key, alt: asset.alt || value().alt, title: asset.title || value().title });
               setPicking(false);
             }}
             onClose={() => setPicking(false)}

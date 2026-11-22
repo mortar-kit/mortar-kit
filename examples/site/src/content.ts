@@ -6,12 +6,26 @@ import type { Content, ContentSource, Doc } from '@mortar-kit/core';
 import { query } from '@solidjs/router';
 import { GET } from '@solidjs/web/server-functions';
 
-import { getStoredDoc, listAssets, listStoredDocs, moveStoredDoc, removeAsset, removeStoredDoc, saveStoredDoc, uploadAsset } from './server/content.ts';
+import {
+  getStoredDoc,
+  listAssetFolders,
+  listAssets,
+  listStoredDocs,
+  moveStoredDoc,
+  removeAsset,
+  removeAssetFolder,
+  removeStoredDoc,
+  saveAssetFolder,
+  saveStoredDoc,
+  updateAsset,
+  uploadAsset,
+} from './server/content.ts';
 import { getSignedInUser, getSignInMethods } from './server/session.ts';
 
 const listFresh = GET(listStoredDocs);
 const getFresh = GET(getStoredDoc);
 const listAssetsFresh = GET(listAssets);
+const listFoldersFresh = GET(listAssetFolders);
 
 /** Documents of a collection (cached per request). */
 export const listDocs = query(listFresh, 'docs');
@@ -45,7 +59,21 @@ export const adminContent: Content = {
     await moveStoredDoc(collection, id, index);
     query.clear();
   },
-  assets: { list: listAssetsFresh, upload: uploadAsset, remove: removeAsset },
+  assets: {
+    list: listAssetsFresh,
+    upload(file, details = {}) {
+      // One FormData, which a server function sends natively (see uploadAsset).
+      const form = new FormData();
+      form.set('file', file);
+      for (const [part, value] of Object.entries(details)) if (typeof value === 'string') form.set(part, value);
+      return uploadAsset(form);
+    },
+    remove: removeAsset,
+    update: updateAsset,
+    folders: listFoldersFresh,
+    saveFolder: saveAssetFolder,
+    removeFolder: removeAssetFolder,
+  },
 };
 
 /** The signed-in admin, or null (fresh: the admin shows who is signed in now). */

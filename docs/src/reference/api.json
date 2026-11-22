@@ -1752,6 +1752,58 @@
           "readonly": false,
           "type": "string",
           "doc": "When it was stored (ISO 8601), if the store knows."
+        },
+        {
+          "name": "title",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Default title: copied into an image or file field when the asset is picked. '' if none."
+        },
+        {
+          "name": "alt",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Default alt text (images): copied into an image field when the asset is picked. '' if none."
+        },
+        {
+          "name": "folder",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The id of the folder it is in, or '' for none."
+        }
+      ]
+    },
+    {
+      "name": "AssetDetails",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What editors set on an asset. Each part left out stays as it is.",
+      "signature": "interface AssetDetails",
+      "members": [
+        {
+          "name": "title",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Default title, at most 200 characters."
+        },
+        {
+          "name": "alt",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Default alt text, at most 1000 characters."
+        },
+        {
+          "name": "folder",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "A folder id, or '' for none."
         }
       ]
     },
@@ -1772,6 +1824,30 @@
       ],
       "returns": "string[]",
       "examples": []
+    },
+    {
+      "name": "AssetFolder",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A folder of assets (one level, no nesting).",
+      "signature": "interface AssetFolder",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Stable id, kept across renames: what an `Asset.folder` holds."
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Shown in the library, unique (ignoring case)."
+        }
+      ]
     },
     {
       "name": "assetInfo",
@@ -1822,7 +1898,7 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "interface",
-      "summary": "Uploaded files: what the admin's library and pickers need.",
+      "summary": "Uploaded files: what the admin's library and pickers need. The methods\nmarked optional are always there from `createContent`; an app wrapping\nthem (in server functions) may leave them out, and the admin then hides\nwhat needs them (details, folders).",
       "signature": "interface Assets",
       "members": [
         {
@@ -1836,15 +1912,43 @@
           "name": "upload",
           "optional": false,
           "readonly": false,
-          "type": "(file: File) => Promise<UploadResult>",
-          "doc": "Checks a file (type by its name's extension, size) and stores it under a fresh key. Problems are returned, not thrown."
+          "type": "(file: File, details?: AssetDetails) => Promise<UploadResult>",
+          "doc": "Checks a file (type by its name's extension, size) and stores it under\na fresh key, with `details` (e.g. the folder to put it in). Problems are\nreturned, not thrown."
         },
         {
           "name": "remove",
           "optional": false,
           "readonly": false,
           "type": "(key: string) => Promise<RemoveResult>",
-          "doc": "Deletes a file by key, unless documents use it (then they are returned)."
+          "doc": "Deletes a file by key, unless documents use it (then they are returned). Its details go with it."
+        },
+        {
+          "name": "update",
+          "optional": true,
+          "readonly": false,
+          "type": "(key: string, details: AssetDetails) => Promise<UpdateAssetResult>",
+          "doc": "Sets a file's default title, alt text or folder. Problems are returned, not thrown."
+        },
+        {
+          "name": "folders",
+          "optional": true,
+          "readonly": false,
+          "type": "() => Promise<AssetFolder[]>",
+          "doc": "Every folder, by name."
+        },
+        {
+          "name": "saveFolder",
+          "optional": true,
+          "readonly": false,
+          "type": "(folder: { id?: string; name: string }) => Promise<FolderResult>",
+          "doc": "Creates a folder (no `id`) or renames one. Names are unique, ignoring case."
+        },
+        {
+          "name": "removeFolder",
+          "optional": true,
+          "readonly": false,
+          "type": "(id: string) => Promise<void>",
+          "doc": "Deletes a folder; its files stay, in no folder."
         }
       ]
     },
@@ -2539,7 +2643,7 @@
       "deprecated": false,
       "kind": "function",
       "summary": "The rules around a store. Collection names are checked on every call (a\nserver function receives them from the client): an unknown one throws.\nThrows at creation if a reference field names an unknown collection.",
-      "signature": "function createContent(options: ContentOptions): Content & Pick<Required<Content>, \"move\">",
+      "signature": "function createContent(options: ContentOptions): Content & Pick<Required<Content>, \"move\"> & { assets?: Required<Assets> }",
       "params": [
         {
           "name": "options",
@@ -2548,7 +2652,7 @@
           "doc": ""
         }
       ],
-      "returns": "Content & Pick<Required<Content>, \"move\">",
+      "returns": "Content & Pick<Required<Content>, \"move\"> & { assets?: Required<Assets> }",
       "examples": []
     },
     {
@@ -3029,6 +3133,13 @@
           "doc": "The URL to load; for an uploaded asset, filled in when content is read."
         },
         {
+          "name": "title",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "A title, e.g. a download link's text; '' if none. Picking an asset fills in its default."
+        },
+        {
           "name": "asset",
           "optional": false,
           "readonly": false,
@@ -3036,6 +3147,14 @@
           "doc": "The uploaded asset's key, or '' for a plain URL."
         }
       ]
+    },
+    {
+      "name": "FolderResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `Assets.saveFolder`.",
+      "signature": "type FolderResult = { ok: true; folder: AssetFolder } | { ok: false; message: string }"
     },
     {
       "name": "FoundAsset",
@@ -3115,7 +3234,7 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "interface",
-      "summary": "An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text.",
+      "summary": "An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text and a title.",
       "signature": "interface Image",
       "members": [
         {
@@ -3131,6 +3250,13 @@
           "readonly": false,
           "type": "string",
           "doc": ""
+        },
+        {
+          "name": "title",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "A title, e.g. for a caption or tooltip; '' if none. Picking an asset fills in its default."
         },
         {
           "name": "asset",
@@ -3624,6 +3750,14 @@
           "doc": "Default `'asc'`."
         }
       ]
+    },
+    {
+      "name": "UpdateAssetResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `Assets.update`.",
+      "signature": "type UpdateAssetResult = { ok: true; asset: Asset } | { ok: false; message: string }"
     },
     {
       "name": "UploadResult",

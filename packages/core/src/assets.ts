@@ -1,9 +1,11 @@
 // Assets: uploaded files (images, video, audio, PDFs). Their bytes live in a
 // `BlobStore`, an adapter as small as `ContentStore` and separate from it,
 // so documents can live in JSON files or a database while files live on
-// disk or in a bucket. There are no asset records: an asset's key carries
-// its name and type (`hero-photo-x7k2q9.jpg`), so any store can list
-// assets without an index. Documents point at an asset by key (the
+// disk or in a bucket. An asset's key carries its name and type
+// (`hero-photo-x7k2q9.jpg`), so any store can list assets without an index.
+// What editors add on top (a default title and alt text, a folder) is kept
+// by `createContent` in the content store, never in the blob store, so it
+// works with every blob store. Documents point at an asset by key (the
 // `asset` of an image or file field); `createContent` applies the rules.
 
 /**
@@ -79,6 +81,30 @@ export interface Asset {
   src: string;
   /** When it was stored (ISO 8601), if the store knows. */
   modified?: string;
+  /** Default title: copied into an image or file field when the asset is picked. '' if none. */
+  title: string;
+  /** Default alt text (images): copied into an image field when the asset is picked. '' if none. */
+  alt: string;
+  /** The id of the folder it is in, or '' for none. */
+  folder: string;
+}
+
+/** A folder of assets (one level, no nesting). */
+export interface AssetFolder {
+  /** Stable id, kept across renames: what an `Asset.folder` holds. */
+  id: string;
+  /** Shown in the library, unique (ignoring case). */
+  name: string;
+}
+
+/** What editors set on an asset. Each part left out stays as it is. */
+export interface AssetDetails {
+  /** Default title, at most 200 characters. */
+  title?: string;
+  /** Default alt text, at most 1000 characters. */
+  alt?: string;
+  /** A folder id, or '' for none. */
+  folder?: string;
 }
 
 const KEY = /^([a-z0-9]+(?:-[a-z0-9]+)*)-([a-z0-9]{6})\.([a-z0-9]{2,4})$/;
@@ -116,9 +142,13 @@ export function assetKeyFor(fileName: string): string | undefined {
       .replace(/[^a-z0-9]+/g, '-')
       .slice(0, 60)
       .replace(/^-+|-+$/g, '') || 'file';
+  return `${base}-${randomSuffix()}.${ext}`;
+}
+
+/** Six random lowercase letters and digits. */
+export function randomSuffix(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
-  const suffix = Array.from(bytes, (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
-  return `${base}-${suffix}.${ext}`;
+  return Array.from(bytes, (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
 }
 
 /** Options for `createMemoryBlobStore`. */

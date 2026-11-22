@@ -12,12 +12,16 @@
 import {
   createContent,
   type Asset,
+  type AssetDetails,
+  type AssetFolder,
   type Doc,
   type DocRef,
   type DocSummary,
+  type FolderResult,
   type ListOptions,
   type RemoveResult,
   type SaveResult,
+  type UpdateAssetResult,
   type UploadResult,
 } from '@mortar-kit/core';
 import { createJsonFileStore } from '@mortar-kit/core/server';
@@ -30,6 +34,7 @@ import { blobs } from './blobs.ts';
 
 // `content/<collection>/<slug>.json` and `uploads/<key>`, resolved against the working directory: run the server from examples/site.
 const content = createContent({ store: createJsonFileStore({ dir: 'content' }), blobs, collections, bricks });
+// Asset details and folders are kept in `content/mortar-assets/library.json`.
 const assets = content.assets as NonNullable<typeof content.assets>;
 
 /** Documents of a collection, without their bodies. */
@@ -68,16 +73,51 @@ export async function listAssets(): Promise<Asset[]> {
   return assets.list();
 }
 
-/** Checks and stores a file from the admin (the request body limit is raised in src/server-functions-setup.ts). */
-export async function uploadAsset(file: File): Promise<UploadResult> {
+/**
+ * Checks and stores a file from the admin. It arrives as form data (`file`,
+ * plus optional `folder`, `title` and `alt`): a server function sends a
+ * single FormData natively, but not a File beside other arguments. The
+ * request body limit is raised in src/server-functions-setup.ts.
+ */
+export async function uploadAsset(form: FormData): Promise<UploadResult> {
   await requireAdmin();
-  return respond(await assets.upload(file), { revalidate: '' });
+  const file = form.get('file');
+  if (!(file instanceof File)) return { ok: false, message: 'Not a file' };
+  const details: AssetDetails = {};
+  for (const part of ['folder', 'title', 'alt'] as const) {
+    const value = form.get(part);
+    if (typeof value === 'string') details[part] = value;
+  }
+  return respond(await assets.upload(file, details), { revalidate: '' });
 }
 
 /** Deletes an uploaded file, unless documents use it. */
 export async function removeAsset(key: string): Promise<RemoveResult> {
   await requireAdmin();
   return respond(await assets.remove(key), { revalidate: '' });
+}
+
+/** Sets a file's default title, alt text or folder. */
+export async function updateAsset(key: string, details: AssetDetails): Promise<UpdateAssetResult> {
+  await requireAdmin();
+  return respond(await assets.update(key, details), { revalidate: '' });
+}
+
+/** Every asset folder, by name. */
+export async function listAssetFolders(): Promise<AssetFolder[]> {
+  return assets.folders();
+}
+
+/** Creates or renames an asset folder. */
+export async function saveAssetFolder(folder: { id?: string; name: string }): Promise<FolderResult> {
+  await requireAdmin();
+  return respond(await assets.saveFolder(folder), { revalidate: '' });
+}
+
+/** Deletes an asset folder; its files stay, in no folder. */
+export async function removeAssetFolder(id: string): Promise<void> {
+  await requireAdmin();
+  return respond(await assets.removeFolder(id), { revalidate: '' });
 }
 
 /** Throws a 401 (or 403 for a cross-site call) unless an admin is signed in. */
