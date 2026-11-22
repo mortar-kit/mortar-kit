@@ -1,0 +1,29 @@
+/* The inspector's resize handle: an invisible strip over the inspector's
+   left edge that shows an accent line on hover, focus and drag. */
+.handle {
+  grid-column: -2 / -1;
+  grid-row: 2;
+  justify-self: start;
+  position: relative;
+  z-index: 2;
+  width: 9px;
+  margin-left: -5px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.handle::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.12s;
+}
+.handle:hover::after,
+.handle:focus-visible::after,
+.handle[data-dragging]::after {
+  background: var(--mortar-accent);
+}
+.handle:focus-visible {
+  outline: none;
+}

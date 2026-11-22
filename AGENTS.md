@@ -41,7 +41,8 @@ further construction puns).
   collections rail, a panel (the open collection's documents, or the open
   document's outline: slug, Details, body entries), a top bar (breadcrumb,
   Delete, save status, Save), the preview, and an inspector with the selected
-  item's form. Looks ship as theme packages (`@mortar-kit/theme-midnight`,
+  item's form (resizable from its left edge; the width is kept in
+  localStorage). List fields are stacks of collapsible item cards. Looks ship as theme packages (`@mortar-kit/theme-midnight`,
   `-warm`, `-soft`, `-mono`) chosen in vite.config with
   `mortarKit({ theme })` from `@mortar-kit/admin/vite`. A theme is only
   `--mortar-*` values (tokens in `packages/admin/src/tokens.css`), never a
