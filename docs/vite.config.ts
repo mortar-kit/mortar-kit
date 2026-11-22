@@ -7,7 +7,9 @@ import { defineConfig } from 'vite';
 // the published content (docs/content/, bundled), and every page hydrates
 // so this tab's edits, kept in session storage by the admin, replace it.
 // There are no server functions: the site needs no database or file
-// access, only something to run the built server.
+// access, only something to run the built server. The middleware serves
+// /llms.txt, /llms-full.txt and a Markdown version of each page, built from
+// the same content and reference (src/llms/).
 //
 // Production: `start.nodeServer` emits dist/server/node.js, which serves
 // dist/client and renders everything else (`node dist/server/node.js`, PORT
@@ -15,7 +17,7 @@ import { defineConfig } from 'vite';
 // build, so dist/ runs on its own with no node_modules beside it.
 export default defineConfig({
   plugins: [
-    solid({ start: { renderMode: 'async', nodeServer: true }, ssr: true }),
+    solid({ start: { renderMode: 'async', nodeServer: true, middleware: './src/middleware.ts' }, ssr: true }),
     mortarKit({ theme: midnight }),
   ],
   ssr: { noExternal: true },

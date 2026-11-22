@@ -38,7 +38,8 @@ export interface ApiEntry {
 /** An entry in the reference index: enough for a list. */
 export type ApiSummary = Pick<ApiEntry, 'name' | 'module' | 'kind' | 'summary'>;
 
-interface ApiFile {
+/** The generated reference: the documented modules, in order, and every export. */
+export interface ApiFile {
   modules: string[];
   entries: ApiEntry[];
 }
@@ -67,8 +68,9 @@ export async function listEntries(): Promise<{ module: string; entries: ApiSumma
 }
 
 /** The first sentence (or line) of a comment, for lists. */
-function firstSentence(text: string): string {
+export function firstSentence(text: string): string {
   const line = text.split('\n\n')[0]!.replace(/\s+/g, ' ');
-  const end = line.search(/\.(\s|$)/);
+  // A full stop ends the sentence, except in "e.g." and "i.e.".
+  const end = line.search(/(?<!\b(?:e\.g|i\.e))\.(\s|$)/);
   return end === -1 ? line : line.slice(0, end + 1);
 }

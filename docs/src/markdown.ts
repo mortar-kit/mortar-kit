@@ -1,8 +1,8 @@
 // Markdown to HTML for the docs' Markdown brick (marked, GitHub-flavoured).
-// Headings get ids, so sections can be linked, and fenced code is
-// highlighted when a highlighter is given (see highlight/). The source is the site's own
-// content (or the reader's edits in their own tab), so the HTML is trusted
-// and not sanitised.
+// Headings get ids, so sections can be linked, links to the llms files leave
+// the router alone, and fenced code is highlighted when a highlighter is
+// given (see highlight/). The source is the site's own content (or the
+// reader's edits in their own tab), so the HTML is trusted and not sanitised.
 import { Marked } from 'marked';
 
 import { escapeHtml as escape } from './highlight/html.ts';
@@ -28,6 +28,13 @@ const marked = new Marked({
     heading({ tokens, depth }) {
       const html = this.parser.parseInline(tokens);
       return `<h${depth} id="${slugify(html)}">${html}</h${depth}>\n`;
+    },
+    link({ href, title, tokens }) {
+      // The llms files (/llms.txt, /docs/x.md) aren't routes: rel="external"
+      // makes the router leave the click to the browser.
+      const external = /^\/[^?#]*\.(md|txt)([?#]|$)/.test(href) ? ' rel="external"' : '';
+      const titleAttr = title ? ` title="${escape(title)}"` : '';
+      return `<a href="${escape(href)}"${titleAttr}${external}>${this.parser.parseInline(tokens)}</a>`;
     },
     code({ text, lang }) {
       const name = lang?.match(/^\S*/)?.[0] ?? '';
