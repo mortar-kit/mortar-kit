@@ -3,7 +3,7 @@
    inspector. Every value comes from the --mortar-* tokens (tokens.css). */
 .editor {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr) 20rem;
+  grid-template-columns: 16rem minmax(0, 1fr) var(--inspector-width, 20rem);
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--mortar-gap);
   height: 100vh;
@@ -19,7 +19,7 @@
 }
 /* Inside <Admin>: no outline column, and the admin already pads the edge. */
 .embedded {
-  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-columns: minmax(0, 1fr) var(--inspector-width, 20rem);
   height: 100%;
   padding: 0;
 }
@@ -338,8 +338,11 @@
   box-shadow: var(--mortar-preview-shadow);
 }
 
-/* The inspector: the selected item's form. */
+/* The inspector: the selected item's form. Placed explicitly, so the resize
+   handle (ResizeHandle.module.css) can share its grid cell. */
 .inspector {
+  grid-column: -2 / -1;
+  grid-row: 2;
   overflow-y: auto;
 }
 .section {

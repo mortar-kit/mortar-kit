@@ -3,8 +3,8 @@
 // entries (with add, move, duplicate and remove); inside <Admin> the outline
 // goes in the admin's panel instead. A top bar names the document and holds
 // Delete and the save controls (when the app passes `onRemove`/`onSave`); the
-// live preview fills the middle, and the inspector on the right shows the
-// generated form for the selected item.
+// live preview fills the middle, and the inspector on the right (resizable
+// from its left edge) shows the generated form for the selected item.
 import { brickMap, isValidSlug, type AnyBrick, type AnyCollection, type Doc, type PageEntry, type SaveResult } from '@mortar-kit/core';
 import { Portal } from '@solidjs/web';
 import { createEffect, createMemo, createSignal, deep, For, Show, snapshot } from 'solid-js';
@@ -15,6 +15,7 @@ import styles from './Editor.module.css';
 import './tokens.css';
 import './theme-slot.css';
 import { PreviewFrame } from './PreviewFrame.tsx';
+import { createInspectorWidth, ResizeHandle } from './ResizeHandle.tsx';
 import { SaveBar } from './SaveBar.tsx';
 import common from './common.module.css';
 import { BackIcon, CloseIcon, CopyIcon, DetailsIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from './icons.tsx';
@@ -60,6 +61,7 @@ export function Editor(props: EditorProps) {
     () => props.doc,
   );
   const admin = useAdmin();
+  const inspector = createInspectorWidth();
   const byName = createMemo(() => brickMap(props.bricks));
   const entries = () => (props.collection.body ? (editor.state.doc.entries ?? []) : []);
   const selected = createMemo(() => entries().find((e) => e.id === editor.state.selected));
@@ -150,7 +152,7 @@ export function Editor(props: EditorProps) {
   );
 
   return (
-    <div class={[styles.editor, admin && styles.embedded]}>
+    <div class={[styles.editor, admin && styles.embedded]} style={{ '--inspector-width': inspector.width() === undefined ? undefined : `${inspector.width()}px` }}>
       <Show when={admin} fallback={<aside class={styles.panel}>{outline}</aside>}>
         {(a) => <Show when={a().outline()}>{(mount) => <Portal mount={mount()}>{outline}</Portal>}</Show>}
       </Show>
@@ -205,6 +207,7 @@ export function Editor(props: EditorProps) {
           <PreviewFrame url={props.previewUrl} collection={props.collection.name} body={props.collection.body} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
         </div>
       </div>
+      <ResizeHandle width={inspector.width()} onResize={inspector.setWidth} />
       <aside class={styles.inspector} aria-label="Inspector">
         <Show when={editor.state.selected === FIELDS}>
           <section aria-label="Edit details" class={styles.section}>

@@ -135,6 +135,49 @@ describe('<Editor>', () => {
     expect(names().map((i) => i.value)).toEqual(['new', 'b']);
   });
 
+  it('titles list item cards and collapses them, keeping the state with moved items', () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    flush();
+    expect(screen.getAllByRole('button', { expanded: true }).map((b) => b.textContent)).toEqual(['a', 'b']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'a' }));
+    flush();
+    const first = screen.getByRole('button', { name: 'a' });
+    expect(first).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById(first.getAttribute('aria-controls')!)).toHaveAttribute('hidden');
+
+    click('Move Tag 1 down');
+    expect(screen.getByRole('button', { name: 'a' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'b' })).toHaveAttribute('aria-expanded', 'true');
+
+    // A cleared title falls back to the item's label and number.
+    fireEvent.input(screen.getAllByLabelText('Name')[0]!, { target: { value: '' } });
+    flush();
+    expect(screen.getByRole('button', { name: /^Tag 1/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('resizes the inspector from its handle and remembers the width', () => {
+    localStorage.removeItem('mortar-admin:inspector-width');
+    const { container, unmount } = setup();
+    const handle = screen.getByRole('separator', { name: 'Inspector width' });
+    const editor = container.firstElementChild as HTMLElement;
+    expect(editor.style.getPropertyValue('--inspector-width')).toBe('');
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    flush();
+    expect(editor.style.getPropertyValue('--inspector-width')).toBe('336px');
+    expect(localStorage.getItem('mortar-admin:inspector-width')).toBe('336');
+    unmount();
+
+    const again = setup();
+    flush();
+    expect((again.container.firstElementChild as HTMLElement).style.getPropertyValue('--inspector-width')).toBe('336px');
+    fireEvent.dblClick(screen.getByRole('separator', { name: 'Inspector width' }));
+    flush();
+    expect((again.container.firstElementChild as HTMLElement).style.getPropertyValue('--inspector-width')).toBe('');
+    expect(localStorage.getItem('mortar-admin:inspector-width')).toBeNull();
+  });
+
   it('adds a brick after the selected entry and shows its form', () => {
     const { last } = setup();
     click('Add Tags');

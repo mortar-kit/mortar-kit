@@ -7,6 +7,7 @@ import { createMemo, createSignal, For, Loading, Match, Show, Switch } from 'sol
 
 import common from '../common.module.css';
 import { useAdmin, type AdminApi } from '../context.ts';
+import { ChevronIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from '../icons.tsx';
 import type { Path } from '../state.ts';
 import styles from './FieldInput.module.css';
 import { useForm } from './context.ts';
@@ -74,12 +75,12 @@ function Labelled(props: { info: FieldInfo; path: Path; children: JSX.Element })
       <span class={styles.label}>
         {props.info.label}
         <Show when={props.info.required}>
-          <span aria-hidden="true"> *</span>
+          <span class={styles.required} aria-hidden="true"> *</span>
         </Show>
       </span>
       {props.children}
       <Show when={props.info.help}>
-        <small class={common.help}>{props.info.help}</small>
+        <small class={styles.help}>{props.info.help}</small>
       </Show>
       <Show when={form.issue(props.path)}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
     </label>
@@ -281,14 +282,26 @@ function SelectInput(props: InputProps) {
   );
 }
 
+/** A titled set of related inputs (object and image fields). */
+function Group(props: { info: FieldInfo; children: JSX.Element }) {
+  return (
+    <fieldset class={styles.group}>
+      <legend class={styles.groupLabel}>{props.info.label}</legend>
+      <Show when={props.info.help}>
+        <small class={styles.help}>{props.info.help}</small>
+      </Show>
+      <div class={styles.groupBody}>{props.children}</div>
+    </fieldset>
+  );
+}
+
 function ImageInput(props: InputProps) {
   const form = useForm();
   const image = () => (props.value ?? { src: '', alt: '' }) as Image;
   return (
-    <fieldset class={styles.group}>
-      <legend>{props.info.label}</legend>
-      <Show when={props.info.help}>
-        <small class={common.help}>{props.info.help}</small>
+    <Group info={props.info}>
+      <Show when={image().src}>
+        <img class={styles.thumb} src={image().src} alt="" />
       </Show>
       <Labelled info={{ kind: 'url', label: 'Image URL', required: props.info.required }} path={[...props.path, 'src']}>
         <input type="text" class={styles.input} inputmode="url" value={image().src} onInput={(e) => form.setValue([...props.path, 'src'], e.currentTarget.value)} />
@@ -296,89 +309,168 @@ function ImageInput(props: InputProps) {
       <Labelled info={{ kind: 'text', label: 'Alt text' }} path={[...props.path, 'alt']}>
         <input type="text" class={styles.input} value={image().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
       </Labelled>
-      <Show when={image().src}>
-        <img class={styles.thumb} src={image().src} alt="" />
-      </Show>
-    </fieldset>
+    </Group>
+  );
+}
+
+/** The inputs of an object field's own fields, without a frame. */
+function ObjectFields(props: InputProps) {
+  const record = () => (props.value ?? {}) as Record<string, unknown>;
+  return (
+    <For each={Object.entries(props.info.fields ?? {})}>
+      {([key, field]) => <FieldInput field={field} path={[...props.path, key]} value={record()[key]} />}
+    </For>
   );
 }
 
 function ObjectInput(props: InputProps) {
-  const record = () => (props.value ?? {}) as Record<string, unknown>;
   return (
-    <fieldset class={styles.group}>
-      <legend>{props.info.label}</legend>
-      <Show when={props.info.help}>
-        <small class={common.help}>{props.info.help}</small>
-      </Show>
-      <For each={Object.entries(props.info.fields ?? {})}>
-        {([key, field]) => <FieldInput field={field} path={[...props.path, key]} value={record()[key]} />}
-      </For>
-    </fieldset>
+    <Group info={props.info}>
+      <ObjectFields info={props.info} path={props.path} value={props.value} />
+    </Group>
   );
 }
 
+/**
+ * What a list item's header shows: a text item's value, or an object item's
+ * first non-empty text field; `undefined` when there is none.
+ */
+function itemTitle(info: FieldInfo | undefined, value: unknown): string | undefined {
+  if (!info) return undefined;
+  if ((info.kind === 'text' || info.kind === 'url' || info.kind === 'textarea') && typeof value === 'string') return value.trim() || undefined;
+  if (info.kind === 'object' && value && typeof value === 'object') {
+    for (const [key, field] of Object.entries(info.fields ?? {})) {
+      const kind = fieldInfo(field)?.kind;
+      const v = (value as Record<string, unknown>)[key];
+      if ((kind === 'text' || kind === 'url') && typeof v === 'string' && v.trim()) return v.trim();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A list as a stack of item cards. Each card's header holds its title (a
+ * toggle that collapses the card), move and remove actions; object items show
+ * their fields straight in the card body, without a second frame.
+ */
 function ListInput(props: InputProps) {
   const form = useForm();
   const items = () => (Array.isArray(props.value) ? (props.value as unknown[]) : []);
-  const itemLabel = () => (props.info.item ? fieldInfo(props.info.item)?.label : undefined) ?? 'item';
+  const itemInfo = createMemo(() => (props.info.item ? fieldInfo(props.info.item) : undefined));
+  const itemLabel = () => itemInfo()?.label ?? 'item';
   const canAdd = () => props.info.max === undefined || items().length < props.info.max;
   const canRemove = () => props.info.min === undefined || items().length > props.info.min;
+  // Collapsed cards by index; moved and removed with their items.
+  const [collapsed, setCollapsed] = createSignal<ReadonlySet<number>>(new Set());
+  const toggle = (index: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(index)) next.add(index);
+      return next;
+    });
+  const move = (from: number, to: number) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      const a = prev.has(from);
+      const b = prev.has(to);
+      next.delete(from);
+      next.delete(to);
+      if (a) next.add(to);
+      if (b) next.add(from);
+      return next;
+    });
+    form.moveItem(props.path, from, to);
+  };
+  const remove = (index: number) => {
+    setCollapsed((prev) => new Set([...prev].filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))));
+    form.removeItem(props.path, index);
+  };
+  const bodyId = (index: number) => `mortar-list-${[...props.path, index].join('-')}`;
   return (
     <fieldset class={styles.group}>
-      <legend>{props.info.label}</legend>
+      <legend class={styles.groupLabel}>
+        {props.info.label}
+        <span class={styles.count}>{items().length}</span>
+      </legend>
       <Show when={props.info.help}>
-        <small class={common.help}>{props.info.help}</small>
+        <small class={styles.help}>{props.info.help}</small>
       </Show>
       <Show when={form.issue(props.path)}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
       <Show when={props.info.item}>
         {(item) => (
-          <>
+          <div class={styles.items}>
             <For each={items()} keyed={false}>
               {(value, index) => (
-                <div class={styles.listItem}>
-                  <FieldInput field={item()} path={[...props.path, index]} value={value()} />
-                  <div class={common.rowActions}>
+                <div class={styles.item} data-collapsed={collapsed().has(index) ? '' : undefined}>
+                  <div class={styles.itemHead}>
                     <button
                       type="button"
-                      class={common.button}
-                      disabled={index === 0}
-                      aria-label={`Move ${itemLabel()} ${index + 1} up`}
-                      onClick={() => form.moveItem(props.path, index, index - 1)}
+                      class={styles.itemToggle}
+                      aria-expanded={collapsed().has(index) ? 'false' : 'true'}
+                      aria-controls={bodyId(index)}
+                      onClick={() => {
+                        toggle(index);
+                      }}
                     >
-                      ↑
+                      <span class={styles.chevron}>
+                        <ChevronIcon />
+                      </span>
+                      <span class={styles.itemTitle}>{itemTitle(itemInfo(), value()) ?? `${itemLabel()} ${index + 1}`}</span>
+                      <Show when={form.hasIssueWithin([...props.path, index])}>
+                        <span class={styles.itemIssue} title="Has a problem to fix" />
+                      </Show>
                     </button>
-                    <button
-                      type="button"
-                      class={common.button}
-                      disabled={index === items().length - 1}
-                      aria-label={`Move ${itemLabel()} ${index + 1} down`}
-                      onClick={() => form.moveItem(props.path, index, index + 1)}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      class={common.button}
-                      disabled={!canRemove()}
-                      aria-label={`Remove ${itemLabel()} ${index + 1}`}
-                      onClick={() => form.removeItem(props.path, index)}
-                    >
-                      ✕
-                    </button>
+                    <div class={styles.itemActions}>
+                      <button
+                        type="button"
+                        class={styles.itemAction}
+                        disabled={index === 0}
+                        aria-label={`Move ${itemLabel()} ${index + 1} up`}
+                        title="Move up"
+                        onClick={() => move(index, index - 1)}
+                      >
+                        <UpIcon />
+                      </button>
+                      <button
+                        type="button"
+                        class={styles.itemAction}
+                        disabled={index === items().length - 1}
+                        aria-label={`Move ${itemLabel()} ${index + 1} down`}
+                        title="Move down"
+                        onClick={() => move(index, index + 1)}
+                      >
+                        <DownIcon />
+                      </button>
+                      <button
+                        type="button"
+                        class={styles.itemAction}
+                        disabled={!canRemove()}
+                        aria-label={`Remove ${itemLabel()} ${index + 1}`}
+                        title="Remove"
+                        onClick={() => remove(index)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                  <div class={styles.itemBody} id={bodyId(index)} hidden={collapsed().has(index)}>
+                    <Show when={itemInfo()?.kind === 'object'} fallback={<FieldInput field={item()} path={[...props.path, index]} value={value()} />}>
+                      <ObjectFields info={itemInfo() as FieldInfo} path={[...props.path, index]} value={value()} />
+                    </Show>
                   </div>
                 </div>
               )}
             </For>
             <button
               type="button"
-              class={common.button}
+              class={styles.add}
               disabled={!canAdd()}
               onClick={() => form.insertItem(props.path, items().length, defaultOf(item()))}
             >
+              <PlusIcon />
               Add {itemLabel()}
             </button>
-          </>
+          </div>
         )}
       </Show>
     </fieldset>

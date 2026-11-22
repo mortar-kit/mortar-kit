@@ -61,6 +61,11 @@ function SchemaForm(props: SchemaFormProps) {
     removeItem: (path, index) => props.editor.removeItem(props.target, path, index),
     moveItem: (path, from, to) => props.editor.moveItem(props.target, path, from, to),
     issue: (path) => issues().get(pathKey(path)),
+    hasIssueWithin: (path) => {
+      const key = pathKey(path);
+      for (const k of issues().keys()) if (k === key || k.startsWith(`${key}.`)) return true;
+      return false;
+    },
   };
 
   return (

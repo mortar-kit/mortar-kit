@@ -11,6 +11,8 @@ export interface FormApi {
   moveItem(path: Path, from: number, to: number): void;
   /** The validation message for exactly this path, if any. */
   issue(path: Path): string | undefined;
+  /** Whether this path or anything under it has a validation message. */
+  hasIssueWithin(path: Path): boolean;
 }
 
 export const FormContext = createContext<FormApi>();
