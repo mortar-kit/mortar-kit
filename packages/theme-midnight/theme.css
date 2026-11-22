@@ -1,0 +1,37 @@
+/* @mortar-kit/theme-midnight: A dark theme: near-black panels, a soft blue accent, mono details.
+   Sets the admin's --mortar-* tokens (see @mortar-kit/admin's tokens.css)
+   on :root, over the defaults. Fonts: Geist, Geist Mono, if the app loads them
+   (or they are installed); otherwise the stacks fall back to system fonts. */
+:root {
+  color-scheme: dark;
+  --mortar-font: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+  --mortar-font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --mortar-label-font: var(--mortar-font-mono);
+  --mortar-label-spacing: 0.04em;
+
+  --mortar-frame: #1c202a;
+  --mortar-gap: 1px;
+  --mortar-panel: #0b0d12;
+  --mortar-bg: #07080b;
+  --mortar-preview-radius: 10px;
+  --mortar-preview-shadow: 0 0 0 1px #1c202a, 0 24px 60px rgb(0 0 0 / 0.6);
+
+  --mortar-border: #262b38;
+  --mortar-text: #e6e8ee;
+  --mortar-muted: #8b92a5;
+  --mortar-input: #12151c;
+  --mortar-hover: #161a23;
+  --mortar-radius: 8px;
+
+  --mortar-accent: #7c9cff;
+  --mortar-on-accent: #07080b;
+  --mortar-selected: #1a1f2e;
+  --mortar-on-selected: #ffffff;
+  --mortar-danger: #f87171;
+  --mortar-warning: #fbbf24;
+
+  --mortar-rail: #0b0d12;
+  --mortar-on-rail: #8b92a5;
+  --mortar-rail-active: #1a1f2e;
+  --mortar-on-rail-active: #a9bcff;
+}

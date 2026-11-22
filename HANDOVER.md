@@ -126,6 +126,22 @@ create → save → listed and on the site and in "latest posts", delete,
 loading bricks in the preview (and reloading on a picker change).
 201 tests; typecheck, lint, build clean.
 
+9. Admin layout and themes (user's request, 2026-11-22, after picking
+   "layout B" from mockups). `<Admin>`: collections rail (initials drawn by
+   CSS, the button's name is the label; the open collection's button shows
+   its list again without leaving the document), a panel showing the
+   document list or the open document's outline (the editor portals its
+   outline into the admin's panel slot; "All <collection>" goes back to the
+   list), and the editor: top bar (breadcrumb with the title as the h1,
+   Delete, save status, Save; save problems in a popover under it), preview,
+   inspector. A standalone `<Editor>` shows the outline in its own panel.
+   Entry actions are icon buttons revealed on hover/focus/selection.
+   Every value is a `--mortar-*` token (`tokens.css`); themes:
+   `@mortar-kit/theme-midnight|warm|soft|mono`, via `mortarKit({ theme })`
+   from `@mortar-kit/admin/vite`. The example picks one with
+   `MORTAR_THEME=<name>`. Fonts named by themes are not loaded by Mortar
+   (system fallbacks unless the app loads them).
+
 ## Open / not built, and future plans
 
 How the user works: they pick the next feature; small loose ends get done

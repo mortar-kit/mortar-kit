@@ -1,0 +1,34 @@
+/* @mortar-kit/theme-warm: A warm light theme: cream panels, a dark brown rail, serif headings and a terracotta accent.
+   Sets the admin's --mortar-* tokens (see @mortar-kit/admin's tokens.css)
+   on :root, over the defaults. Fonts: DM Sans, Fraunces, if the app loads them
+   (or they are installed); otherwise the stacks fall back to system fonts. */
+:root {
+  --mortar-font: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --mortar-font-heading: Fraunces, Georgia, 'Times New Roman', serif;
+
+  --mortar-frame: #e8dccb;
+  --mortar-gap: 1px;
+  --mortar-panel: #fffbf5;
+  --mortar-bg: #f3ede4;
+  --mortar-preview-radius: 14px;
+  --mortar-preview-shadow: 0 0 0 1px #e8dccb, 0 10px 30px rgb(43 33 24 / 0.08);
+
+  --mortar-border: #e8dccb;
+  --mortar-text: #2b2118;
+  --mortar-muted: #75604e;
+  --mortar-input: #ffffff;
+  --mortar-hover: #f6ecdf;
+  --mortar-radius: 10px;
+
+  --mortar-accent: #c2410c;
+  --mortar-on-accent: #fff7ed;
+  --mortar-selected: #fde7d7;
+  --mortar-on-selected: #7c2d12;
+  --mortar-danger: #b91c1c;
+  --mortar-warning: #b45309;
+
+  --mortar-rail: #2b2118;
+  --mortar-on-rail: #c9b8a6;
+  --mortar-rail-active: #4a3a2c;
+  --mortar-on-rail-active: #fff7ed;
+}

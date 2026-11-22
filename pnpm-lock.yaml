@@ -214,6 +214,18 @@ importers:
       '@mortar-kit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mortar-kit/theme-midnight':
+        specifier: workspace:*
+        version: link:../../packages/theme-midnight
+      '@mortar-kit/theme-mono':
+        specifier: workspace:*
+        version: link:../../packages/theme-mono
+      '@mortar-kit/theme-soft':
+        specifier: workspace:*
+        version: link:../../packages/theme-soft
+      '@mortar-kit/theme-warm':
+        specifier: workspace:*
+        version: link:../../packages/theme-warm
       '@solidjs/meta':
         specifier: 2.0.0
         version: 2.0.0(@solidjs/web@2.0.3(solid-js@2.0.3))(solid-js@2.0.3)
@@ -245,6 +257,9 @@ importers:
       solid-js:
         specifier: 2.0.3
         version: 2.0.3
+      vite:
+        specifier: 8.3.8
+        version: 8.3.8(@types/node@24.19.2)
 
   packages/core:
     dependencies:
@@ -258,6 +273,30 @@ importers:
       solid-js:
         specifier: 2.0.3
         version: 2.0.3
+
+  packages/theme-midnight:
+    dependencies:
+      '@mortar-kit/admin':
+        specifier: workspace:^
+        version: link:../admin
+
+  packages/theme-mono:
+    dependencies:
+      '@mortar-kit/admin':
+        specifier: workspace:^
+        version: link:../admin
+
+  packages/theme-soft:
+    dependencies:
+      '@mortar-kit/admin':
+        specifier: workspace:^
+        version: link:../admin
+
+  packages/theme-warm:
+    dependencies:
+      '@mortar-kit/admin':
+        specifier: workspace:^
+        version: link:../admin
 
 packages:
 

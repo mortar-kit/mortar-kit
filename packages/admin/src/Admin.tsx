@@ -1,6 +1,8 @@
-// <Admin>: the whole admin panel. A narrow sidebar lists the collections and
-// the documents of the open one (with a form to create a document); the
-// rest is the <Editor> for the open document. Where it is (collection and
+// <Admin>: the whole admin panel. A rail lists the collections; beside it a
+// panel lists the documents of the open one (with a form to create a
+// document) or, while a document is open, that document's outline (from
+// its <Editor>; the rail button of the open collection shows its list
+// again). The rest is the <Editor> for the open document. Where it is (collection and
 // document id) can live in the app's URL (`location` + `onNavigate`, so
 // the app's own leave guard covers switching documents) or in the admin
 // itself, which then asks before leaving unsaved changes.
@@ -14,12 +16,13 @@ import {
   type Referrer,
   type SaveResult,
 } from '@mortar-kit/core';
-import { createEffect, createMemo, createSignal, flush, For, Loading, refresh, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, flush, For, Loading, onSettled, refresh, Show } from 'solid-js';
 
 import styles from './Admin.module.css';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
 import { Editor } from './Editor.tsx';
 import common from './common.module.css';
+import { CloseIcon } from './icons.tsx';
 
 export interface AdminProps {
   /** The bricks this site defines. */
@@ -69,6 +72,14 @@ export function Admin(props: AdminProps) {
   const [dirty, setDirty] = createSignal(false);
   const [blocked, setBlocked] = createSignal<Referrer[]>([]);
   const [refreshes, setRefreshes] = createSignal(0);
+  // The panel's slot for the editor's outline, and whether the panel shows the document list instead.
+  let outlineSlot: HTMLElement | undefined;
+  const [outline, setOutline] = createSignal<HTMLElement>();
+  onSettled(() => {
+    setOutline(outlineSlot);
+  });
+  const [listing, setListing] = createSignal(false);
+  const showList = () => !loc().id || !collection() || listing();
   // The save in flight, if any. Not reactive state: only navigation reads it.
   let saving: Promise<unknown> | undefined;
 
@@ -81,6 +92,7 @@ export function Admin(props: AdminProps) {
   createEffect(
     () => loc().id,
     (id) => {
+      setListing(false);
       if (pending && pending.doc.id === id) {
         draft = pending;
         pending = undefined;
@@ -166,12 +178,27 @@ export function Admin(props: AdminProps) {
       return props.content;
     },
     go: (to) => void go(to),
+    outline: () => outline(),
+    showList: () => setListing(true),
+  };
+
+  /** A rail button: the open collection's shows its document list again; another opens that collection. */
+  const pick = (c: AnyCollection) => {
+    if (loc().collection === c.name && loc().id) setListing(true);
+    else void go({ collection: c.name });
+  };
+
+  /** A document row: the open document goes back to its outline; another opens. */
+  const openDoc = (collectionName: string, id: string) => {
+    if (loc().collection === collectionName && loc().id === id) setListing(false);
+    else void go({ collection: collectionName, id });
   };
 
   return (
     <AdminContext value={api}>
       <div class={styles.admin}>
-        <nav class={styles.nav} aria-label="Content">
+        <nav class={styles.rail} aria-label="Content">
+          <span class={styles.mark} aria-hidden="true" />
           <ul class={styles.collections}>
             <For each={props.collections}>
               {(c) => (
@@ -179,8 +206,9 @@ export function Admin(props: AdminProps) {
                   <button
                     type="button"
                     class={styles.collection}
+                    data-initial={c.label.slice(0, 2)}
                     aria-current={loc().collection === c.name ? 'true' : undefined}
-                    onClick={() => void go({ collection: c.name })}
+                    onClick={() => pick(c)}
                   >
                     {c.label}
                   </button>
@@ -188,54 +216,59 @@ export function Admin(props: AdminProps) {
               )}
             </For>
           </ul>
-          <Show when={collection()} fallback={<p class={common.issue}>Unknown collection "{loc().collection}".</p>}>
-            {(c) => (
-              <section aria-label={c().label}>
-                <h2 class={styles.heading}>{c().label}</h2>
-                <Loading fallback={<p class={common.help}>Loading…</p>}>
-                  <ol class={styles.docs} aria-label={`${c().label} documents`}>
-                    <Show when={draftRow()?.collection === c().name && draftRow()}>
-                      {(row) => (
-                        <li>
-                          <button
-                            type="button"
-                            class={styles.doc}
-                            aria-current={loc().id === row().doc.id ? 'true' : undefined}
-                            onClick={() => void go({ collection: row().collection, id: row().doc.id })}
-                          >
-                            {c().titleOf(row().doc)} <span class={common.help}>(new, unsaved)</span>
-                          </button>
-                        </li>
-                      )}
-                    </Show>
-                    <For each={list()} keyed={(d) => d.id}>
-                      {(d) => (
-                        <li>
-                          <button
-                            type="button"
-                            class={styles.doc}
-                            aria-current={loc().id === d().id ? 'true' : undefined}
-                            onClick={() => void go({ collection: c().name, id: d().id })}
-                          >
-                            {c().titleOf(d())}
-                          </button>
-                        </li>
-                      )}
-                    </For>
-                  </ol>
-                  <NewForm collection={c()} taken={list().map((d) => d.slug)} onCreate={(slug) => create(c(), slug)} />
-                </Loading>
-              </section>
-            )}
-          </Show>
         </nav>
+        <aside class={styles.panel}>
+          <div class={styles.list} hidden={!showList()}>
+            <Show when={collection()} fallback={<p class={[styles.pad, common.issue]}>Unknown collection "{loc().collection}".</p>}>
+              {(c) => (
+                <section aria-label={c().label} class={styles.listSection}>
+                  <h2 class={styles.heading}>{c().label}</h2>
+                  <Loading fallback={<p class={[styles.pad, common.help]}>Loading…</p>}>
+                    <ol class={styles.docs} aria-label={`${c().label} documents`}>
+                      <Show when={draftRow()?.collection === c().name && draftRow()}>
+                        {(row) => (
+                          <li>
+                            <button
+                              type="button"
+                              class={styles.doc}
+                              aria-current={loc().id === row().doc.id ? 'true' : undefined}
+                              onClick={() => openDoc(row().collection, row().doc.id)}
+                            >
+                              {c().titleOf(row().doc)} <span class={styles.new}>(new, unsaved)</span>
+                            </button>
+                          </li>
+                        )}
+                      </Show>
+                      <For each={list()} keyed={(d) => d.id}>
+                        {(d) => (
+                          <li>
+                            <button
+                              type="button"
+                              class={styles.doc}
+                              aria-current={loc().id === d().id ? 'true' : undefined}
+                              onClick={() => openDoc(c().name, d().id)}
+                            >
+                              {c().titleOf(d())}
+                            </button>
+                          </li>
+                        )}
+                      </For>
+                    </ol>
+                    <NewForm collection={c()} taken={list().map((d) => d.slug)} onCreate={(slug) => create(c(), slug)} />
+                  </Loading>
+                </section>
+              )}
+            </Show>
+          </div>
+          <div class={styles.outline} hidden={showList()} ref={(el) => (outlineSlot = el)} />
+        </aside>
         <main class={styles.main}>
           <Show when={blocked().length > 0}>
             <div role="alert" class={styles.blocked}>
               <div class={styles.blockedHead}>
                 <p class={common.issue}>Can't delete: other documents use this one. Change or remove these references first:</p>
                 <button type="button" class={common.button} aria-label="Dismiss" onClick={() => setBlocked([])}>
-                  ✕
+                  <CloseIcon />
                 </button>
               </div>
               <ul>

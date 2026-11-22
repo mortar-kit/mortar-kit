@@ -37,6 +37,15 @@ further construction puns).
 - **Packages**: `@mortar-kit/core` (fields, bricks, collections, documents,
   storage rules, `PageView`, content context) and `@mortar-kit/admin`
   (`<Admin>`, `<Editor>`). Admin code never reaches the public site bundle.
+- **Admin layout and themes** (2026-11-22): the admin is laid out as a
+  collections rail, a panel (the open collection's documents, or the open
+  document's outline: slug, Details, body entries), a top bar (breadcrumb,
+  Delete, save status, Save), the preview, and an inspector with the selected
+  item's form. Looks ship as theme packages (`@mortar-kit/theme-midnight`,
+  `-warm`, `-soft`, `-mono`) chosen in vite.config with
+  `mortarKit({ theme })` from `@mortar-kit/admin/vite`. A theme is only
+  `--mortar-*` values (tokens in `packages/admin/src/tokens.css`), never a
+  different layout.
 - **Admin mount**: a route in the consuming app (e.g. `/admin`) rendering
   `<Admin>` (collections and their documents) or a single `<Editor>`; the
   preview is a same-origin iframe rendering the real bricks inside the app's
@@ -48,6 +57,11 @@ further construction puns).
 - `packages/core`, `packages/admin`: published under `@mortar-kit`. In the
   workspace, `exports` point at `src/` (the `solid` condition) so no build is
   needed for dev/tests; `publishConfig.exports` points at `dist/`.
+- `packages/theme-*`: plain JS packages (no build): `theme.css` sets
+  `--mortar-*` on `:root`; `index.js` exports `{ name, stylesheet }` for the
+  plugin. The admin imports `theme-slot.css` (empty); `mortarKit({ theme })`
+  serves it with the theme's stylesheet, so a theme lands only in the admin's
+  CSS, never on public pages.
 - `@mortar-kit/core/server`: node-only entry (`createJsonFileStore`), kept
   out of the main entry so `node:fs` never reaches a client bundle. The
   storage rules (`createContent`, `createMemoryStore`) are in the main entry.
@@ -82,7 +96,9 @@ further construction puns).
 - Packages that render JSX publish preserved JSX under a `solid` export
   condition and peer-depend on `solid-js` + `@solidjs/web` ^2.
 - Published exports have no `default`/`import` entry: the packages are consumed
-  through Vite + @solidjs/vite-plugin (the `solid` condition) only.
+  through Vite + @solidjs/vite-plugin (the `solid` condition) only. The exceptions
+  are node-only config entries (`@mortar-kit/admin/vite`, the theme
+  packages' `index.js`), which vite.config imports, so they have `default`.
 - `"use server"` functions belong in the consuming app (the plugin's default
   server-function filter skips node_modules); packages export plain functions
   (e.g. the JSON-file adapter) that the app wraps.
@@ -93,8 +109,10 @@ Single quotes, semicolons, 2-space indent, trailing commas. Styles are CSS
 modules next to their component (`Foo.module.css`, camelCase class names,
 `class={styles.foo}`); no global class names. Admin modules don't override
 each other's classes (no cross-file `composes`, which also makes postcss warn);
-the editor is themed by setting the `--mortar-*` custom properties on any
-ancestor (defaults live on `:where(:root)`). A short header
+the admin is themed by the `--mortar-*` custom properties (defaults on
+`:where(:root)` in `tokens.css`; themes set them on `:root`; any ancestor
+overrides both). Every colour, radius, font and gap in the admin's modules
+comes from a token, so themes stay pure token sets. A short header
 comment per file explaining its purpose; JSDoc on exported API. `import type`
 for types. Never destructure props. Reference sources:
 `node_modules/solid-js/CHEATSHEET.md`, `node_modules/solid-js/skills/`.

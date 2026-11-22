@@ -1,0 +1,19 @@
+{
+  "name": "@mortar-kit/theme-midnight",
+  "version": "0.0.0",
+  "description": "Mortar admin theme: dark panels, a soft blue accent and mono details",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["index.js", "index.d.ts", "theme.css"],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./theme.css": "./theme.css"
+  },
+  "peerDependencies": {
+    "@mortar-kit/admin": "workspace:^"
+  }
+}

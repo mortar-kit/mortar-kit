@@ -1,0 +1,38 @@
+/* @mortar-kit/theme-soft: A light theme of floating panels: rounded white cards on grey, generous controls and an emerald accent.
+   Sets the admin's --mortar-* tokens (see @mortar-kit/admin's tokens.css)
+   on :root, over the defaults. Fonts: Plus Jakarta Sans, if the app loads them
+   (or they are installed); otherwise the stacks fall back to system fonts. */
+:root {
+  --mortar-font: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+  --mortar-label-transform: none;
+  --mortar-label-spacing: 0;
+
+  --mortar-frame: #e8ebf2;
+  --mortar-gap: 12px;
+  --mortar-inset: 12px;
+  --mortar-panel: #ffffff;
+  --mortar-panel-radius: 18px;
+  --mortar-panel-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+  --mortar-bg: #f8fafc;
+  --mortar-preview-radius: 14px;
+  --mortar-preview-shadow: 0 0 0 1px #e2e8f0;
+
+  --mortar-border: #e2e8f0;
+  --mortar-text: #1e293b;
+  --mortar-muted: #64748b;
+  --mortar-input: #f1f5f9;
+  --mortar-hover: #f1f5f9;
+  --mortar-radius: 12px;
+
+  --mortar-accent: #047857;
+  --mortar-on-accent: #ffffff;
+  --mortar-selected: #ecfdf5;
+  --mortar-on-selected: #065f46;
+  --mortar-danger: #b91c1c;
+  --mortar-warning: #b45309;
+
+  --mortar-rail: #ffffff;
+  --mortar-on-rail: #64748b;
+  --mortar-rail-active: #d1fae5;
+  --mortar-on-rail-active: #065f46;
+}
