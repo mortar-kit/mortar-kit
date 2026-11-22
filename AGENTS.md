@@ -83,6 +83,11 @@ further construction puns).
 - `docs`: the Mortar docs site (private app `mortar-docs`), written in
   Mortar. Collections `docs` (guides: section, position, brick body) and
   `pages` (home); bricks Markdown (marked), Callout, API entry, Hero, Cards.
+  Code is highlighted with Shiki (`src/highlight/`: four precompiled
+  grammars, TSX for the whole TS/JS family, GitHub light/dark themes as
+  `--shiki-*` vars): the server highlights up front; the browser keeps the
+  server's HTML on hydration and loads Shiki as its own chunk afterwards
+  (`loadHighlighter` in `App.tsx`), so client re-renders highlight too.
   Published content is JSON in `docs/content/<collection>/<slug>.json`,
   bundled with `import.meta.glob` (no server functions, no file access at
   runtime). Every page hydrates: the server renders the published content,

@@ -2,6 +2,8 @@
 // members and examples. Type names of other exports link to their pages.
 import { createMemo, For, Show } from 'solid-js';
 
+import { linkWords } from '../highlight/html.ts';
+import { highlighter } from '../highlight/index.ts';
 import { renderMarkdown } from '../markdown.ts';
 import { referenceHref, type ApiEntry } from './api.ts';
 import styles from './Entry.module.css';
@@ -20,8 +22,26 @@ function Code(props: { text: string; names: ReadonlySet<string>; self: string })
   );
 }
 
+/**
+ * The declaration, highlighted (see highlight/) with export names linked.
+ * It's an HTML string either way, so hydration keeps the server's markup
+ * while the browser's highlighter is still loading (plain, same links).
+ */
+function Signature(props: { text: string; names: ReadonlySet<string>; self: string }) {
+  const html = createMemo(() => {
+    const link = (word: string) => (word !== props.self && props.names.has(word) ? referenceHref(word) : undefined);
+    return highlighter()?.(props.text, 'ts', link) ?? linkWords(props.text, link);
+  });
+  return (
+    <pre class={styles.signature}>
+      {/* oxlint-disable-next-line solid/no-innerhtml -- Built from the packages' own declarations, escaped (highlight/). */}
+      <code innerHTML={html()} />
+    </pre>
+  );
+}
+
 function Prose(props: { markdown: string }) {
-  const html = createMemo(() => renderMarkdown(props.markdown));
+  const html = createMemo(() => renderMarkdown(props.markdown, highlighter()));
   // oxlint-disable-next-line solid/no-innerhtml -- Comments from the packages' own sources, rendered by markdown.ts.
   return <div class={styles.prose} innerHTML={html()} />;
 }
@@ -60,11 +80,7 @@ export function Entry(props: EntryProps) {
       <Show when={props.entry.deprecated}>
         <p class={styles.deprecated}>Deprecated.</p>
       </Show>
-      <pre class={styles.signature}>
-        <code>
-          <Code text={props.entry.signature} names={names()} self={props.entry.name} />
-        </code>
-      </pre>
+      <Signature text={props.entry.signature} names={names()} self={props.entry.name} />
       <Show when={props.entry.summary}>
         <Prose markdown={props.entry.summary} />
       </Show>

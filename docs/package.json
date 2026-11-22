@@ -12,10 +12,13 @@
     "@mortar-kit/admin": "workspace:*",
     "@mortar-kit/core": "workspace:*",
     "@mortar-kit/theme-midnight": "workspace:*",
+    "@shikijs/engine-javascript": "4.6.0",
+    "@shikijs/langs-precompiled": "4.6.0",
     "@solidjs/meta": "2.0.0",
     "@solidjs/router": "2.0.1",
     "@solidjs/web": "2.0.3",
     "marked": "18.2.1",
+    "shiki": "4.6.0",
     "solid-js": "2.0.3"
   },
   "devDependencies": {

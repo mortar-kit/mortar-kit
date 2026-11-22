@@ -2,6 +2,7 @@
 import { defineBrick, fields } from '@mortar-kit/core';
 import { createMemo, Show } from 'solid-js';
 
+import { highlighter } from '../highlight/index.ts';
 import { renderMarkdown } from '../markdown.ts';
 import styles from './callout.module.css';
 
@@ -14,7 +15,7 @@ export const callout = defineBrick({
     body: fields.textarea({ label: 'Text (Markdown)', default: 'Something worth knowing.' }),
   },
   component: (props) => {
-    const html = createMemo(() => renderMarkdown(props.data.body));
+    const html = createMemo(() => renderMarkdown(props.data.body, highlighter()));
     return (
       <aside class={styles.callout} data-tone={props.data.tone}>
         <Show when={props.data.title}>
