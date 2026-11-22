@@ -36,6 +36,12 @@ export interface PageViewProps {
    * `track` signal does.
    */
   errorFallback?: (entry: PageEntry, error: unknown) => JSX.Element;
+  /**
+   * Renders around each entry, given its id (stable for the entry's life).
+   * Default: nothing around it. The admin preview marks entries with it, so
+   * a click can find the entry it landed in.
+   */
+  wrap?: (id: string, view: JSX.Element) => JSX.Element;
 }
 
 /** Renders every entry with its brick's component. Bricks that load data read `ContentContext`. */
@@ -61,7 +67,7 @@ export function PageView(props: PageViewProps) {
             <Brick data={data} loaded={loaded()} />
           </Loading>
         );
-        return (
+        const rendered = (
           <Show when={brick()} fallback={props.fallback?.(entry())}>
             <Show when={loads()} fallback={<Brick data={data} loaded={undefined} />}>
               <Show when={props.errorFallback} fallback={view()}>
@@ -70,6 +76,8 @@ export function PageView(props: PageViewProps) {
             </Show>
           </Show>
         );
+        // In JSX, so props.wrap and the entry are read where they're tracked.
+        return <>{props.wrap ? props.wrap(entry().id, rendered) : rendered}</>;
       }}
     </For>
   );

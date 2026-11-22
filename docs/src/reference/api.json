@@ -105,6 +105,13 @@
           "readonly": false,
           "type": "(dirty: boolean) => void",
           "doc": "Whether the open document has unsaved changes; see `EditorProps.onDirtyChange`."
+        },
+        {
+          "name": "resolveLink",
+          "optional": true,
+          "readonly": false,
+          "type": "(url: URL) => { collection: string; slug: string } | undefined",
+          "doc": "Maps a URL of the site to the document it shows, e.g. `/posts/hello` to\n`{ collection: 'posts', slug: 'hello' }` (routing is the app's). With it,\n⌘/Ctrl-clicking a link in the preview opens that document in the admin;\na link it doesn't map (or without it) opens in a new tab."
         }
       ]
     },
@@ -282,6 +289,13 @@
           "readonly": false,
           "type": "(dirty: boolean) => void",
           "doc": "Called with whether there are unsaved changes, initially and whenever\nthat changes (only with `onSave`), and with false if the save controls\ngo away while dirty (the editor unmounts or `onSave` is removed). Use it\nto guard in-app navigation, e.g. with the router's `useBeforeLeave`;\nclosing the tab is already guarded."
+        },
+        {
+          "name": "onFollowLink",
+          "optional": true,
+          "readonly": false,
+          "type": "(url: URL) => void",
+          "doc": "Called when a same-origin link is ⌘/Ctrl-clicked in the preview (a plain\nclick selects the brick instead). Default: opens it in a new tab.\n`<Admin>` opens the document it points to (see `AdminProps.resolveLink`)."
         }
       ]
     },
@@ -472,6 +486,27 @@
           "readonly": false,
           "type": "number",
           "doc": "Bump it after saved content changes (a save, a delete): the preview reloads what bricks loaded."
+        },
+        {
+          "name": "selected",
+          "optional": true,
+          "readonly": false,
+          "type": "string | null",
+          "doc": "The selected entry's id, outlined in the preview; null when none (or the document's fields) is selected."
+        },
+        {
+          "name": "onSelect",
+          "optional": true,
+          "readonly": false,
+          "type": "(id: string) => void",
+          "doc": "An entry was clicked in the preview."
+        },
+        {
+          "name": "onLink",
+          "optional": true,
+          "readonly": false,
+          "type": "(url: URL) => void",
+          "doc": "A same-origin link was ⌘/Ctrl-clicked in the preview (others open in a new tab from there)."
         }
       ]
     },
@@ -534,6 +569,30 @@
           "optional": false,
           "readonly": false,
           "type": "\"mortar:hello\"",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "LinkMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Preview → editor: a same-origin link was followed (⌘/Ctrl-click) in the\npreview. The editor opens the document it points to, if any, or a new tab.",
+      "signature": "interface LinkMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:link\"",
+          "doc": ""
+        },
+        {
+          "name": "href",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
           "doc": ""
         }
       ]
@@ -625,6 +684,30 @@
           "optional": false,
           "readonly": false,
           "type": "\"mortar:refresh\"",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "SelectMessage",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Editor → preview: the selected entry, by id (null when the document's\nfields or nothing is selected), so the preview outlines it.\nPreview → editor: an entry was clicked in the preview; select it.",
+      "signature": "interface SelectMessage",
+      "members": [
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "\"mortar:select\"",
+          "doc": ""
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string | null",
           "doc": ""
         }
       ]
@@ -1971,6 +2054,13 @@
           "readonly": false,
           "type": "(entry: PageEntry, error: unknown) => Element",
           "doc": "Shown in place of a brick whose load failed. Without it, the error\nreaches the app's own error boundary (a server render fails with it);\nthe admin preview passes one. It clears when the brick loads again: when\ndata its loader read before its first `await` changes, or the source's\n`track` signal does."
+        },
+        {
+          "name": "wrap",
+          "optional": true,
+          "readonly": false,
+          "type": "(id: string, view: Element) => Element",
+          "doc": "Renders around each entry, given its id (stable for the entry's life).\nDefault: nothing around it. The admin preview marks entries with it, so\na click can find the entry it landed in."
         }
       ]
     },

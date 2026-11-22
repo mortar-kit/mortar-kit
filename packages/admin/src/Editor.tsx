@@ -5,6 +5,8 @@
 // Delete and the save controls (when the app passes `onRemove`/`onSave`); the
 // live preview fills the middle, and the inspector on the right (resizable
 // from its left edge) shows the generated form for the selected item.
+// Clicking a brick in the preview selects it; ⌘/Ctrl-clicking a link there
+// calls `onFollowLink` (by default, opens it in a new tab).
 import { brickMap, isValidSlug, type AnyBrick, type AnyCollection, type Doc, type PageEntry, type SaveResult } from '@mortar-kit/core';
 import { Portal } from '@solidjs/web';
 import { createEffect, createMemo, createSignal, deep, For, Show, snapshot } from 'solid-js';
@@ -52,6 +54,12 @@ export interface EditorProps {
    * closing the tab is already guarded.
    */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * Called when a same-origin link is ⌘/Ctrl-clicked in the preview (a plain
+   * click selects the brick instead). Default: opens it in a new tab.
+   * `<Admin>` opens the document it points to (see `AdminProps.resolveLink`).
+   */
+  onFollowLink?: (url: URL) => void;
 }
 
 export function Editor(props: EditorProps) {
@@ -204,7 +212,18 @@ export function Editor(props: EditorProps) {
       </header>
       <div class={styles.stage}>
         <div class={styles.frame}>
-          <PreviewFrame url={props.previewUrl} collection={props.collection.name} body={props.collection.body} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
+          <PreviewFrame
+            url={props.previewUrl}
+            collection={props.collection.name}
+            body={props.collection.body}
+            doc={editor.state.doc}
+            refresh={(props.refresh ?? 0) + saves()}
+            selected={typeof editor.state.selected === 'string' ? editor.state.selected : null}
+            onSelect={(id) => {
+              if (entries().some((e) => e.id === id)) editor.select(id);
+            }}
+            onLink={(url) => (props.onFollowLink ? props.onFollowLink(url) : window.open(url.href, '_blank', 'noopener'))}
+          />
         </div>
       </div>
       <ResizeHandle width={inspector.width()} onResize={inspector.setWidth} />
