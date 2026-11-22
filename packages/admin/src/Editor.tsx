@@ -1,16 +1,23 @@
-// <Editor>: edits one document. The sidebar has its title and slug, the
-// save controls (when the app passes `onSave`), a "Details" item for the
-// collection's fields, and, when the collection has a body, its entries
-// (with add, move, duplicate and remove); below them, the generated form
-// for the selected item. The rest is a live preview iframe.
+// <Editor>: edits one document. Its outline panel has the slug, a "Details"
+// item for the collection's fields and, when the collection has a body, its
+// entries (with add, move, duplicate and remove); inside <Admin> the outline
+// goes in the admin's panel instead. A top bar names the document and holds
+// Delete and the save controls (when the app passes `onRemove`/`onSave`); the
+// live preview fills the middle, and the inspector on the right shows the
+// generated form for the selected item.
 import { brickMap, isValidSlug, type AnyBrick, type AnyCollection, type Doc, type PageEntry, type SaveResult } from '@mortar-kit/core';
+import { Portal } from '@solidjs/web';
 import { createEffect, createMemo, createSignal, deep, For, Show, snapshot } from 'solid-js';
 
 import { BrickForm, FieldsForm } from './BrickForm.tsx';
+import { useAdmin } from './context.ts';
 import styles from './Editor.module.css';
+import './tokens.css';
+import './theme-slot.css';
 import { PreviewFrame } from './PreviewFrame.tsx';
 import { SaveBar } from './SaveBar.tsx';
 import common from './common.module.css';
+import { BackIcon, CloseIcon, CopyIcon, DetailsIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from './icons.tsx';
 import { createEditorStore, FIELDS, type EditorStore } from './state.ts';
 
 export interface EditorProps {
@@ -52,6 +59,7 @@ export function Editor(props: EditorProps) {
     () => props.collection,
     () => props.doc,
   );
+  const admin = useAdmin();
   const byName = createMemo(() => brickMap(props.bricks));
   const entries = () => (props.collection.body ? (editor.state.doc.entries ?? []) : []);
   const selected = createMemo(() => entries().find((e) => e.id === editor.state.selected));
@@ -83,84 +91,133 @@ export function Editor(props: EditorProps) {
     return undefined;
   };
 
+  const selectedLabel = () => {
+    if (editor.state.selected === FIELDS) return 'Details';
+    const entry = selected();
+    return entry ? (byName().get(entry.brick)?.label ?? entry.brick) : undefined;
+  };
+
+  // The document's outline: slug, Details, the body's entries and the Add
+  // menu. Inside <Admin> it goes in the admin's panel (beside its collections
+  // rail); a standalone editor shows it in its own panel.
+  const outline = (
+    <div class={styles.outline}>
+      <Show when={admin}>
+        {(a) => (
+          <button type="button" class={styles.back} onClick={() => a().showList()}>
+            <BackIcon />
+            All {props.collection.label.toLowerCase()}
+          </button>
+        )}
+      </Show>
+      <label class={styles.slug}>
+        <span class={styles.label}>Slug</span>
+        <span class={styles.slugField}>
+          <input
+            ref={(el) => (slugInput = el)}
+            class={styles.slugInput}
+            value={editor.state.doc.slug}
+            aria-invalid={slugProblem() ? 'true' : undefined}
+            onInput={(e) => editor.setSlug(e.currentTarget.value)}
+          />
+        </span>
+        <Show when={slugProblem()}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
+        <Show when={saved().exists && !slugProblem() && editor.state.doc.slug !== saved().slug}>
+          <small class={common.help}>Saving moves this document to a new address; links to the old one will break. References to it are kept.</small>
+        </Show>
+      </label>
+      <button
+        type="button"
+        class={[styles.item, styles.details]}
+        aria-current={editor.state.selected === FIELDS ? 'true' : undefined}
+        onClick={() => editor.select(FIELDS)}
+      >
+        <DetailsIcon />
+        Details
+      </button>
+      <Show when={props.collection.body}>
+        <h2 class={styles.label}>Body</h2>
+        <Show when={entries().length > 0} fallback={<p class={styles.empty}>The body is empty. Add a brick to start.</p>}>
+          <ol class={styles.entries} aria-label="Body entries">
+            <For each={entries()} keyed={(entry) => entry.id}>
+              {(entry, index) => <EntryRow entry={entry()} index={index()} count={entries().length} brick={byName().get(entry().brick)} editor={editor} />}
+            </For>
+          </ol>
+        </Show>
+        <AddMenu bricks={props.bricks} onAdd={add} />
+      </Show>
+    </div>
+  );
+
   return (
-    <div class={styles.editor}>
-      <aside class={styles.sidebar}>
-        <header class={styles.header}>
-          <h2 class={styles.heading}>{props.collection.label}</h2>
-          <div class={styles.titleRow}>
-            <h1 class={styles.title}>{props.collection.titleOf(editor.state.doc)}</h1>
-            <Show when={props.onRemove}>
-              {(onRemove) => (
-                <button type="button" class={[common.button, styles.delete]} onClick={() => onRemove()()}>
-                  Delete
-                </button>
-              )}
-            </Show>
-          </div>
-          <label class={styles.slug}>
-            <span class={styles.slugLabel}>Slug</span>
-            <input
-              ref={(el) => (slugInput = el)}
-              class={styles.slugInput}
-              value={editor.state.doc.slug}
-              aria-invalid={slugProblem() ? 'true' : undefined}
-              onInput={(e) => editor.setSlug(e.currentTarget.value)}
-            />
-            <Show when={slugProblem()}>{(message) => <small class={common.issue}>{message()}</small>}</Show>
-            <Show when={saved().exists && !slugProblem() && editor.state.doc.slug !== saved().slug}>
-              <small class={common.help}>Saving moves this document to a new address; links to the old one will break. References to it are kept.</small>
-            </Show>
-          </label>
-        </header>
-        <Show when={props.onSave}>
-          {(onSave) => (
-            <SaveBar
-              editor={editor}
-              bricks={props.bricks}
-              collection={props.collection}
-              source={props.doc}
-              isNew={props.isNew}
-              onSave={onSave()}
-              onSlugIssue={() => slugInput?.focus()}
-              onSaved={(doc) => {
-                setSaved({ slug: doc.slug, exists: true });
-                setSaves((n) => n + 1);
-              }}
-              onDirtyChange={props.onDirtyChange}
-            />
-          )}
-        </Show>
-        <button
-          type="button"
-          class={[styles.entry, styles.details]}
-          aria-current={editor.state.selected === FIELDS ? 'true' : undefined}
-          onClick={() => editor.select(FIELDS)}
-        >
-          Details
-        </button>
-        <Show when={props.collection.body}>
-          <div class={styles.toolbar}>
-            <h2 class={styles.heading}>Body</h2>
-            <AddMenu bricks={props.bricks} onAdd={add} />
-          </div>
-          <Show when={entries().length > 0} fallback={<p class={styles.empty}>The body is empty. Add a brick to start.</p>}>
-            <ol class={styles.entries} aria-label="Body entries">
-              <For each={entries()} keyed={(entry) => entry.id}>
-                {(entry, index) => <EntryRow entry={entry()} index={index()} count={entries().length} brick={byName().get(entry().brick)} editor={editor} />}
-              </For>
-            </ol>
+    <div class={[styles.editor, admin && styles.embedded]}>
+      <Show when={admin} fallback={<aside class={styles.panel}>{outline}</aside>}>
+        {(a) => <Show when={a().outline()}>{(mount) => <Portal mount={mount()}>{outline}</Portal>}</Show>}
+      </Show>
+      <header class={styles.topbar}>
+        <div class={styles.crumbs}>
+          <span class={styles.crumb}>{props.collection.label}</span>
+          <span class={styles.crumbSep} aria-hidden="true">
+            ›
+          </span>
+          <h1 class={styles.title}>{props.collection.titleOf(editor.state.doc)}</h1>
+          <Show when={selectedLabel()}>
+            {(label) => (
+              <>
+                <span class={styles.crumbSep} aria-hidden="true">
+                  ›
+                </span>
+                <span class={styles.crumb}>{label()}</span>
+              </>
+            )}
           </Show>
-        </Show>
+        </div>
+        <div class={styles.actions}>
+          <Show when={props.onRemove}>
+            {(onRemove) => (
+              <button type="button" class={styles.delete} aria-label="Delete" title="Delete this document" onClick={() => onRemove()()}>
+                <TrashIcon />
+              </button>
+            )}
+          </Show>
+          <Show when={props.onSave}>
+            {(onSave) => (
+              <SaveBar
+                editor={editor}
+                bricks={props.bricks}
+                collection={props.collection}
+                source={props.doc}
+                isNew={props.isNew}
+                onSave={onSave()}
+                onSlugIssue={() => slugInput?.focus()}
+                onSaved={(doc) => {
+                  setSaved({ slug: doc.slug, exists: true });
+                  setSaves((n) => n + 1);
+                }}
+                onDirtyChange={props.onDirtyChange}
+              />
+            )}
+          </Show>
+        </div>
+      </header>
+      <div class={styles.stage}>
+        <div class={styles.frame}>
+          <PreviewFrame url={props.previewUrl} collection={props.collection.name} body={props.collection.body} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
+        </div>
+      </div>
+      <aside class={styles.inspector} aria-label="Inspector">
         <Show when={editor.state.selected === FIELDS}>
-          <section aria-label="Edit details">
-            <h2 class={styles.heading}>Details</h2>
+          <section aria-label="Edit details" class={styles.section}>
+            <div class={styles.inspectorHead}>
+              <h2 class={styles.inspectorTitle}>Details</h2>
+              <p class={styles.inspectorSub}>{props.collection.label} fields</p>
+            </div>
             <FieldsForm collection={props.collection} data={editor.state.doc.fields} editor={editor} />
           </section>
         </Show>
         <Show when={selected()} keyed>
           {(entry) => (
-            <section aria-label="Edit brick">
+            <section aria-label="Edit brick" class={styles.section}>
               <Show
                 when={byName().get(entry.brick)}
                 fallback={
@@ -171,7 +228,12 @@ export function Editor(props: EditorProps) {
               >
                 {(brick) => (
                   <>
-                    <h2 class={styles.heading}>{brick().label}</h2>
+                    <div class={styles.inspectorHead}>
+                      <h2 class={styles.inspectorTitle}>{brick().label}</h2>
+                      <p class={styles.inspectorSub}>
+                        Brick {entries().findIndex((e) => e.id === entry.id) + 1} of {entries().length}
+                      </p>
+                    </div>
                     <BrickForm brick={brick()} entry={entry} editor={editor} />
                   </>
                 )}
@@ -179,8 +241,10 @@ export function Editor(props: EditorProps) {
             </section>
           )}
         </Show>
+        <Show when={editor.state.selected === null || (editor.state.selected !== FIELDS && !selected())}>
+          <p class={styles.nothing}>Pick Details or a brick to edit it.</p>
+        </Show>
       </aside>
-      <PreviewFrame url={props.previewUrl} collection={props.collection.name} body={props.collection.body} doc={editor.state.doc} refresh={(props.refresh ?? 0) + saves()} />
     </div>
   );
 }
@@ -195,7 +259,7 @@ function EntryRow(props: { entry: PageEntry; index: number; count: number; brick
     <li class={[styles.entryRow, !props.brick && styles.unknown]}>
       <button
         type="button"
-        class={styles.entry}
+        class={styles.item}
         aria-current={props.editor.state.selected === id() ? 'true' : undefined}
         onClick={() => props.editor.select(id())}
       >
@@ -204,49 +268,62 @@ function EntryRow(props: { entry: PageEntry; index: number; count: number; brick
         </Show>
         {label()}
       </button>
-      <div class={common.rowActions}>
+      <div class={styles.rowActions}>
         <button
           type="button"
-          class={common.button}
+          class={styles.iconButton}
           aria-label={`Move ${name()} up`}
+          title="Move up"
           disabled={props.index === 0}
           onClick={() => props.editor.moveEntry(id(), props.index - 1)}
         >
-          ↑
+          <UpIcon />
         </button>
         <button
           type="button"
-          class={common.button}
+          class={styles.iconButton}
           aria-label={`Move ${name()} down`}
+          title="Move down"
           disabled={props.index === props.count - 1}
           onClick={() => props.editor.moveEntry(id(), props.index + 1)}
         >
-          ↓
-        </button>
-        <button type="button" class={common.button} aria-label={`Duplicate ${name()}`} disabled={!props.brick} onClick={() => props.editor.duplicateEntry(id())}>
-          ⧉
+          <DownIcon />
         </button>
         <button
           type="button"
-          class={common.button}
+          class={styles.iconButton}
+          aria-label={`Duplicate ${name()}`}
+          title="Duplicate"
+          disabled={!props.brick}
+          onClick={() => props.editor.duplicateEntry(id())}
+        >
+          <CopyIcon />
+        </button>
+        <button
+          type="button"
+          class={styles.iconButton}
           aria-label={`Remove ${name()}`}
+          title="Remove"
           onClick={() => {
             if (window.confirm(`Remove "${label()}" from the body?`)) props.editor.removeEntry(id());
           }}
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
     </li>
   );
 }
 
-/** "Add brick" disclosure listing every brick by label. */
+/** "Add brick" disclosure at the foot of the outline, listing every brick by label (it opens upwards). */
 function AddMenu(props: { bricks: readonly AnyBrick[]; onAdd: (brickName: string) => void }) {
   let menu: HTMLDetailsElement | undefined;
   return (
     <details class={styles.addMenu} ref={(el) => (menu = el)}>
-      <summary>Add brick</summary>
+      <summary>
+        <PlusIcon />
+        Add brick
+      </summary>
       <ul>
         <For each={props.bricks}>
           {(brick) => (

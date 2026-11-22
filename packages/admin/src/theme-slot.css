@@ -1,0 +1,3 @@
+/* Where a theme comes in. Empty here, so the admin uses the default tokens
+   (tokens.css); the `mortarKit({ theme })` Vite plugin replaces this file's
+   contents with an import of the chosen theme's stylesheet. */

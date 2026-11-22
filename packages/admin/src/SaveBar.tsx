@@ -110,9 +110,15 @@ export function SaveBar(props: SaveBarProps) {
           Save
         </button>
       </div>
-      <Show when={error()}>{(message) => <p role="alert" class={common.issue}>Couldn't save: {message()}</p>}</Show>
+      <Show when={error()}>
+        {(message) => (
+          <p role="alert" class={[styles.popover, common.issue]}>
+            Couldn't save: {message()}
+          </p>
+        )}
+      </Show>
       <Show when={issues().length > 0}>
-        <div role="alert" class={styles.issues}>
+        <div role="alert" class={[styles.popover, styles.issues]}>
           <p class={common.issue}>Not saved: fix {issues().length === 1 ? 'this problem' : `these ${issues().length} problems`} first.</p>
           <ul>
             <For each={issues()}>

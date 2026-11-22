@@ -1,0 +1,52 @@
+/* The admin's design tokens: every --mortar-* custom property the admin's
+   modules read, with the default theme's values. Set at zero specificity on
+   the document root, so a theme (`mortarKit({ theme })`, which loads on
+   :root), a value on any ancestor of the admin, or an app's own :root rule
+   overrides them. Themes set some or all of these; nothing else. */
+:where(:root) {
+  /* Type. */
+  --mortar-font: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mortar-font-heading: var(--mortar-font);
+  --mortar-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --mortar-font-size: 13px;
+  /* Section labels ("Body", "Details"): mono themes use the mono font, uppercase. */
+  --mortar-label-font: var(--mortar-font);
+  --mortar-label-transform: uppercase;
+  --mortar-label-spacing: 0.05em;
+
+  /* Surfaces. Panels sit on --mortar-frame, --mortar-gap apart, inside
+     --mortar-inset of it: a 1px gap on a border-coloured frame draws lines
+     between flush panels; a wider gap on the background floats them. */
+  --mortar-frame: #e4e4e7;
+  --mortar-gap: 1px;
+  --mortar-inset: 0px;
+  --mortar-panel: #ffffff;
+  --mortar-panel-radius: 0px;
+  --mortar-panel-shadow: none;
+  /* Behind the preview. */
+  --mortar-bg: #f4f4f5;
+  --mortar-preview-radius: 10px;
+  --mortar-preview-shadow: 0 0 0 1px #e4e4e7, 0 8px 24px rgb(24 24 27 / 0.06);
+
+  /* Lines, text and controls. */
+  --mortar-border: #e4e4e7;
+  --mortar-text: #18181b;
+  --mortar-muted: #71717a;
+  --mortar-input: #fafafa;
+  --mortar-hover: #f4f4f5;
+  --mortar-radius: 7px;
+
+  /* Accent: buttons, focus, the selected item. */
+  --mortar-accent: #2563eb;
+  --mortar-on-accent: #ffffff;
+  --mortar-selected: #2563eb;
+  --mortar-on-selected: #ffffff;
+  --mortar-danger: #b91c1c;
+  --mortar-warning: #b45309;
+
+  /* The collections rail. */
+  --mortar-rail: #18181b;
+  --mortar-on-rail: #a1a1aa;
+  --mortar-rail-active: #3f3f46;
+  --mortar-on-rail-active: #ffffff;
+}

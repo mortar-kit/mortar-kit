@@ -1,167 +1,372 @@
-/* Layout of the editor: the sidebar (entry list, add menu, form panel) and
-   the preview pane. */
-
-/* Default theme: the --mortar-* custom properties every editor module reads.
-   Set at zero specificity on the document root, so a value on any ancestor
-   of the editor (or an app's own :root rule) overrides them. */
-:where(:root) {
-  --mortar-bg: #f5f5f4;
-  --mortar-panel: #ffffff;
-  --mortar-border: #d6d3d1;
-  --mortar-text: #1c1917;
-  --mortar-muted: #78716c;
-  --mortar-accent: #2563eb;
-  --mortar-danger: #b91c1c;
-}
+/* Layout of the editor: the outline panel (standalone only; inside <Admin>
+   it sits in the admin's panel), the top bar, the preview stage and the
+   inspector. Every value comes from the --mortar-* tokens (tokens.css). */
 .editor {
   display: grid;
-  grid-template-columns: minmax(20rem, 26rem) 1fr;
+  grid-template-columns: 16rem minmax(0, 1fr) 20rem;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--mortar-gap);
   height: 100vh;
-  font: 14px/1.4 system-ui, sans-serif;
+  padding: var(--mortar-inset);
+  font: var(--mortar-font-size) / 1.45 var(--mortar-font);
   color: var(--mortar-text);
-  background: var(--mortar-bg);
+  background: var(--mortar-frame);
 }
 .editor *,
 .editor *::before,
 .editor *::after {
   box-sizing: border-box;
 }
-.sidebar {
-  overflow-y: auto;
-  padding: 1rem;
-  border-right: 1px solid var(--mortar-border);
-  background: var(--mortar-panel);
-}
-.heading {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--mortar-muted);
-}
-.toolbar {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-.toolbar .heading {
-  margin: 0.4rem 0 0;
-}
-.empty {
-  color: var(--mortar-muted);
-  margin: 0 0 1.5rem;
-}
-.entries {
-  list-style: none;
-  margin: 0 0 1.5rem;
+/* Inside <Admin>: no outline column, and the admin already pads the edge. */
+.embedded {
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  height: 100%;
   padding: 0;
-  display: grid;
-  gap: 0.25rem;
 }
-.entryRow {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.25rem;
-  align-items: center;
-}
-.entry {
-  width: 100%;
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--mortar-border);
-  border-radius: 0.375rem;
+.panel,
+.topbar,
+.inspector,
+.stage {
+  min-width: 0;
+  border-radius: var(--mortar-panel-radius);
   background: var(--mortar-panel);
+  box-shadow: var(--mortar-panel-shadow);
+}
+.panel {
+  grid-row: 1 / 3;
+  display: flex;
+  overflow-y: auto;
+}
+
+/* The outline (slug, Details, body entries, Add menu). */
+.outline {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 100%;
+  padding: 0.75rem 0.5rem;
+}
+.label {
+  margin: 0;
+  font-family: var(--mortar-label-font);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: var(--mortar-label-transform);
+  letter-spacing: var(--mortar-label-spacing);
+  color: var(--mortar-muted);
+}
+.outline > .label {
+  padding: 1rem 0.5rem 0.4rem;
+}
+.back {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  border-radius: var(--mortar-radius);
+  background: none;
+  color: var(--mortar-muted);
   font: inherit;
   cursor: pointer;
 }
-.entry[aria-current='true'] {
-  border-color: var(--mortar-accent);
-  box-shadow: inset 3px 0 0 var(--mortar-accent);
+.back:hover {
+  background: var(--mortar-hover);
+  color: var(--mortar-text);
 }
-.unknown .entry {
-  border-style: dashed;
+.slug {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0.5rem 0.75rem;
+}
+.slugField {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+}
+.slugField:focus-within {
+  border-color: var(--mortar-accent);
+}
+/* The leading slash, drawn by CSS so it stays out of the input's label. */
+.slugField::before {
+  content: '/';
+  padding-left: 0.6rem;
+  font-family: var(--mortar-font-mono);
+  color: var(--mortar-muted);
+}
+.slugInput {
+  flex-grow: 1;
+  min-width: 0;
+  padding: 0.45rem 0.6rem 0.45rem 0.2rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-family: var(--mortar-font-mono);
+  color: inherit;
+}
+.slugField:has(.slugInput[aria-invalid='true']) {
+  border-color: var(--mortar-danger);
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: var(--mortar-radius);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--mortar-hover);
+}
+.item[aria-current='true'] {
+  background: var(--mortar-selected);
+  color: var(--mortar-on-selected);
+  font-weight: 600;
+}
+.details {
+  font-weight: 500;
+}
+.empty {
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  color: var(--mortar-muted);
+}
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  counter-reset: entry;
+}
+.entryRow {
+  position: relative;
+  counter-increment: entry;
+}
+/* Position numbers, drawn by CSS so they stay out of the entry's name. */
+.entryRow:not(.unknown) .item::before {
+  content: counter(entry);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: calc(var(--mortar-radius) - 2px);
+  background: var(--mortar-hover);
+  color: var(--mortar-muted);
+  font-family: var(--mortar-font-mono);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+.entryRow .item[aria-current='true']::before {
+  background: rgb(255 255 255 / 0.2);
+  color: inherit;
+}
+.entryRow .item {
+  padding-right: 6.5rem;
+}
+.unknown .item {
   color: var(--mortar-danger);
+}
+/* Move, duplicate and remove: shown on hover, focus or selection. */
+.rowActions {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  display: flex;
+  gap: 1px;
+  translate: 0 -50%;
+  opacity: 0;
+}
+.entryRow:hover .rowActions,
+.entryRow:focus-within .rowActions,
+.entryRow:has(.item[aria-current='true']) .rowActions {
+  opacity: 1;
+}
+.entryRow:has(.item[aria-current='true']) .iconButton {
+  color: var(--mortar-on-selected);
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--mortar-radius) - 2px);
+  background: transparent;
+  color: var(--mortar-muted);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  background: rgb(127 127 127 / 0.18);
+}
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 .addMenu {
   position: relative;
+  margin-top: auto;
+  padding: 1rem 0.25rem 0.25rem;
 }
 .addMenu > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.4rem;
   list-style: none;
-  padding: 0.25rem 0.625rem;
-  border: 1px solid var(--mortar-accent);
-  border-radius: 0.375rem;
-  color: var(--mortar-accent);
+  border: 1px dashed var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  color: var(--mortar-text);
   font-weight: 600;
   cursor: pointer;
+}
+.addMenu > summary:hover {
+  border-color: var(--mortar-accent);
+  color: var(--mortar-accent);
 }
 .addMenu > summary::-webkit-details-marker {
   display: none;
 }
 .addMenu > ul {
   position: absolute;
-  right: 0;
-  z-index: 1;
-  min-width: 12rem;
-  margin: 0.25rem 0 0;
+  right: 0.25rem;
+  bottom: calc(100% - 0.75rem);
+  left: 0.25rem;
+  z-index: 2;
+  margin: 0;
   padding: 0.25rem;
   list-style: none;
   border: 1px solid var(--mortar-border);
-  border-radius: 0.375rem;
+  border-radius: var(--mortar-radius);
   background: var(--mortar-panel);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
 }
 .addItem {
   width: 100%;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  background: white;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: calc(var(--mortar-radius) - 2px);
+  background: transparent;
   font: inherit;
+  color: inherit;
   text-align: left;
   cursor: pointer;
 }
 .addItem:hover {
-  background: var(--mortar-bg);
+  background: var(--mortar-hover);
 }
-.details {
-  margin: 0 0 1rem;
-  font-weight: 600;
+
+/* The top bar: where you are, Delete and the save controls. */
+.topbar {
+  position: relative;
+  grid-column: -3 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 0.6rem 0.5rem 1rem;
 }
-.header {
-  display: grid;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: var(--mortar-muted);
+}
+.crumb {
+  white-space: nowrap;
+}
+.crumbSep {
+  opacity: 0.6;
 }
 .title {
   margin: 0;
-  font-size: 1.1rem;
-}
-.slug {
-  display: grid;
-  gap: 0.25rem;
-}
-.slugLabel {
+  overflow: hidden;
+  font-family: var(--mortar-font-heading);
+  font-size: 1.1em;
   font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--mortar-text);
 }
-.slugInput {
-  width: 100%;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--mortar-border);
-  border-radius: 0.375rem;
-  font: inherit;
-  background: white;
-}
-.slugInput[aria-invalid='true'] {
-  border-color: var(--mortar-danger);
-}
-.titleRow {
+.actions {
   display: flex;
-  align-items: start;
-  justify-content: space-between;
+  align-items: center;
   gap: 0.5rem;
+  margin-left: auto;
 }
 .delete {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mortar-radius);
+  background: transparent;
   color: var(--mortar-danger);
+  cursor: pointer;
+}
+.delete:hover {
+  background: var(--mortar-hover);
+}
+
+/* The preview stage. */
+.stage {
+  display: flex;
+  padding: 1rem;
+  background: var(--mortar-bg);
+}
+.frame {
+  flex-grow: 1;
+  overflow: hidden;
+  border-radius: var(--mortar-preview-radius);
+  box-shadow: var(--mortar-preview-shadow);
+}
+
+/* The inspector: the selected item's form. */
+.inspector {
+  overflow-y: auto;
+}
+.section {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+.inspectorHead {
+  display: grid;
+  gap: 0.1rem;
+  margin: -1rem -1rem 0;
+  padding: 1rem;
+  border-bottom: 1px solid var(--mortar-border);
+}
+.inspectorTitle {
+  margin: 0;
+  font-family: var(--mortar-font-heading);
+  font-size: 1.15em;
+  font-weight: 600;
+}
+.inspectorSub {
+  margin: 0;
+  color: var(--mortar-muted);
+  font-size: 0.9em;
+}
+.nothing {
+  margin: 0;
+  padding: 1.5rem 1rem;
+  color: var(--mortar-muted);
 }

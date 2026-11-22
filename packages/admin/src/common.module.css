@@ -1,13 +1,18 @@
 /* Pieces of the editor's look shared by several components, used as they
    are (no component overrides them, so load order never matters). Colours
-   come from the --mortar-* custom properties (defaults in Editor.module.css). */
+   come from the --mortar-* custom properties (defaults in tokens.css). */
 .button {
-  padding: 0.25rem 0.5rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.6rem;
   border: 1px solid var(--mortar-border);
-  border-radius: 0.375rem;
-  background: white;
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  color: inherit;
   font: inherit;
   cursor: pointer;
+}
+.button:hover:not(:disabled) {
+  border-color: var(--mortar-accent);
 }
 .button:disabled {
   opacity: 0.4;

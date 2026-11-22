@@ -5,3 +5,6 @@ declare module '*.module.css' {
   const classes: { readonly [key: string]: string };
   export default classes;
 }
+
+// Plain stylesheets imported for their side effects (the design tokens and the theme slot).
+declare module '*.css' {}
