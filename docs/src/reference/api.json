@@ -2197,6 +2197,13 @@
           "doc": ""
         },
         {
+          "name": "orderable",
+          "optional": false,
+          "readonly": true,
+          "type": "boolean",
+          "doc": "Whether documents are in a manual order (see `CollectionDefinition.orderable`)."
+        },
+        {
           "name": "reservedSlugs",
           "optional": false,
           "readonly": true,
@@ -2267,7 +2274,14 @@
           "optional": true,
           "readonly": false,
           "type": "SortOrder<keyof F & string>",
-          "doc": "The default list order. Defaults to the title field (or the slug), ascending."
+          "doc": "The default list order. Defaults to the title field (or the slug),\nascending. With `orderable`, lists follow the manual order instead and\nthis orders only documents that have no place in it yet."
+        },
+        {
+          "name": "orderable",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Whether editors put the documents in order by hand (drag or move\nup/down in the admin). Lists then follow that order unless they pass a\n`sort`, and new documents go to the end. The order is kept in each\ndocument's `position`, which `createContent` manages. Default false."
         },
         {
           "name": "reservedSlugs",
@@ -2338,6 +2352,13 @@
           "readonly": false,
           "type": "(collection: string, id: string) => Promise<RemoveResult>",
           "doc": "Deletes a document by id, unless other documents reference it (then they are returned)."
+        },
+        {
+          "name": "move",
+          "optional": true,
+          "readonly": false,
+          "type": "(collection: string, id: string, index: number) => Promise<void>",
+          "doc": "Moves a document of an `orderable` collection to `index` (from 0) in\nits manual order; an index past either end moves it to that end.\nThrows for a collection that isn't orderable, a bad index or an\nunknown id. Optional for custom implementations: without it the admin\nshows no reorder controls."
         },
         {
           "name": "assets",
@@ -2518,7 +2539,7 @@
       "deprecated": false,
       "kind": "function",
       "summary": "The rules around a store. Collection names are checked on every call (a\nserver function receives them from the client): an unknown one throws.\nThrows at creation if a reference field names an unknown collection.",
-      "signature": "function createContent(options: ContentOptions): Content",
+      "signature": "function createContent(options: ContentOptions): Content & Pick<Required<Content>, \"move\">",
       "params": [
         {
           "name": "options",
@@ -2527,7 +2548,7 @@
           "doc": ""
         }
       ],
-      "returns": "Content",
+      "returns": "Content & Pick<Required<Content>, \"move\">",
       "examples": []
     },
     {
@@ -2661,6 +2682,13 @@
           "readonly": false,
           "type": "string",
           "doc": "The document's address within its collection, e.g. `hello-world`. Unique per collection."
+        },
+        {
+          "name": "position",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "Where the document is in its collection's manual order (lower first),\nwhen the collection is `orderable`. `createContent` sets it: on the\nfirst save and on `move`; saves keep the stored one."
         },
         {
           "name": "fields",
@@ -3219,7 +3247,7 @@
           "optional": true,
           "readonly": false,
           "type": "SortOrder<string>",
-          "doc": "Order. Defaults to the collection's `sort`; ties are ordered by slug."
+          "doc": "Order. Defaults to the collection's manual order when it is\n`orderable`, otherwise its `sort`; ties are ordered by slug."
         },
         {
           "name": "limit",
@@ -3252,7 +3280,7 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "function",
-      "summary": "Coerces unknown data (a stored file, data from props) into a document that\nrenders and edits safely. A missing or invalid id falls back to the slug,\nso hand-written files need none (the next save stores it). With a body,\nentries are normalized; without one, stored entries are kept as plain\nJSON but never rendered, so turning `body` off loses nothing. The input\nis never modified.",
+      "summary": "Coerces unknown data (a stored file, data from props) into a document that\nrenders and edits safely. A missing or invalid id falls back to the slug,\nso hand-written files need none (the next save stores it). With a body,\nentries are normalized; without one, stored entries are kept as plain\nJSON but never rendered, so turning `body` off loses nothing. A\n`position` is kept when it is a finite number. The input\nis never modified.",
       "signature": "function normalizeDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): Doc",
       "params": [
         {
@@ -3621,7 +3649,7 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "function",
-      "summary": "Checks a document before it is saved: its id and slug (not one of the\ncollection's reserved slugs), its fields against the collection's schema\n(issues at `['fields', ...]`), and with a body its entries. Unknown\ntop-level keys are dropped. Whether the slug is free is the store's\nquestion, not this one.",
+      "summary": "Checks a document before it is saved: its id and slug (not one of the\ncollection's reserved slugs), its fields against the collection's schema\n(issues at `['fields', ...]`), and with a body its entries. Unknown\ntop-level keys are dropped, and so is `position` (`createContent` keeps\nthe stored one). Whether the slug is free is the store's\nquestion, not this one.",
       "signature": "function validateDoc(collection: AnyCollection, bricks: readonly AnyBrick[], raw: unknown): ValidateDocResult",
       "params": [
         {

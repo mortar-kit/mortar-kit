@@ -149,6 +149,73 @@
   color: var(--mortar-on-selected);
   font-weight: 600;
 }
+/* A row of an orderable collection: a grip to drag it by, and move
+   up/down buttons shown on hover, focus or selection (as for bricks). */
+.docRow {
+  position: relative;
+  border-radius: var(--mortar-radius);
+}
+.docRow .doc {
+  padding-left: 1.6rem;
+  padding-right: 3.75rem;
+}
+.docRow[data-dragging] {
+  opacity: 0.5;
+}
+/* Where the dragged row would land. */
+.docRow[data-drop='before'] {
+  box-shadow: inset 0 2px 0 var(--mortar-accent);
+}
+.docRow[data-drop='after'] {
+  box-shadow: inset 0 -2px 0 var(--mortar-accent);
+}
+.grip {
+  position: absolute;
+  top: 50%;
+  left: 0.3rem;
+  display: grid;
+  translate: 0 -50%;
+  color: var(--mortar-muted);
+  cursor: grab;
+  opacity: 0.6;
+}
+.docRow:has(.doc[aria-current='true']) .grip,
+.docRow:has(.doc[aria-current='true']) .iconButton {
+  color: var(--mortar-on-selected);
+}
+.rowActions {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  display: flex;
+  gap: 1px;
+  translate: 0 -50%;
+  opacity: 0;
+}
+.docRow:hover .rowActions,
+.docRow:focus-within .rowActions,
+.docRow:has(.doc[aria-current='true']) .rowActions {
+  opacity: 1;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mortar-radius);
+  background: transparent;
+  color: var(--mortar-muted);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
 .new {
   opacity: 0.75;
   font-weight: 400;

@@ -6,7 +6,7 @@
 // browser.
 //
 // Reads are public (the site renders from them). Writes (saving, deleting,
-// uploads) need a signed-in admin: each checks for itself, since the
+// reordering, uploads) need a signed-in admin: each checks for itself, since the
 // middleware that guards /admin pages can't tell the admin's
 // server-function calls apart.
 import {
@@ -55,6 +55,12 @@ export async function saveStoredDoc(collection: string, doc: Doc): Promise<SaveR
 export async function removeStoredDoc(collection: string, id: string): Promise<RemoveResult> {
   await requireAdmin();
   return respond(await content.remove(collection, id), { revalidate: '' });
+}
+
+/** Moves a document of an orderable collection to `index` in its manual order. */
+export async function moveStoredDoc(collection: string, id: string, index: number): Promise<void> {
+  await requireAdmin();
+  return respond(await content.move(collection, id, index), { revalidate: '' });
 }
 
 /** Every uploaded file, newest first. */

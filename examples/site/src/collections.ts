@@ -1,6 +1,7 @@
 // The site's collections. Pages are documents too (a title and description
 // for the head, plus a brick body); posts have a body as well; categories
 // and products are plain data, with each product referencing its category.
+// Products are orderable: editors drag them into the order the site shows.
 import { defineCollection, fields } from '@mortar-kit/core';
 
 export const pages = defineCollection({
@@ -47,6 +48,8 @@ export const products = defineCollection({
     image: fields.image({ label: 'Image' }),
     description: fields.textarea({ label: 'Description' }),
   },
+  // Put in order by hand in the admin; the product grid lists them in that order.
+  orderable: true,
 });
 
 /** Every collection, in the order the admin lists them. */

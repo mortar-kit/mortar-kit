@@ -3,7 +3,8 @@
 // `@mortar-kit/core/server`, so `node:fs` never reaches a client bundle).
 // `createContent` puts every document through the rules whichever store is
 // used: normalize on read, validate and keep slugs unique on save, list
-// with filters and order, and refuse to delete a document others reference.
+// with filters and order, keep orderable collections in their manual order,
+// and refuse to delete a document others reference.
 // Writes through one `createContent` run one at a time, so those checks
 // hold; several server processes sharing one store need it to lock. With a
 // `BlobStore` it also keeps assets: uploads are checked, documents store
@@ -35,7 +36,10 @@ export interface ContentStore {
 export interface ListOptions {
   /** Keep documents whose `id`, `slug` or top-level field equals each value. */
   where?: Record<string, string | number | boolean>;
-  /** Order. Defaults to the collection's `sort`; ties are ordered by slug. */
+  /**
+   * Order. Defaults to the collection's manual order when it is
+   * `orderable`, otherwise its `sort`; ties are ordered by slug.
+   */
   sort?: SortOrder;
   /** At most this many documents: an integer from 1 to 100. */
   limit?: number;
@@ -94,6 +98,14 @@ export interface Content extends ContentSource {
   save(collection: string, doc: unknown): Promise<SaveResult>;
   /** Deletes a document by id, unless other documents reference it (then they are returned). */
   remove(collection: string, id: string): Promise<RemoveResult>;
+  /**
+   * Moves a document of an `orderable` collection to `index` (from 0) in
+   * its manual order; an index past either end moves it to that end.
+   * Throws for a collection that isn't orderable, a bad index or an
+   * unknown id. Optional for custom implementations: without it the admin
+   * shows no reorder controls.
+   */
+  move?(collection: string, id: string, index: number): Promise<void>;
   /** Uploaded files; only when content has a blob store. */
   assets?: Assets;
 }
@@ -142,7 +154,7 @@ const DEFAULT_MAX_ASSET_SIZE = 25 * 1024 * 1024;
  * server function receives them from the client): an unknown one throws.
  * Throws at creation if a reference field names an unknown collection.
  */
-export function createContent(options: ContentOptions): Content {
+export function createContent(options: ContentOptions): Content & Pick<Required<Content>, 'move'> {
   const { store, bricks, blobs } = options;
   const maxAssetSize = options.maxAssetSize ?? DEFAULT_MAX_ASSET_SIZE;
   const collections = collectionMap(options.collections);
@@ -194,8 +206,7 @@ export function createContent(options: ContentOptions): Content {
    * other copy, the first by slug is listed, which may be the older one.
    */
   async function all(c: AnyCollection): Promise<Doc[]> {
-    const seen = new Set<string>();
-    return (await copies(c)).filter((doc) => !seen.has(doc.id) && seen.add(doc.id));
+    return uniqueById(await copies(c));
   }
 
   // Writes run one at a time, so each check (a free slug, no references)
@@ -213,8 +224,7 @@ export function createContent(options: ContentOptions): Content {
       const c = need(name);
       const { where, sort, limit } = checkListOptions(c, listOptions);
       const docs = (await all(c)).filter((doc) => Object.entries(where).every(([key, value]) => valueOf(doc, key) === value));
-      const direction = sort.order === 'desc' ? -1 : 1;
-      docs.sort((a, b) => direction * compare(valueOf(a, sort.field), valueOf(b, sort.field)) || compare(a.slug, b.slug));
+      docs.sort(sort ? bySort(sort) : manualOrder(c));
       return docs.slice(0, limit).map((doc) => withUrls(c, withoutBody(doc)));
     },
 
@@ -244,9 +254,14 @@ export function createContent(options: ContentOptions): Content {
         if (occupant !== undefined && normalizeDoc(c, bricks, occupant).id !== doc.id) {
           return { ok: false, issues: [{ path: ['slug'], message: `Another document in ${c.label} already uses the slug "${doc.slug}"` }] };
         }
+        const stored = await copies(c);
+        // The stored position wins over the client's, so a stale editor never undoes a move.
+        const position = stored.find((old) => old.id === doc.id)?.position;
+        if (position !== undefined) doc.position = position;
+        else if (c.orderable) doc.position = await placeFor(c, uniqueById(stored), doc.id);
         await store.put(c.name, doc);
         // A rename moves the document: remove its old copy (and any a cut-short rename left).
-        for (const old of await copies(c)) if (old.id === doc.id && old.slug !== doc.slug) await store.remove(c.name, old.slug);
+        for (const old of stored) if (old.id === doc.id && old.slug !== doc.slug) await store.remove(c.name, old.slug);
         return { ok: true };
       });
     },
@@ -254,6 +269,20 @@ export function createContent(options: ContentOptions): Content {
     remove(name, id) {
       const c = need(name);
       return oneAtATime(() => removeNow(c, id));
+    },
+
+    move(name, id, index) {
+      const c = need(name);
+      if (!c.orderable) throw new Error(`${c.label} is not orderable`);
+      if (!Number.isInteger(index)) throw new Error('index must be an integer');
+      return oneAtATime(async () => {
+        const docs = (await all(c)).sort(manualOrder(c));
+        const from = docs.findIndex((doc) => doc.id === id);
+        if (from === -1) throw new Error(`No document in ${c.label} has the id "${String(id)}"`);
+        const [moved] = docs.splice(from, 1);
+        docs.splice(Math.max(0, Math.min(index, docs.length)), 0, moved as Doc);
+        await renumber(c, docs);
+      });
     },
 
     assets: blobs && {
@@ -317,6 +346,38 @@ export function createContent(options: ContentOptions): Content {
     return found;
   }
 
+  /**
+   * Stores positions 1, 2, 3… in the given order, writing only documents
+   * whose position changes. Each is written from its raw stored copy, so
+   * nothing else in it changes. Positions only order documents, so a write
+   * cut short leaves ties (ordered by slug), which the next move clears.
+   */
+  async function renumber(c: AnyCollection, ordered: readonly Doc[], skip?: string): Promise<void> {
+    for (const [i, doc] of ordered.entries()) {
+      if (doc.position === i + 1 || doc.id === skip) continue;
+      const raw = await store.get(c.name, doc.slug);
+      if (raw === undefined || typeof raw !== 'object' || raw === null) continue;
+      await store.put(c.name, { ...(raw as Doc), slug: doc.slug, position: i + 1 });
+    }
+  }
+
+  /**
+   * The position for a document of an orderable collection that has none
+   * (`id`, about to be saved): a new one goes after every other. When some
+   * documents have no position yet (stored before the collection was
+   * orderable, or written by hand), every document is given one in its
+   * current order first, so a new one is really last and an existing one
+   * keeps its place. `docs` is every stored document.
+   */
+  async function placeFor(c: AnyCollection, docs: Doc[], id: string): Promise<number> {
+    const isNew = !docs.some((doc) => doc.id === id);
+    if (isNew && docs.every((doc) => doc.position !== undefined)) return Math.max(0, ...docs.map((doc) => doc.position as number)) + 1;
+    const ordered = docs.sort(manualOrder(c));
+    // The saved document is written by the save itself.
+    await renumber(c, ordered, id);
+    return isNew ? ordered.length + 1 : ordered.findIndex((doc) => doc.id === id) + 1;
+  }
+
   async function removeNow(c: AnyCollection, id: string): Promise<RemoveResult> {
     const target = (await all(c)).find((doc) => doc.id === id);
     if (!target) return { ok: true };
@@ -343,8 +404,33 @@ function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${Math.round(bytes / 1024 / 1024)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
-/** Checks list options from an untrusted caller and fills in the defaults. Throws on bad options. */
-function checkListOptions(c: AnyCollection, o: ListOptions): { where: Record<string, unknown>; sort: Required<SortOrder>; limit: number | undefined } {
+/** The first copy of each id (see `all`). */
+function uniqueById(docs: Doc[]): Doc[] {
+  const seen = new Set<string>();
+  return docs.filter((doc) => !seen.has(doc.id) && seen.add(doc.id));
+}
+
+/** Compares documents by a sort order, then by slug. */
+function bySort(sort: Required<SortOrder>): (a: Doc, b: Doc) => number {
+  const direction = sort.order === 'desc' ? -1 : 1;
+  return (a, b) => direction * compare(valueOf(a, sort.field), valueOf(b, sort.field)) || compare(a.slug, b.slug);
+}
+
+/** An orderable collection's manual order: by position, then documents without one by the collection's `sort`. */
+function manualOrder(c: AnyCollection): (a: Doc, b: Doc) => number {
+  const fallback = bySort(c.sort);
+  return (a, b) => {
+    if (a.position !== undefined && b.position !== undefined) return a.position - b.position || compare(a.slug, b.slug);
+    if (a.position !== undefined || b.position !== undefined) return a.position === undefined ? 1 : -1;
+    return fallback(a, b);
+  };
+}
+
+/**
+ * Checks list options from an untrusted caller and fills in the defaults.
+ * `sort` is null for an orderable collection's manual order. Throws on bad options.
+ */
+function checkListOptions(c: AnyCollection, o: ListOptions): { where: Record<string, unknown>; sort: Required<SortOrder> | null; limit: number | undefined } {
   const known = (key: string) => key === 'id' || key === 'slug' || Object.hasOwn(c.fields, key);
   if (typeof o !== 'object' || o === null) throw new Error('List options must be an object');
   const where = o.where ?? {};
@@ -353,10 +439,11 @@ function checkListOptions(c: AnyCollection, o: ListOptions): { where: Record<str
     if (!known(key)) throw new Error(`Cannot filter ${c.name} by unknown field "${key}"`);
     if (!['string', 'number', 'boolean'].includes(typeof value)) throw new Error(`where.${key} must be a string, number or boolean`);
   }
+  if (o.limit !== undefined && !(Number.isInteger(o.limit) && o.limit >= 1 && o.limit <= 100)) throw new Error('limit must be an integer from 1 to 100');
+  if (!o.sort && c.orderable) return { where, sort: null, limit: o.limit };
   const sort = o.sort ? { field: o.sort.field, order: o.sort.order ?? 'asc' } : c.sort;
   if (typeof sort.field !== 'string' || !known(sort.field)) throw new Error(`Cannot sort ${c.name} by unknown field "${String(sort.field)}"`);
   if (sort.order !== 'asc' && sort.order !== 'desc') throw new Error(`sort.order must be 'asc' or 'desc'`);
-  if (o.limit !== undefined && !(Number.isInteger(o.limit) && o.limit >= 1 && o.limit <= 100)) throw new Error('limit must be an integer from 1 to 100');
   return { where, sort, limit: o.limit };
 }
 

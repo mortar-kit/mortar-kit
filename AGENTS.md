@@ -8,18 +8,30 @@ it small: this is a lightweight framework, not a CMS. Use "brick" for
 developer-defined sections; keep every other name plain and conventional (no
 further construction puns).
 
-## Decisions (2026-11-21, collections 2026-11-22)
+## Decisions (2026-11-21, collections 2026-11-22, manual order 2026-11-22)
 
 - **Schema**: `fields.*` helpers that build **Valibot** schemas; UI hints live in
   `v.metadata({ mortar: FieldInfo })`. Validation is Valibot's. `fields.date`
   stores `YYYY-MM-DD`; `fields.reference({ collection })` stores the target
   document's **id** (never its slug), so renames keep links.
-- **Collections**: `defineCollection({ name, label, fields, body?, title?, sort?, reservedSlugs? })`.
-  A document (type `Doc`, not `Document`) is `{ id, slug, fields, entries? }`:
+- **Collections**: `defineCollection({ name, label, fields, body?, title?, sort?, orderable?, reservedSlugs? })`.
+  A document (type `Doc`, not `Document`) is `{ id, slug, position?, fields, entries? }`:
   `entries` is its body when the collection has `body: true`. Pages are not
   built in: a site declares its own `pages` collection (Mortar ships no
   collections, like no bricks). Keys of `fields` outside the schema are kept;
   so are stored entries of a collection whose body is off (never rendered).
+- **Manual order** (2026-11-22): `orderable: true` keeps a collection in an
+  order editors set (admin document list: drag a row, or its move up/down
+  buttons). Stored as a top-level `position` number (1, 2, 3…) in each
+  document, so every store keeps it with no adapter change. `createContent`
+  owns it: `validateDoc` drops the client's `position` and `save` keeps the
+  stored one; a new document goes last; `Content.move(collection, id, index)`
+  renumbers, writing only documents whose position changed. Lists follow the
+  manual order unless they pass `sort`. Documents without a position sort
+  after those with one, by the collection's `sort`, and get one on the next
+  move or new-document save (no migration). `Content.move` is optional on
+  the interface (the admin hides reorder controls without it);
+  `createContent` always has it.
 - **Storage**: a dumb `ContentStore` adapter (`list/get/put/remove` raw
   documents by collection and slug) behind `createContent`, which applies
   every rule: normalize on read, validate on save, unique slugs, renames move
@@ -92,7 +104,7 @@ further construction puns).
 - `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR with
   `renderMode: 'async'`, so pages and head tags are in the HTML). Mortar ships
   no bricks or collections of its own; the example declares pages, posts,
-  products and categories (`src/collections.ts`), bricks (two load data:
+  products (orderable) and categories (`src/collections.ts`), bricks (two load data:
   latest posts, a product grid), and layouts (`src/layouts/`) shared by its
   routes and the admin preview. Its entries are authored (`src/entry-server.tsx`,
   `src/entry-client.tsx`, shared tree in `src/Root.tsx`) so public pages ship

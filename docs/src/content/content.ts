@@ -67,6 +67,10 @@ export const editableContent: Content = {
     if (result.ok) setEdited(hasAnything());
     return result;
   },
+  async move(collection, id, index) {
+    await content.move(collection, id, index);
+    setEdited(true);
+  },
   assets: {
     list() {
       version();

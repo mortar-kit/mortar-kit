@@ -7,6 +7,8 @@
 // the app's own leave guard covers switching documents) or in the admin
 // itself, which then asks before leaving unsaved changes. With a blob store
 // (`content.assets`), the rail's Assets button opens the asset library.
+// An `orderable` collection's documents can be reordered in the list: drag
+// a row, or use its move up/down buttons (`content.move`).
 import {
   collectionMap,
   isValidSlug,
@@ -26,7 +28,7 @@ import { AssetLibrary } from './AssetLibrary.tsx';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
 import { Editor } from './Editor.tsx';
 import common from './common.module.css';
-import { CloseIcon } from './icons.tsx';
+import { CloseIcon, DownIcon, GripIcon, UpIcon } from './icons.tsx';
 import { Mark } from './Mark.tsx';
 import { referrerLabel } from './referrer.ts';
 
@@ -172,6 +174,37 @@ export function Admin(props: AdminProps) {
     void go({ collection: c.name, id: pending.doc.id });
   };
 
+  // Reordering an orderable collection: the row being dragged, the gap it
+  // would drop into (an index from 0 to the number of rows), and the last
+  // move's failure.
+  const [dragged, setDragged] = createSignal<string | null>(null);
+  const [dropAt, setDropAt] = createSignal<number | null>(null);
+  const [moveError, setMoveError] = createSignal<string | null>(null);
+  const canReorder = (c: AnyCollection) => c.orderable && props.content.move !== undefined;
+
+  /** Moves a document to `index` in the manual order, then shows the list as stored. */
+  const move = async (c: AnyCollection, id: string, index: number) => {
+    setMoveError(null);
+    try {
+      await props.content.move?.(c.name, id, index);
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : String(error));
+    }
+    refresh(list);
+  };
+
+  /** Drops the dragged row into the gap it is over, if that moves it. */
+  const drop = (c: AnyCollection, rows: readonly Doc[]) => {
+    const id = dragged();
+    const at = dropAt();
+    setDragged(null);
+    setDropAt(null);
+    const from = rows.findIndex((d) => d.id === id);
+    if (id === null || at === null || from === -1) return;
+    const to = at > from ? at - 1 : at;
+    if (to !== from) void move(c, id, to);
+  };
+
   /** Back to the collection's list with nothing unsaved (the document is gone), so neither the admin nor the app asks. */
   const leaveRemoved = (c: AnyCollection) => {
     reportDirty(false);
@@ -228,6 +261,15 @@ export function Admin(props: AdminProps) {
   const openDoc = (collectionName: string, id: string) => {
     if (loc().collection === collectionName && loc().id === id) setListing(false);
     else void go({ collection: collectionName, id });
+  };
+
+  /** Where the drop line shows on row `index` of `count`: above it, or below the last row. Not where the drop would change nothing. */
+  const dropMark = (index: number, count: number): 'before' | 'after' | undefined => {
+    const at = dropAt();
+    const from = list().findIndex((d) => d.id === dragged());
+    if (at === null || from === -1 || at === from || at === from + 1) return undefined;
+    if (at === index) return 'before';
+    return at === count && index === count - 1 ? 'after' : undefined;
   };
 
   return (
@@ -291,35 +333,101 @@ export function Admin(props: AdminProps) {
                   <h2 class={styles.heading}>{c().label}</h2>
                   <Loading fallback={<p class={[styles.pad, common.help]}>Loading…</p>}>
                     <ol class={styles.docs} aria-label={`${c().label} documents`}>
-                      <Show when={draftRow()?.collection === c().name && draftRow()}>
-                        {(row) => (
-                          <li>
-                            <button
-                              type="button"
-                              class={styles.doc}
-                              aria-current={loc().id === row().doc.id ? 'true' : undefined}
-                              onClick={() => openDoc(row().collection, row().doc.id)}
-                            >
-                              {c().titleOf(row().doc)} <span class={styles.new}>(new, unsaved)</span>
-                            </button>
-                          </li>
-                        )}
+                      <Show when={!canReorder(c()) && draftRow()?.collection === c().name && draftRow()}>
+                        {(row) => <DraftRow label={c().titleOf(row().doc)} current={loc().id === row().doc.id} onOpen={() => openDoc(row().collection, row().doc.id)} />}
                       </Show>
                       <For each={list()} keyed={(d) => d.id}>
-                        {(d) => (
-                          <li>
-                            <button
-                              type="button"
-                              class={styles.doc}
-                              aria-current={loc().id === d().id ? 'true' : undefined}
-                              onClick={() => openDoc(c().name, d().id)}
+                        {(d, i) => (
+                          <Show
+                            when={canReorder(c())}
+                            fallback={
+                              <li>
+                                <button
+                                  type="button"
+                                  class={styles.doc}
+                                  aria-current={loc().id === d().id ? 'true' : undefined}
+                                  onClick={() => openDoc(c().name, d().id)}
+                                >
+                                  {c().titleOf(d())}
+                                </button>
+                              </li>
+                            }
+                          >
+                            <li
+                              class={styles.docRow}
+                              draggable="true"
+                              data-dragging={dragged() === d().id ? '' : undefined}
+                              data-drop={dropMark(i(), list().length)}
+                              onDragStart={(e) => {
+                                setDragged(d().id);
+                                if (e.dataTransfer) {
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData('text/plain', c().titleOf(d()));
+                                }
+                              }}
+                              onDragOver={(e) => {
+                                if (dragged() === null) return;
+                                e.preventDefault();
+                                const box = e.currentTarget.getBoundingClientRect();
+                                setDropAt(i() + (e.clientY > box.top + box.height / 2 ? 1 : 0));
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                drop(c(), list());
+                              }}
+                              onDragEnd={() => {
+                                setDragged(null);
+                                setDropAt(null);
+                              }}
                             >
-                              {c().titleOf(d())}
-                            </button>
-                          </li>
+                              <span class={styles.grip} aria-hidden="true">
+                                <GripIcon />
+                              </span>
+                              <button
+                                type="button"
+                                class={styles.doc}
+                                aria-current={loc().id === d().id ? 'true' : undefined}
+                                onClick={() => openDoc(c().name, d().id)}
+                              >
+                                {c().titleOf(d())}
+                              </button>
+                              <div class={styles.rowActions}>
+                                <button
+                                  type="button"
+                                  class={styles.iconButton}
+                                  aria-label={`Move ${c().titleOf(d())} up`}
+                                  title="Move up"
+                                  disabled={i() === 0}
+                                  onClick={() => void move(c(), d().id, i() - 1)}
+                                >
+                                  <UpIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  class={styles.iconButton}
+                                  aria-label={`Move ${c().titleOf(d())} down`}
+                                  title="Move down"
+                                  disabled={i() === list().length - 1}
+                                  onClick={() => void move(c(), d().id, i() + 1)}
+                                >
+                                  <DownIcon />
+                                </button>
+                              </div>
+                            </li>
+                          </Show>
                         )}
                       </For>
+                      <Show when={canReorder(c()) && draftRow()?.collection === c().name && draftRow()}>
+                        {(row) => <DraftRow label={c().titleOf(row().doc)} current={loc().id === row().doc.id} onOpen={() => openDoc(row().collection, row().doc.id)} />}
+                      </Show>
                     </ol>
+                    <Show when={moveError()}>
+                      {(message) => (
+                        <p role="alert" class={[styles.pad, common.issue]}>
+                          Couldn't reorder: {message()}
+                        </p>
+                      )}
+                    </Show>
                     <NewForm collection={c()} taken={list().map((d) => d.slug)} onCreate={(slug) => create(c(), slug)} />
                   </Loading>
                 </section>
@@ -384,6 +492,17 @@ export function Admin(props: AdminProps) {
         </main>
       </div>
     </AdminContext>
+  );
+}
+
+/** The row of a new, unsaved document: first in the list, or last in a manually ordered one (where it will go). */
+function DraftRow(props: { label: string; current: boolean; onOpen: () => void }) {
+  return (
+    <li>
+      <button type="button" class={styles.doc} aria-current={props.current ? 'true' : undefined} onClick={() => props.onOpen()}>
+        {props.label} <span class={styles.new}>(new, unsaved)</span>
+      </button>
+    </li>
   );
 }
 

@@ -3,7 +3,7 @@
 // and navigation that asks before losing unsaved changes, or leaves that
 // to the app when it keeps the location.
 import { createContent, createMemoryStore, defineCollection, fields, type Content, type Doc } from '@mortar-kit/core';
-import { fireEvent, render, screen, within } from '@solidjs/testing-library';
+import { cleanup, fireEvent, render, screen, within } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -522,4 +522,108 @@ describe('<Admin> links in the preview', () => {
     expect(onNavigate).toHaveBeenCalledTimes(1);
     openTab.mockRestore();
   });
+});
+
+describe('reordering an orderable collection', () => {
+  const photos = defineCollection({
+    name: 'photos',
+    label: 'Photos',
+    fields: { caption: fields.text({ label: 'Caption', required: true }) },
+    orderable: true,
+  });
+
+  function setupPhotos(content?: Content) {
+    const store = createMemoryStore({
+      photos: [
+        { id: 'p1', slug: 'dawn', position: 1, fields: { caption: 'Dawn' } },
+        { id: 'p2', slug: 'noon', position: 2, fields: { caption: 'Noon' } },
+        { id: 'p3', slug: 'dusk', position: 3, fields: { caption: 'Dusk' } },
+      ],
+    });
+    const own = createContent({ store, collections: [photos, quotes, authors], bricks });
+    render(() => <Admin bricks={bricks} collections={[photos, quotes, authors]} content={content ?? own} previewUrl="/preview" />);
+    return { store, content: own };
+  }
+  const rows = () => docList('Photos').getAllByRole('listitem');
+  const titles = () => rows().map((row) => within(row).getAllByRole('button')[0]!.textContent);
+
+  it('moves documents up and down with buttons, in manual order', async () => {
+    const { content } = setupPhotos();
+    await settle();
+    expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk']);
+    expect(docList('Photos').getByRole('button', { name: 'Move Dawn up' })).toBeDisabled();
+    expect(docList('Photos').getByRole('button', { name: 'Move Dusk down' })).toBeDisabled();
+    await click(docList('Photos').getByRole('button', { name: 'Move Dusk up' }));
+    expect(titles()).toEqual(['Dawn', 'Dusk', 'Noon']);
+    await click(docList('Photos').getByRole('button', { name: 'Move Dawn down' }));
+    expect(titles()).toEqual(['Dusk', 'Dawn', 'Noon']);
+    expect((await content.list('photos')).map((d) => d.slug)).toEqual(['dusk', 'dawn', 'noon']);
+  });
+
+  it('moves a dragged row to where it is dropped', async () => {
+    const { content } = setupPhotos();
+    await settle();
+    const [dawn, , dusk] = rows();
+    // jsdom has no layout or pointer position: over a row means the gap before it.
+    fireEvent.dragStart(dawn!);
+    flush();
+    expect(dawn).toHaveAttribute('data-dragging');
+    fireEvent.dragOver(dusk!);
+    flush();
+    expect(dusk).toHaveAttribute('data-drop', 'before');
+    fireEvent.drop(dusk!);
+    await settle();
+    expect(titles()).toEqual(['Noon', 'Dawn', 'Dusk']);
+    expect(rows().some((row) => row.hasAttribute('data-drop') || row.hasAttribute('data-dragging'))).toBe(false);
+    expect((await content.list('photos')).map((d) => d.slug)).toEqual(['noon', 'dawn', 'dusk']);
+    // Dropping where it already is changes nothing.
+    fireEvent.dragStart(rows()[0]!);
+    flush();
+    fireEvent.dragOver(rows()[1]!);
+    flush();
+    expect(rows().some((row) => row.hasAttribute('data-drop'))).toBe(false);
+    fireEvent.drop(rows()[1]!);
+    await settle();
+    expect(titles()).toEqual(['Noon', 'Dawn', 'Dusk']);
+  });
+
+  it('lists a new, unsaved document last, where its first save puts it', async () => {
+    setupPhotos();
+    await settle();
+    fireEvent.input(screen.getByLabelText('New document slug'), { target: { value: 'night' } });
+    flush();
+    await click(screen.getByRole('button', { name: 'Create' }));
+    expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk', 'night (new, unsaved)']);
+    showOutline('Photos');
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    flush();
+    typeInto(/^Caption/, 'Night');
+    await click(screen.getByRole('button', { name: 'Save' }));
+    expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk', 'Night']);
+  });
+
+  it('says so when a move fails', async () => {
+    const { content } = setupPhotos();
+    const failing: Content = { ...content, move: () => Promise.reject(new Error('Sign in required')) };
+    cleanupAndRender(failing);
+    await settle();
+    await click(docList('Photos').getByRole('button', { name: 'Move Noon up' }));
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't reorder: Sign in required");
+    expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk']);
+  });
+
+  it('shows no reorder controls without content.move, or for other collections', async () => {
+    const { content } = setupPhotos();
+    const { move: _, ...withoutMove } = content;
+    cleanupAndRender(withoutMove);
+    await settle();
+    expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk']);
+    expect(docList('Photos').queryByRole('button', { name: /^Move/ })).toBeNull();
+    expect(rows()[0]).not.toHaveAttribute('draggable');
+  });
+
+  function cleanupAndRender(content: Content) {
+    cleanup();
+    render(() => <Admin bricks={bricks} collections={[photos, quotes, authors]} content={content} previewUrl="/preview" />);
+  }
 });

@@ -6,7 +6,7 @@ import type { Content, ContentSource, Doc } from '@mortar-kit/core';
 import { query } from '@solidjs/router';
 import { GET } from '@solidjs/web/server-functions';
 
-import { getStoredDoc, listAssets, listStoredDocs, removeAsset, removeStoredDoc, saveStoredDoc, uploadAsset } from './server/content.ts';
+import { getStoredDoc, listAssets, listStoredDocs, moveStoredDoc, removeAsset, removeStoredDoc, saveStoredDoc, uploadAsset } from './server/content.ts';
 import { getSignedInUser, getSignInMethods } from './server/session.ts';
 
 const listFresh = GET(listStoredDocs);
@@ -40,6 +40,10 @@ export const adminContent: Content = {
     const result = await removeStoredDoc(collection, id);
     if (result.ok) query.clear();
     return result;
+  },
+  async move(collection, id, index) {
+    await moveStoredDoc(collection, id, index);
+    query.clear();
   },
   assets: { list: listAssetsFresh, upload: uploadAsset, remove: removeAsset },
 };
