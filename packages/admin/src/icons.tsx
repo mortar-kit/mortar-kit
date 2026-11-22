@@ -59,3 +59,14 @@ export const ChevronIcon = () => (
     <path d="m9 18 6-6-6-6" />
   </Icon>
 );
+export const UploadIcon = () => (
+  <Icon>
+    <path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+  </Icon>
+);
+export const FileIcon = () => (
+  <Icon>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+    <path d="M14 3v5h5" />
+  </Icon>
+);

@@ -13,7 +13,7 @@ import { PostLayout } from './layouts/PostLayout.tsx';
 const post = (slug: string, title: string, date: string): DocOf<typeof posts> => ({
   id: slug,
   slug,
-  fields: { title, date, excerpt: `About ${title}`, cover: { src: '', alt: '' } },
+  fields: { title, date, excerpt: `About ${title}`, cover: { src: '', alt: '', asset: '' } },
   entries: [],
 });
 

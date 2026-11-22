@@ -27,7 +27,7 @@
       "brick": "markdown",
       "id": "md-3",
       "data": {
-        "source": "## Several processes\n\nWrites are serialized within one `createContent`. If several server processes share a store, the store itself needs to lock.\n\nWant to keep content somewhere else? See [Writing a store](/docs/writing-a-store)."
+        "source": "## Several processes\n\nWrites are serialized within one `createContent`. If several server processes share a store, the store itself needs to lock.\n\nWant to keep content somewhere else? See [Writing a store](/docs/writing-a-store). Uploaded files have a store of their own: see [Assets](/docs/assets)."
       }
     },
     {

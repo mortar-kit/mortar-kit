@@ -5,10 +5,15 @@
 import type { AnyCollection, Content } from '@mortar-kit/core';
 import { createContext, useContext } from 'solid-js';
 
-/** Which collection the admin shows, and which document of it is open (by id). */
+/**
+ * Which collection the admin shows, and which document of it is open (by
+ * id); or, with `view: 'assets'`, the asset library (`collection` is then
+ * where the rail goes back to).
+ */
 export interface AdminLocation {
   collection: string;
   id?: string;
+  view?: 'assets';
 }
 
 /** What <Admin> provides to the inputs inside its editor (internal). */

@@ -30,7 +30,7 @@
       "module": "@mortar-kit/admin",
       "deprecated": false,
       "kind": "interface",
-      "summary": "Which collection the admin shows, and which document of it is open (by id).",
+      "summary": "Which collection the admin shows, and which document of it is open (by\nid); or, with `view: 'assets'`, the asset library (`collection` is then\nwhere the rail goes back to).",
       "signature": "interface AdminLocation",
       "members": [
         {
@@ -45,6 +45,13 @@
           "optional": true,
           "readonly": false,
           "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "view",
+          "optional": true,
+          "readonly": false,
+          "type": "\"assets\"",
           "doc": ""
         }
       ]
@@ -796,6 +803,282 @@
       "signature": "type AnyField = v.GenericSchema<any, any>"
     },
     {
+      "name": "Asset",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "An uploaded file, as `Assets.list` returns it.",
+      "signature": "interface Asset",
+      "members": [
+        {
+          "name": "key",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The key documents store, e.g. `hero-photo-x7k2q9.jpg`."
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The name it was uploaded as, lowercased (`hero-photo.jpg`)."
+        },
+        {
+          "name": "kind",
+          "optional": false,
+          "readonly": false,
+          "type": "AssetKind",
+          "doc": ""
+        },
+        {
+          "name": "type",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "MIME type, from the extension."
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "readonly": false,
+          "type": "number",
+          "doc": "Size in bytes."
+        },
+        {
+          "name": "src",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "URL to load it from (`BlobStore.url`)."
+        },
+        {
+          "name": "modified",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "When it was stored (ISO 8601), if the store knows."
+        }
+      ]
+    },
+    {
+      "name": "assetExtensions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The extensions of each kind, e.g. for an `<input type=\"file\" accept>`.",
+      "signature": "function assetExtensions(kinds?: readonly AssetKind[]): string[]",
+      "params": [
+        {
+          "name": "kinds",
+          "type": "readonly AssetKind[]",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "string[]",
+      "examples": []
+    },
+    {
+      "name": "assetInfo",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The type, kind and display name of a valid key; undefined for anything else.",
+      "signature": "function assetInfo(key: string): { type: string; kind: AssetKind; name: string } | undefined",
+      "params": [
+        {
+          "name": "key",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "{ type: string; kind: AssetKind; name: string } | undefined",
+      "examples": []
+    },
+    {
+      "name": "assetKeyFor",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A fresh key for an uploaded file name: the name made URL-safe, six random\nletters and digits (so two uploads of `photo.jpg` never collide), and its\nextension. Undefined if the extension isn't an allowed type.",
+      "signature": "function assetKeyFor(fileName: string): string | undefined",
+      "params": [
+        {
+          "name": "fileName",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string | undefined",
+      "examples": []
+    },
+    {
+      "name": "AssetKind",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "What a file is, for choosing it: an image field accepts `image`, a file field the kinds it lists.",
+      "signature": "type AssetKind = \"image\" | \"video\" | \"audio\" | \"document\""
+    },
+    {
+      "name": "Assets",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Uploaded files: what the admin's library and pickers need.",
+      "signature": "interface Assets",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "() => Promise<Asset[]>",
+          "doc": "Every uploaded file, newest first."
+        },
+        {
+          "name": "upload",
+          "optional": false,
+          "readonly": false,
+          "type": "(file: File) => Promise<UploadResult>",
+          "doc": "Checks a file (type by its name's extension, size) and stores it under a fresh key. Problems are returned, not thrown."
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string) => Promise<RemoveResult>",
+          "doc": "Deletes a file by key, unless documents use it (then they are returned)."
+        }
+      ]
+    },
+    {
+      "name": "assetsIn",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Every uploaded asset `data` uses (image and file fields with an `asset`), following objects and lists.",
+      "signature": "function assetsIn(schema: Fields, data: unknown): FoundAsset[]",
+      "params": [
+        {
+          "name": "schema",
+          "type": "Fields",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "data",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "FoundAsset[]",
+      "examples": []
+    },
+    {
+      "name": "assetValuesIn",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The image and file values in `data` (following objects and lists), each the object itself, with its path.",
+      "signature": "function assetValuesIn(schema: Fields, data: unknown): { path: (string | number)[]; value: { src: string; asset: string } }[]",
+      "params": [
+        {
+          "name": "schema",
+          "type": "Fields",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "data",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "{ path: (string | number)[]; value: { src: string; asset: string } }[]",
+      "examples": []
+    },
+    {
+      "name": "BlobInfo",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A stored file, as `BlobStore.list` returns it.",
+      "signature": "interface BlobInfo",
+      "members": [
+        {
+          "name": "key",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "size",
+          "optional": false,
+          "readonly": false,
+          "type": "number",
+          "doc": "Size in bytes."
+        },
+        {
+          "name": "modified",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "When it was stored (ISO 8601), if the store knows."
+        }
+      ]
+    },
+    {
+      "name": "BlobStore",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Where uploaded files live: bytes by key. Implement it to keep files\nanywhere (a folder, S3, a CDN). Deliberately dumb; `createContent` checks\ntypes, sizes and keys, and refuses to delete a file documents use.",
+      "signature": "interface BlobStore",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "() => Promise<BlobInfo[]>",
+          "doc": "Every stored file. [] if none."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string) => Promise<Blob | undefined>",
+          "doc": "The file under `key` (its `type` set from the key's extension), or undefined."
+        },
+        {
+          "name": "put",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string, data: Blob) => Promise<void>",
+          "doc": "Stores `data` under `key`, replacing any file there."
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string) => Promise<void>",
+          "doc": "Removes the file under `key`; nothing happens if there is none."
+        },
+        {
+          "name": "url",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string) => string",
+          "doc": "The URL the site loads the file from, e.g. `/uploads/<key>` or a bucket URL. Synchronous: it is computed, never looked up."
+        }
+      ]
+    },
+    {
       "name": "Brick",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -1161,6 +1444,13 @@
           "readonly": false,
           "type": "(collection: string, id: string) => Promise<RemoveResult>",
           "doc": "Deletes a document by id, unless other documents reference it (then they are returned)."
+        },
+        {
+          "name": "assets",
+          "optional": true,
+          "readonly": false,
+          "type": "Assets",
+          "doc": "Uploaded files; only when content has a blob store."
         }
       ]
     },
@@ -1200,6 +1490,20 @@
           "readonly": false,
           "type": "readonly AnyBrick[]",
           "doc": ""
+        },
+        {
+          "name": "blobs",
+          "optional": true,
+          "readonly": false,
+          "type": "BlobStore",
+          "doc": "Where uploaded files live. Without it there are no `assets`, and asset URLs aren't filled in on read."
+        },
+        {
+          "name": "maxAssetSize",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "Largest upload in bytes. Default 25 MB. (A server function's own body limit applies too.)"
         }
       ]
     },
@@ -1330,6 +1634,24 @@
         }
       ],
       "returns": "Content",
+      "examples": []
+    },
+    {
+      "name": "createMemoryBlobStore",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A blob store that keeps files in memory (tests, demos).",
+      "signature": "function createMemoryBlobStore(options?: MemoryBlobStoreOptions): BlobStore",
+      "params": [
+        {
+          "name": "options",
+          "type": "MemoryBlobStoreOptions",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "BlobStore",
       "examples": []
     },
     {
@@ -1649,6 +1971,13 @@
           "readonly": true,
           "type": "string",
           "doc": "`reference`: the name of the collection whose documents it points to."
+        },
+        {
+          "name": "accept",
+          "optional": true,
+          "readonly": true,
+          "type": "readonly AssetKind[]",
+          "doc": "`image` and `file`: the kinds of uploaded file it accepts."
         }
       ]
     },
@@ -1658,7 +1987,7 @@
       "deprecated": false,
       "kind": "type",
       "summary": "The form widget a field is edited with.",
-      "signature": "type FieldKind = \"text\" | \"textarea\" | \"number\" | \"boolean\" | \"select\" | \"url\" | \"image\" | \"list\" | \"object\" | \"date\" | \"reference\""
+      "signature": "type FieldKind = \"text\" | \"textarea\" | \"number\" | \"boolean\" | \"select\" | \"url\" | \"image\" | \"file\" | \"list\" | \"object\" | \"date\" | \"reference\""
     },
     {
       "name": "fields",
@@ -1666,7 +1995,7 @@
       "deprecated": false,
       "kind": "variable",
       "summary": "Field helpers used to declare the schema of a brick or a collection.",
-      "signature": "const fields: { text, textarea, number, boolean, select, url, image, list, object, date, reference }",
+      "signature": "const fields: { text, textarea, number, boolean, select, url, image, file, list, object, date, reference }",
       "members": [
         {
           "name": "text",
@@ -1714,7 +2043,14 @@
           "name": "image",
           "optional": false,
           "readonly": false,
-          "type": "(o: Common<Image> & { required?: boolean }) => Field<Image>",
+          "type": "(o: Common<Partial<Image>> & { required?: boolean }) => Field<Image>",
+          "doc": ""
+        },
+        {
+          "name": "file",
+          "optional": false,
+          "readonly": false,
+          "type": "(o: Common<Partial<FileValue>> & { accept?: readonly AssetKind[]; required?: boolean }) => Field<FileValue>",
           "doc": ""
         },
         {
@@ -1756,6 +2092,54 @@
       "signature": "type Fields = Readonly<Record<string, AnyField>>"
     },
     {
+      "name": "FileValue",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A file (video, audio, PDF…): an uploaded asset or a URL.",
+      "signature": "interface FileValue",
+      "members": [
+        {
+          "name": "src",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The URL to load; for an uploaded asset, filled in when content is read."
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The uploaded asset's key, or '' for a plain URL."
+        }
+      ]
+    },
+    {
+      "name": "FoundAsset",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "An uploaded asset used in some data: where, and its key.",
+      "signature": "interface FoundAsset",
+      "members": [
+        {
+          "name": "path",
+          "optional": false,
+          "readonly": false,
+          "type": "(string | number)[]",
+          "doc": ""
+        },
+        {
+          "name": "key",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
       "name": "FoundReference",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -1787,11 +2171,29 @@
       ]
     },
     {
+      "name": "hasAssetFields",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Whether `schema` has an image or file field anywhere (following objects and lists).",
+      "signature": "function hasAssetFields(schema: Fields): boolean",
+      "params": [
+        {
+          "name": "schema",
+          "type": "Fields",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
+    },
+    {
       "name": "Image",
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "interface",
-      "summary": "An image reference.",
+      "summary": "An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text.",
       "signature": "interface Image",
       "members": [
         {
@@ -1799,7 +2201,7 @@
           "optional": false,
           "readonly": false,
           "type": "string",
-          "doc": ""
+          "doc": "The URL to load. For an uploaded asset it is filled in when content is\nread (from the blob store), so render `src` and never build URLs from `asset`."
         },
         {
           "name": "alt",
@@ -1807,6 +2209,13 @@
           "readonly": false,
           "type": "string",
           "doc": ""
+        },
+        {
+          "name": "asset",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The uploaded asset's key, or '' for a plain URL."
         }
       ]
     },
@@ -1841,6 +2250,24 @@
           "doc": ""
         }
       ]
+    },
+    {
+      "name": "isValidAssetKey",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Whether `key` is a valid asset key: `<name>-<6 letters or digits>.<known extension>`, at most 100 characters.",
+      "signature": "function isValidAssetKey(key: string): boolean",
+      "params": [
+        {
+          "name": "key",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
     },
     {
       "name": "isValidDocId",
@@ -1906,6 +2333,23 @@
           "readonly": false,
           "type": "number",
           "doc": "At most this many documents: an integer from 1 to 100."
+        }
+      ]
+    },
+    {
+      "name": "MemoryBlobStoreOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `createMemoryBlobStore`.",
+      "signature": "interface MemoryBlobStoreOptions",
+      "members": [
+        {
+          "name": "baseUrl",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Prefix of `url(key)`. Default `/uploads/`."
         }
       ]
     },
@@ -2206,6 +2650,36 @@
       ]
     },
     {
+      "name": "serveBlob",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A response serving one stored file: for an app route or middleware such\nas `/uploads/*`. Types come from the key's extension and are sent with\n`nosniff`, so a file can't be read as anything else; keys never change\ncontent, so files are cached for good. Answers byte ranges (video seeking)\nand 404 for an invalid key or a missing file.",
+      "signature": "function serveBlob(store: BlobStore, key: string, request?: Request): Promise<Response>",
+      "params": [
+        {
+          "name": "store",
+          "type": "BlobStore",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "request",
+          "type": "Request",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Promise<Response>",
+      "examples": []
+    },
+    {
       "name": "SortOrder",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -2228,6 +2702,14 @@
           "doc": "Default `'asc'`."
         }
       ]
+    },
+    {
+      "name": "UploadResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Result of `Assets.upload`.",
+      "signature": "type UploadResult = { ok: true; asset: Asset } | { ok: false; message: string }"
     },
     {
       "name": "useContent",
@@ -2317,6 +2799,24 @@
       "signature": "type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] }"
     },
     {
+      "name": "createFileBlobStore",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A blob store backed by a folder: one file per asset, named by its key\n(keys are checked, so none can escape `dir`). Writes are atomic. Serve\nthe files from an app route or middleware with `serveBlob`.",
+      "signature": "function createFileBlobStore(options: FileBlobStoreOptions): BlobStore",
+      "params": [
+        {
+          "name": "options",
+          "type": "FileBlobStoreOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "BlobStore",
+      "examples": []
+    },
+    {
       "name": "createJsonFileStore",
       "module": "@mortar-kit/core/server",
       "deprecated": false,
@@ -2333,6 +2833,30 @@
       ],
       "returns": "ContentStore",
       "examples": []
+    },
+    {
+      "name": "FileBlobStoreOptions",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface FileBlobStoreOptions",
+      "members": [
+        {
+          "name": "dir",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Directory holding the files, resolved against the working directory. Created on first upload. Keep it out of the app's public folder: serve it with `serveBlob`."
+        },
+        {
+          "name": "baseUrl",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Prefix of `url(key)`: where the app serves the folder. Default `/uploads/`."
+        }
+      ]
     },
     {
       "name": "JsonFileStoreOptions",

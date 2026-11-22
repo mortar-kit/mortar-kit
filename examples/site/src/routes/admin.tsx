@@ -1,5 +1,6 @@
 // Admin: the Mortar admin for every collection, saving through the app's
-// server functions. Where it is lives in the URL (?collection=&id=), so
+// server functions. Where it is lives in the URL (?collection=&id=, or
+// ?view=assets for the asset library), so
 // documents can be linked and back/forward moves between them. Leaving a
 // document with unsaved changes asks first: the editor guards closing the
 // tab, and this route guards router navigation (links, back/forward, and
@@ -81,7 +82,11 @@ export default function AdminRoute() {
     }, 100);
   });
 
-  const location = (): AdminLocation => ({ collection: one(params.collection) ?? collections[0].name, id: one(params.id) });
+  const location = (): AdminLocation => ({
+    collection: one(params.collection) ?? collections[0].name,
+    id: one(params.id),
+    view: one(params.view) === 'assets' ? 'assets' : undefined,
+  });
 
   return (
     <Admin
@@ -90,7 +95,7 @@ export default function AdminRoute() {
       content={content}
       previewUrl="/admin/preview"
       location={location()}
-      onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null })}
+      onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null, view: to.view ?? null })}
       onDirtyChange={setDirty}
       resolveLink={resolveLink}
     />

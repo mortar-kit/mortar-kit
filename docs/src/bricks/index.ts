@@ -4,7 +4,8 @@ import type { AnyBrick } from '@mortar-kit/core';
 import { apiEntry } from './api-entry.tsx';
 import { callout } from './callout.tsx';
 import { cards } from './cards.tsx';
+import { figure } from './figure.tsx';
 import { hero } from './hero.tsx';
 import { markdown } from './markdown.tsx';
 
-export const bricks: readonly AnyBrick[] = [markdown, callout, apiEntry, hero, cards];
+export const bricks: readonly AnyBrick[] = [markdown, callout, figure, apiEntry, hero, cards];

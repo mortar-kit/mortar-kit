@@ -4,6 +4,8 @@
 // a form widget for it. The set of kinds is deliberately closed and small.
 import * as v from 'valibot';
 
+import { assetInfo, type AssetKind } from './assets.ts';
+
 /** The form widget a field is edited with. */
 export type FieldKind =
   | 'text'
@@ -13,6 +15,7 @@ export type FieldKind =
   | 'select'
   | 'url'
   | 'image'
+  | 'file'
   | 'list'
   | 'object'
   | 'date'
@@ -40,6 +43,8 @@ export interface FieldInfo {
   readonly fields?: Fields;
   /** `reference`: the name of the collection whose documents it points to. */
   readonly collection?: string;
+  /** `image` and `file`: the kinds of uploaded file it accepts. */
+  readonly accept?: readonly AssetKind[];
 }
 
 /**
@@ -169,17 +174,89 @@ function url(o: Common<string> & { placeholder?: string; required?: boolean }): 
   return field(s, o.default ?? '', { kind: 'url', label: o.label, help: o.help, placeholder: o.placeholder, required: o.required });
 }
 
-/** An image reference. */
+/** An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text. */
 export interface Image {
+  /**
+   * The URL to load. For an uploaded asset it is filled in when content is
+   * read (from the blob store), so render `src` and never build URLs from `asset`.
+   */
   src: string;
   alt: string;
+  /** The uploaded asset's key, or '' for a plain URL. */
+  asset: string;
 }
 
-/** An image: its URL plus alt text. Missing `src`/`alt` default to ''. */
-function image(o: Common<Image> & { required?: boolean }): Field<Image> {
-  const src = v.pipe(stringSchema(o), v.check(isLink, linkMessage(o.label)));
-  const s = v.object({ src: v.optional(src, ''), alt: v.optional(v.string(), '') }) as v.GenericSchema<Image>;
-  return field(s, fresh(o.default ?? { src: '', alt: '' }), { kind: 'image', label: o.label, help: o.help, required: o.required });
+/** A file (video, audio, PDF…): an uploaded asset or a URL. */
+export interface FileValue {
+  /** The URL to load; for an uploaded asset, filled in when content is read. */
+  src: string;
+  /** The uploaded asset's key, or '' for a plain URL. */
+  asset: string;
+}
+
+/** '' or the key of an uploaded asset of one of `kinds`. */
+function assetKey(label: string, kinds: readonly AssetKind[]): v.GenericSchema<string> {
+  const names = kinds.map((k) => (k === 'image' ? 'an image' : k === 'audio' ? 'audio' : `a ${k}`)).join(' or ');
+  return v.pipe(
+    v.string(),
+    v.check((key) => {
+      if (key === '') return true;
+      const info = assetInfo(key);
+      return info !== undefined && kinds.includes(info.kind);
+    }, `${label} must be ${names}`),
+  );
+}
+
+/**
+ * An asset-or-URL value's schema. With an asset, `src` is only a cached URL
+ * (`createContent` stores it empty and fills it on read); it may then be a
+ * `blob:` URL, which a browser-only blob store hands out.
+ */
+function assetValue<T extends { src: string; asset: string }>(
+  o: { label: string; required?: boolean },
+  kinds: readonly AssetKind[],
+  extra: v.ObjectEntries,
+): v.GenericSchema<T> {
+  return v.pipe(
+    v.object({ src: v.optional(v.string(), ''), asset: v.optional(assetKey(o.label, kinds), ''), ...extra }),
+    v.forward(
+      v.check((x) => isLink(x.src) || (x.asset !== '' && x.src.startsWith('blob:')), linkMessage(o.label)),
+      ['src'],
+    ),
+    v.forward(
+      v.check((x) => !o.required || x.src !== '' || x.asset !== '', `${o.label} is required`),
+      ['src'],
+    ),
+  ) as unknown as v.GenericSchema<T>;
+}
+
+/** An image: an uploaded image or a URL, plus alt text. Missing parts default to ''. */
+function image(o: Common<Partial<Image>> & { required?: boolean }): Field<Image> {
+  const s = assetValue<Image>(o, ['image'], { alt: v.optional(v.string(), '') });
+  return field(s, fresh({ src: '', alt: '', asset: '', ...o.default }), {
+    kind: 'image',
+    label: o.label,
+    help: o.help,
+    required: o.required,
+    accept: ['image'],
+  });
+}
+
+/**
+ * A file: an uploaded asset of one of the `accept` kinds (all of them by
+ * default), or a URL. E.g. `fields.file({ label: 'Video', accept: ['video'] })`.
+ */
+function file(o: Common<Partial<FileValue>> & { accept?: readonly AssetKind[]; required?: boolean }): Field<FileValue> {
+  const accept = o.accept ?? (['image', 'video', 'audio', 'document'] as const);
+  if (accept.length === 0) throw new Error(`fields.file(${o.label}): accept must not be empty`);
+  const s = assetValue<FileValue>(o, accept, {});
+  return field(s, fresh({ src: '', asset: '', ...o.default }), {
+    kind: 'file',
+    label: o.label,
+    help: o.help,
+    required: o.required,
+    accept,
+  });
 }
 
 /**
@@ -240,19 +317,21 @@ export interface FoundReference {
   id: string;
 }
 
-/**
- * Every non-empty reference in `data`, following `object` and `list` fields,
- * so a list of references (`fields.list({ of: fields.reference(...) })`) is
- * found item by item.
- */
-export function referencesIn(schema: Fields, data: unknown): FoundReference[] {
-  const found: FoundReference[] = [];
+/** An uploaded asset used in some data: where, and its key. */
+export interface FoundAsset {
+  path: (string | number)[];
+  key: string;
+}
+
+type Visit = (info: FieldInfo, value: unknown, path: (string | number)[]) => void;
+
+/** Calls `visit` for every Mortar field in `data` (following objects and lists) with its value. */
+function walkData(schema: Fields, data: unknown, visit: Visit): void {
   const walk = (f: AnyField, value: unknown, path: (string | number)[]) => {
     const info = fieldInfo(f);
     if (!info) return;
-    if (info.kind === 'reference' && info.collection && typeof value === 'string' && value !== '') {
-      found.push({ path, collection: info.collection, id: value });
-    } else if (info.kind === 'object' && info.fields) {
+    visit(info, value, path);
+    if (info.kind === 'object' && info.fields) {
       walkFields(info.fields, value, path);
     } else if (info.kind === 'list' && info.item && Array.isArray(value)) {
       const item = info.item;
@@ -264,20 +343,70 @@ export function referencesIn(schema: Fields, data: unknown): FoundReference[] {
     for (const [key, f] of Object.entries(fs)) walk(f, (value as Record<string, unknown>)[key], [...path, key]);
   };
   walkFields(schema, data, []);
+}
+
+/** Calls `visit` for every field info in `schema` (following objects and lists), without data. */
+function walkSchema(schema: Fields, visit: (info: FieldInfo) => void): void {
+  const walk = (f: AnyField) => {
+    const info = fieldInfo(f);
+    if (!info) return;
+    visit(info);
+    if (info.kind === 'object' && info.fields) Object.values(info.fields).forEach(walk);
+    if (info.kind === 'list' && info.item) walk(info.item);
+  };
+  Object.values(schema).forEach(walk);
+}
+
+/**
+ * Every non-empty reference in `data`, following `object` and `list` fields,
+ * so a list of references (`fields.list({ of: fields.reference(...) })`) is
+ * found item by item.
+ */
+export function referencesIn(schema: Fields, data: unknown): FoundReference[] {
+  const found: FoundReference[] = [];
+  walkData(schema, data, (info, value, path) => {
+    if (info.kind === 'reference' && info.collection && typeof value === 'string' && value !== '') {
+      found.push({ path, collection: info.collection, id: value });
+    }
+  });
   return found;
 }
 
 /** The collections that references in `schema` point to (following objects and lists). */
 export function referencedCollections(schema: Fields): Set<string> {
   const names = new Set<string>();
-  const walk = (f: AnyField) => {
-    const info = fieldInfo(f);
-    if (info?.kind === 'reference' && info.collection) names.add(info.collection);
-    if (info?.kind === 'object' && info.fields) Object.values(info.fields).forEach(walk);
-    if (info?.kind === 'list' && info.item) walk(info.item);
-  };
-  Object.values(schema).forEach(walk);
+  walkSchema(schema, (info) => {
+    if (info.kind === 'reference' && info.collection) names.add(info.collection);
+  });
   return names;
+}
+
+/** The image and file values in `data` (following objects and lists), each the object itself, with its path. */
+export function assetValuesIn(schema: Fields, data: unknown): { path: (string | number)[]; value: { src: string; asset: string } }[] {
+  const found: { path: (string | number)[]; value: { src: string; asset: string } }[] = [];
+  walkData(schema, data, (info, value, path) => {
+    if ((info.kind === 'image' || info.kind === 'file') && typeof value === 'object' && value !== null) {
+      const v = value as { src?: unknown; asset?: unknown };
+      if (typeof v.src === 'string' && typeof v.asset === 'string') found.push({ path, value: value as { src: string; asset: string } });
+    }
+  });
+  return found;
+}
+
+/** Every uploaded asset `data` uses (image and file fields with an `asset`), following objects and lists. */
+export function assetsIn(schema: Fields, data: unknown): FoundAsset[] {
+  return assetValuesIn(schema, data)
+    .filter(({ value }) => value.asset !== '')
+    .map(({ path, value }) => ({ path, key: value.asset }));
+}
+
+/** Whether `schema` has an image or file field anywhere (following objects and lists). */
+export function hasAssetFields(schema: Fields): boolean {
+  let found = false;
+  walkSchema(schema, (info) => {
+    if (info.kind === 'image' || info.kind === 'file') found = true;
+  });
+  return found;
 }
 
 /** A fresh default value for one field. */
@@ -291,4 +420,4 @@ export function defaultsOf<F extends Fields>(f: F): InferFields<F> {
 }
 
 /** Field helpers used to declare the schema of a brick or a collection. */
-export const fields = { text, textarea, number, boolean, select, url, image, list, object, date, reference };
+export const fields = { text, textarea, number, boolean, select, url, image, file, list, object, date, reference };

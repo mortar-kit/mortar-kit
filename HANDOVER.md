@@ -153,6 +153,22 @@ loading bricks in the preview (and reloading on a picker change).
    render). The admin logs hydration key misses when opened on a document
    deep link (`?collection=&id=`); the example site does too, so it's in
    `@mortar-kit/admin` (the outline portal), not the docs.
+11. Assets (user's request, 2026-11-22: "blob storage is related but unique
+   from data storage"). `BlobStore` (`list/get/put/remove/url`) beside
+   `ContentStore`; `createContent({ blobs, maxAssetSize })` adds
+   `content.assets` (`list/upload/remove`). No asset records: the key
+   (`hero-photo-x7k2q9.jpg`) carries name and type. `fields.image` is
+   `{ src, alt, asset }`, new `fields.file({ accept })` is `{ src, asset }`;
+   createContent stores `src: ''` for uploads and fills it from
+   `blobs.url(asset)` on read. Adapters: `createMemoryBlobStore` (core),
+   `createFileBlobStore` (core/server), docs' session storage store; `serveBlob`
+   serves one file (nosniff, ranges). Admin: rail "Assets" view
+   (`location.view: 'assets'`), `<AssetPicker>` for image/file fields. The
+   example serves `/uploads/` in `src/middleware.ts` and raises the
+   server-function body limit in `src/server-functions-setup.ts`. Not done:
+   an S3 adapter (`@mortar-kit/blob-s3` proposed), image sizes/thumbnails,
+   alt text stored per asset, a picker in a standalone `<Editor>` (it reads
+   `assets` from `<Admin>`'s context only).
 
 ## Open / not built, and future plans
 

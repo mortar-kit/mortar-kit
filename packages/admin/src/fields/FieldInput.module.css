@@ -135,6 +135,22 @@ select.input {
   border-radius: var(--mortar-radius);
   background: var(--mortar-input);
 }
+.assetFile {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  overflow-wrap: anywhere;
+}
+.assetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
 .reference {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

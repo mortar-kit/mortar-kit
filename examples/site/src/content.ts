@@ -6,10 +6,11 @@ import type { Content, ContentSource, Doc } from '@mortar-kit/core';
 import { query } from '@solidjs/router';
 import { GET } from '@solidjs/web/server-functions';
 
-import { getStoredDoc, listStoredDocs, removeStoredDoc, saveStoredDoc } from './server/content.ts';
+import { getStoredDoc, listAssets, listStoredDocs, removeAsset, removeStoredDoc, saveStoredDoc, uploadAsset } from './server/content.ts';
 
 const listFresh = GET(listStoredDocs);
 const getFresh = GET(getStoredDoc);
+const listAssetsFresh = GET(listAssets);
 
 /** Documents of a collection (cached per request). */
 export const listDocs = query(listFresh, 'docs');
@@ -39,4 +40,5 @@ export const adminContent: Content = {
     if (result.ok) query.clear();
     return result;
   },
+  assets: { list: listAssetsFresh, upload: uploadAsset, remove: removeAsset },
 };

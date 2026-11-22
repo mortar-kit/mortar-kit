@@ -10,7 +10,8 @@ import { defineConfig } from 'vite';
 // (src/entry-server.tsx, src/entry-client.tsx) so public pages can be sent
 // without JavaScript; src/client.ts decides which pages hydrate. Server
 // functions (src/server/) load and save documents as JSON files in
-// content/<collection>/<slug>.json.
+// content/<collection>/<slug>.json, and uploads in uploads/<key>, served at
+// /uploads/ by src/middleware.ts.
 //
 // renderMode 'async' sends each page as one settled document: the content
 // and its head tags (title, description) are in the HTML itself, so crawlers
@@ -25,6 +26,13 @@ const themes: Record<string, MortarTheme> = { midnight, mono, soft, warm };
 const theme = process.env.MORTAR_THEME;
 if (theme && !themes[theme]) throw new Error(`MORTAR_THEME must be one of ${Object.keys(themes).join(', ')}`);
 export default defineConfig({
-  plugins: [solid({ start: { renderMode: 'async' }, ssr: true, serverFunctions: true }), mortarKit({ theme: theme ? themes[theme] : undefined })],
+  plugins: [
+    solid({
+      start: { renderMode: 'async', middleware: './src/middleware.ts' },
+      ssr: true,
+      serverFunctions: { serverSetup: './src/server-functions-setup.ts' },
+    }),
+    mortarKit({ theme: theme ? themes[theme] : undefined }),
+  ],
   server: { port: Number(process.env.PORT ?? 3000) },
 });

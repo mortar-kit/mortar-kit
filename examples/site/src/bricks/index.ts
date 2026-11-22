@@ -5,5 +5,6 @@ import { featureGrid } from './feature-grid.tsx';
 import { hero } from './hero.tsx';
 import { latestPosts } from './latest-posts.tsx';
 import { productGrid } from './product-grid.tsx';
+import { video } from './video.tsx';
 
-export const bricks: readonly AnyBrick[] = [hero, featureGrid, latestPosts, productGrid];
+export const bricks: readonly AnyBrick[] = [hero, featureGrid, latestPosts, productGrid, video];

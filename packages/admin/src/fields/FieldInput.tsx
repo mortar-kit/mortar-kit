@@ -1,13 +1,14 @@
 // One form input per field kind, chosen from the field's FieldInfo. Object and
 // list fields render their nested fields recursively. Inputs write to the
 // store on every keystroke so the preview updates live.
-import { defaultOf, fieldInfo, type AnyField, type FieldInfo, type Image } from '@mortar-kit/core';
+import { assetInfo, defaultOf, fieldInfo, type AnyField, type FieldInfo } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
 import { createMemo, createSignal, For, Loading, Match, Show, Switch } from 'solid-js';
 
+import { AssetPicker } from '../AssetLibrary.tsx';
 import common from '../common.module.css';
 import { useAdmin, type AdminApi } from '../context.ts';
-import { ChevronIcon, DownIcon, PlusIcon, TrashIcon, UpIcon } from '../icons.tsx';
+import { ChevronIcon, DownIcon, FileIcon, PlusIcon, TrashIcon, UpIcon } from '../icons.tsx';
 import type { Path } from '../state.ts';
 import styles from './FieldInput.module.css';
 import { useForm } from './context.ts';
@@ -46,8 +47,8 @@ export function FieldInput(props: FieldInputProps) {
           <Match when={i().kind === 'reference'}>
             <ReferenceInput info={i()} path={props.path} value={props.value} />
           </Match>
-          <Match when={i().kind === 'image'}>
-            <ImageInput info={i()} path={props.path} value={props.value} />
+          <Match when={i().kind === 'image' || i().kind === 'file'}>
+            <AssetInput info={i()} path={props.path} value={props.value} />
           </Match>
           <Match when={i().kind === 'object'}>
             <ObjectInput info={i()} path={props.path} value={props.value} />
@@ -282,7 +283,7 @@ function SelectInput(props: InputProps) {
   );
 }
 
-/** A titled set of related inputs (object and image fields). */
+/** A titled set of related inputs (object, image and file fields). */
 function Group(props: { info: FieldInfo; children: JSX.Element }) {
   return (
     <fieldset class={styles.group}>
@@ -295,20 +296,82 @@ function Group(props: { info: FieldInfo; children: JSX.Element }) {
   );
 }
 
-function ImageInput(props: InputProps) {
+/**
+ * An image or file field: an uploaded asset chosen from the library (when
+ * the admin has a blob store) or a URL, plus alt text for an image.
+ */
+function AssetInput(props: InputProps) {
   const form = useForm();
-  const image = () => (props.value ?? { src: '', alt: '' }) as Image;
+  const admin = useAdmin();
+  const [picking, setPicking] = createSignal(false);
+  const value = () => ({ src: '', asset: '', alt: '', ...(props.value as object | undefined) }) as { src: string; asset: string; alt: string };
+  const isImage = () => props.info.kind === 'image';
+  const assets = () => admin?.content.assets;
+  const set = (patch: { src: string; asset: string }) => form.setValue(props.path, { ...value(), ...patch });
   return (
     <Group info={props.info}>
-      <Show when={image().src}>
-        <img class={styles.thumb} src={image().src} alt="" />
+      <Show when={value().src || value().asset}>
+        <Show
+          when={isImage() && value().src}
+          fallback={
+            <p class={styles.assetFile}>
+              <FileIcon />
+              <span>{value().asset ? (assetInfo(value().asset)?.name ?? value().asset) : value().src}</span>
+            </p>
+          }
+        >
+          <img class={styles.thumb} src={value().src} alt="" />
+        </Show>
       </Show>
-      <Labelled info={{ kind: 'url', label: 'Image URL', required: props.info.required }} path={[...props.path, 'src']}>
-        <input type="text" class={styles.input} inputmode="url" value={image().src} onInput={(e) => form.setValue([...props.path, 'src'], e.currentTarget.value)} />
-      </Labelled>
-      <Labelled info={{ kind: 'text', label: 'Alt text' }} path={[...props.path, 'alt']}>
-        <input type="text" class={styles.input} value={image().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
-      </Labelled>
+      <div class={styles.assetActions}>
+        <Show when={assets()}>
+          <button type="button" class={common.button} onClick={() => setPicking(true)}>
+            {value().asset ? 'Replace…' : 'Choose…'}
+          </button>
+        </Show>
+        <Show when={value().src || value().asset}>
+          <button type="button" class={common.button} onClick={() => set({ src: '', asset: '' })}>
+            Remove
+          </button>
+        </Show>
+      </div>
+      <Show
+        when={!value().asset}
+        fallback={<Show when={form.issue([...props.path, 'src'])}>{(message) => <small class={common.issue}>{message()}</small>}</Show>}
+      >
+        <Labelled
+          info={{ kind: 'url', label: assets() ? 'Or a URL' : isImage() ? 'Image URL' : 'File URL', required: props.info.required }}
+          path={[...props.path, 'src']}
+        >
+          <input
+            type="text"
+            class={styles.input}
+            inputmode="url"
+            value={value().src}
+            aria-invalid={form.issue([...props.path, 'src']) ? 'true' : undefined}
+            onInput={(e) => set({ src: e.currentTarget.value, asset: '' })}
+          />
+        </Labelled>
+      </Show>
+      <Show when={isImage()}>
+        <Labelled info={{ kind: 'text', label: 'Alt text' }} path={[...props.path, 'alt']}>
+          <input type="text" class={styles.input} value={value().alt} onInput={(e) => form.setValue([...props.path, 'alt'], e.currentTarget.value)} />
+        </Labelled>
+      </Show>
+      <Show when={picking() && assets()}>
+        {(library) => (
+          <AssetPicker
+            assets={library()}
+            accept={props.info.accept}
+            label={props.info.label}
+            onPick={(asset) => {
+              set({ src: asset.src, asset: asset.key });
+              setPicking(false);
+            }}
+            onClose={() => setPicking(false)}
+          />
+        )}
+      </Show>
     </Group>
   );
 }

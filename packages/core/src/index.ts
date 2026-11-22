@@ -1,5 +1,18 @@
 // Public API of @mortar-kit/core.
 export {
+  assetExtensions,
+  assetInfo,
+  assetKeyFor,
+  createMemoryBlobStore,
+  isValidAssetKey,
+  serveBlob,
+  type Asset,
+  type AssetKind,
+  type BlobInfo,
+  type BlobStore,
+  type MemoryBlobStoreOptions,
+} from './assets.ts';
+export {
   brickMap,
   defineBrick,
   type AnyBrick,
@@ -11,10 +24,13 @@ export {
   type ValidateResult,
 } from './brick.ts';
 export {
+  assetsIn,
+  assetValuesIn,
   defaultOf,
   defaultsOf,
   fieldInfo,
   fields,
+  hasAssetFields,
   referencedCollections,
   referencesIn,
   type AnyField,
@@ -22,6 +38,8 @@ export {
   type FieldInfo,
   type FieldKind,
   type Fields,
+  type FileValue,
+  type FoundAsset,
   type FoundReference,
   type Image,
   type InferFields,
@@ -52,6 +70,7 @@ export { PageView, type PageViewProps } from './PageView.tsx';
 export {
   createContent,
   createMemoryStore,
+  type Assets,
   type Content,
   type ContentOptions,
   type ContentSource,
@@ -60,4 +79,5 @@ export {
   type Referrer,
   type RemoveResult,
   type SaveResult,
+  type UploadResult,
 } from './store.ts';

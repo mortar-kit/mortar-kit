@@ -1,7 +1,7 @@
 // The admin, saving into this tab's session storage (see
 // content/session-store.ts): anyone can edit the docs site and see their
 // edits across it, and no one else does. Where it is lives in the URL
-// (?collection=&id=), so guides can link to "Edit this page". A reset
+// (?collection=&id=, or ?view=assets), so guides can link to "Edit this page". A reset
 // (the bar above it) starts it afresh.
 import { Admin, type AdminLocation } from '@mortar-kit/admin';
 import { useBeforeLeave, useSearchParams } from '@solidjs/router';
@@ -36,7 +36,11 @@ export default function AdminRoute() {
     }, 100);
   });
 
-  const location = (): AdminLocation => ({ collection: one(params.collection) ?? collections[0].name, id: one(params.id) });
+  const location = (): AdminLocation => ({
+    collection: one(params.collection) ?? collections[0].name,
+    id: one(params.id),
+    view: one(params.view) === 'assets' ? 'assets' : undefined,
+  });
 
   return (
     <div class={styles.admin}>
@@ -54,7 +58,7 @@ export default function AdminRoute() {
               content={editableContent}
               previewUrl="/admin/preview"
               location={location()}
-              onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null })}
+              onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null, view: to.view ?? null })}
               onDirtyChange={setDirty}
               resolveLink={resolveLink}
             />
