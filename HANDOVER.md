@@ -235,9 +235,11 @@ interactive bricks on such pages. The plan (also in
 
 - Click-to-select in the preview (optional in the original brief; skipped).
 - Schema `version`/`migrate` for stored data, a `hidden` brick flag, rich
-  text, media (uploads; images are URLs today), auth (the admin and its
-  server functions are unprotected; the app guards them), publishing
-  (changesets, publint, attw).
+  text, media (uploads; images are URLs today), publishing (changesets,
+  publint, attw).
+- Auth follow-ups: the editor shows a failed save as unsaved but doesn't
+  yet say "signed out, sign in again" on a 401; an admin-managed user list
+  (stored in a ContentStore) could back `authorize` later; no roles.
 - The example renders with `renderMode: 'async'` (one settled document).
   Switch to `'stream'` only if pages load slow data; no-JS pages are
   always sent settled anyway.

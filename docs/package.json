@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mortar-kit/admin": "workspace:*",
+    "@mortar-kit/auth": "workspace:*",
     "@mortar-kit/core": "workspace:*",
     "@mortar-kit/theme-midnight": "workspace:*",
     "@shikijs/engine-javascript": "4.6.0",

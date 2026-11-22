@@ -89,7 +89,12 @@
 }
 
 /* The Assets button sits at the foot of the rail, apart from the collections. */
-.assets {
+/* The foot of the rail: Assets, then the signed-in user. */
+.foot {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: 100%;
   margin-top: auto;
 }
 

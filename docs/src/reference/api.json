@@ -4,7 +4,8 @@
     "@mortar-kit/core/server",
     "@mortar-kit/admin",
     "@mortar-kit/admin/preview",
-    "@mortar-kit/admin/vite"
+    "@mortar-kit/admin/vite",
+    "@mortar-kit/auth"
   ],
   "entries": [
     {
@@ -119,6 +120,44 @@
           "readonly": false,
           "type": "(url: URL) => { collection: string; slug: string } | undefined",
           "doc": "Maps a URL of the site to the document it shows, e.g. `/posts/hello` to\n`{ collection: 'posts', slug: 'hello' }` (routing is the app's). With it,\n⌘/Ctrl-clicking a link in the preview opens that document in the admin;\na link it doesn't map (or without it) opens in a new tab."
+        },
+        {
+          "name": "user",
+          "optional": true,
+          "readonly": false,
+          "type": "AdminUser | null",
+          "doc": "The signed-in user (`auth.user()` from `@mortar-kit/auth`): shown at the foot of the rail, with Sign out."
+        },
+        {
+          "name": "signOutUrl",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where Sign out posts. Default `/admin/auth/sign-out`."
+        }
+      ]
+    },
+    {
+      "name": "AdminUser",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "The signed-in user, as the admin shows them.",
+      "signature": "interface AdminUser",
+      "members": [
+        {
+          "name": "email",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
         }
       ]
     },
@@ -518,6 +557,152 @@
       ]
     },
     {
+      "name": "SignIn",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The sign-in page. Render it from the route at `auth.signInPath`.",
+      "signature": "function SignIn(props: SignInProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "SignInProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "SignInMethod",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A sign-in method, as `auth.methods` (`@mortar-kit/auth`) lists it.",
+      "signature": "interface SignInMethod",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "input",
+          "optional": false,
+          "readonly": false,
+          "type": "\"button\" | \"email\"",
+          "doc": ""
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Path the method's form posts to."
+        },
+        {
+          "name": "callback",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Path an emailed code or link is posted to."
+        }
+      ]
+    },
+    {
+      "name": "SignInParams",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "The sign-in page's search parameters, as the auth routes set them.",
+      "signature": "interface SignInParams",
+      "members": [
+        {
+          "name": "error",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Why the last attempt failed: `denied`, `expired`, `invalid`, `invalid-email` or `failed`."
+        },
+        {
+          "name": "method",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "With `sent`: the email method that sent it."
+        },
+        {
+          "name": "sent",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The address an email was sent to (if it may sign in)."
+        },
+        {
+          "name": "email",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "From an emailed link: its address and token."
+        },
+        {
+          "name": "token",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "returnTo",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where to go after signing in."
+        }
+      ]
+    },
+    {
+      "name": "SignInProps",
+      "module": "@mortar-kit/admin",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface SignInProps",
+      "members": [
+        {
+          "name": "methods",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly SignInMethod[]",
+          "doc": "The ways to sign in: `auth.methods`."
+        },
+        {
+          "name": "params",
+          "optional": false,
+          "readonly": false,
+          "type": "SignInParams",
+          "doc": "The page's search parameters."
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Heading. Default \"Sign in\"."
+        }
+      ]
+    },
+    {
       "name": "Target",
       "module": "@mortar-kit/admin",
       "deprecated": false,
@@ -775,6 +960,715 @@
           "readonly": false,
           "type": "string",
           "doc": "Absolute path of its stylesheet, which sets --mortar-* custom properties on `:root`."
+        }
+      ]
+    },
+    {
+      "name": "allowEmails",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "An `authorize` that lets in these addresses, compared case-insensitively;\n`*@example.com` lets in a whole domain. Everyone else is refused.",
+      "signature": "function allowEmails(patterns: readonly string[]): (input: AuthorizeInput) => EmailUser | null",
+      "params": [
+        {
+          "name": "patterns",
+          "type": "readonly string[]",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "(input: AuthorizeInput) => EmailUser | null",
+      "examples": [
+        "```ts\ncreateAuth({ methods, secret, authorize: allowEmails(['ada@example.com', '*@team.example.com']) });\n```"
+      ]
+    },
+    {
+      "name": "Auth",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Sign-in for the admin; see `createAuth`.",
+      "signature": "interface Auth<User>",
+      "members": [
+        {
+          "name": "methods",
+          "optional": false,
+          "readonly": true,
+          "type": "readonly AuthMethodInfo[]",
+          "doc": "The methods, for the sign-in page."
+        },
+        {
+          "name": "signInPath",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": "The sign-in page's path."
+        },
+        {
+          "name": "handle",
+          "optional": false,
+          "readonly": false,
+          "type": "(request: Request) => Promise<Response | null>",
+          "doc": "Answers the auth routes (sign-in methods, `POST <basePath>/sign-out`)\nand guards `protect`ed paths; null means carry on (the request is\nsomeone else's, or the user is signed in). Call it first in your\nmiddleware: `return (await auth.handle(request)) ?? next();`."
+        },
+        {
+          "name": "user",
+          "optional": false,
+          "readonly": false,
+          "type": "(request: Request) => Promise<User | null>",
+          "doc": "The signed-in user (`authorize` asked again), or null."
+        },
+        {
+          "name": "require",
+          "optional": false,
+          "readonly": false,
+          "type": "(request: Request) => Promise<User>",
+          "doc": "The signed-in user, or throws a 401 Response (403 for a cross-site\nPOST). Call it first in every server function that writes: middleware\ncan't tell which server-function calls are the admin's."
+        }
+      ]
+    },
+    {
+      "name": "AuthError",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Why a sign-in failed: the `error` parameter of the sign-in page.",
+      "signature": "type AuthError = \"denied\" | \"expired\" | \"invalid\" | \"invalid-email\" | \"failed\""
+    },
+    {
+      "name": "AuthMethod",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A way to sign in. `createAuth` routes `POST <basePath>/<id>` to `start`\nand `<basePath>/<id>/callback` (GET or POST) to `callback`.",
+      "signature": "interface AuthMethod",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "URL segment and `Identity.method`: lowercase letters, digits and dashes."
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Button text on the sign-in page."
+        },
+        {
+          "name": "input",
+          "optional": false,
+          "readonly": false,
+          "type": "\"button\" | \"email\"",
+          "doc": "What the sign-in page shows for it; see `AuthMethodInfo.input`."
+        },
+        {
+          "name": "start",
+          "optional": false,
+          "readonly": false,
+          "type": "(request: Request, ctx: AuthMethodContext) => Promise<Response>",
+          "doc": "The sign-in form was submitted: redirect to the provider, send an email, …"
+        },
+        {
+          "name": "callback",
+          "optional": false,
+          "readonly": false,
+          "type": "(request: Request, ctx: AuthMethodContext) => Promise<Response | AuthSuccess>",
+          "doc": "The provider (or an emailed link or code) came back: who is it? A Response instead answers the request as it is (e.g. `ctx.fail`)."
+        }
+      ]
+    },
+    {
+      "name": "AuthMethodContext",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What a sign-in method gets from `createAuth` for each request.",
+      "signature": "interface AuthMethodContext",
+      "members": [
+        {
+          "name": "returnTo",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": "Where to go after signing in: the request's `returnTo` parameter (a path on this site), or the admin."
+        },
+        {
+          "name": "sealer",
+          "optional": false,
+          "readonly": true,
+          "type": "Sealer",
+          "doc": "The sealer over the app's secret: sign state, hash tokens."
+        },
+        {
+          "name": "url",
+          "optional": false,
+          "readonly": false,
+          "type": "(path?: \"callback\") => string",
+          "doc": "Absolute URL of this method's routes: `url()` is its start, `url('callback')` its callback."
+        },
+        {
+          "name": "signInUrl",
+          "optional": false,
+          "readonly": false,
+          "type": "(params?: Record<string, string | undefined>) => string",
+          "doc": "Absolute URL of the sign-in page with these search parameters (undefined ones left out)."
+        },
+        {
+          "name": "allows",
+          "optional": false,
+          "readonly": false,
+          "type": "(identity: Identity) => Promise<boolean>",
+          "doc": "Whether `identity` may sign in (runs `authorize`), e.g. before sending an email."
+        },
+        {
+          "name": "fail",
+          "optional": false,
+          "readonly": false,
+          "type": "(error: AuthError, params?: Record<string, string | undefined>) => Response",
+          "doc": "Back to the sign-in page, showing `error`, with these search parameters too (e.g. to keep a code form open)."
+        },
+        {
+          "name": "redirect",
+          "optional": false,
+          "readonly": false,
+          "type": "(location: string, cookies?: readonly string[]) => Response",
+          "doc": "A 303 redirect to `location`, setting these cookies."
+        },
+        {
+          "name": "setCookie",
+          "optional": false,
+          "readonly": false,
+          "type": "(value: string, maxAge: number) => string",
+          "doc": "A Set-Cookie header storing `value` for this method (its routes only) for `maxAge` seconds."
+        },
+        {
+          "name": "readCookie",
+          "optional": false,
+          "readonly": false,
+          "type": "() => string | undefined",
+          "doc": "The value `setCookie` stored, if the browser sent it back."
+        }
+      ]
+    },
+    {
+      "name": "AuthMethodInfo",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A sign-in method, as the sign-in page lists it. Plain JSON, so it can cross a server function.",
+      "signature": "interface AuthMethodInfo",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Button text, e.g. \"Continue with Google\"."
+        },
+        {
+          "name": "input",
+          "optional": false,
+          "readonly": false,
+          "type": "\"button\" | \"email\"",
+          "doc": "`'button'`: a button that posts to `action`; `'email'`: an email field that posts to `action`, then a code that posts to `callback`."
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Path the sign-in form posts to."
+        },
+        {
+          "name": "callback",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Path of the method's callback (where an emailed code or link is posted)."
+        }
+      ]
+    },
+    {
+      "name": "AuthOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `createAuth`.",
+      "signature": "interface AuthOptions<User>",
+      "members": [
+        {
+          "name": "methods",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AuthMethod[]",
+          "doc": "The ways to sign in, in the order the sign-in page lists them."
+        },
+        {
+          "name": "authorize",
+          "optional": false,
+          "readonly": false,
+          "type": "(input: AuthorizeInput) => User | Promise<User | null | undefined> | null | undefined",
+          "doc": "Who may use the admin: the user for this identity, or null if they may\nnot. Runs when someone signs in and again on every guarded request, so\nremoving someone takes effect at once; keep it quick (one lookup). The\nuser is what `user()` and `require()` return; keep it plain JSON if it\ngoes to the browser. `allowEmails([...])` covers a fixed list."
+        },
+        {
+          "name": "secret",
+          "optional": false,
+          "readonly": false,
+          "type": "string | readonly string[]",
+          "doc": "Signs the session cookie and the OAuth state, and keys token hashes:\nat least 32 characters, from the environment, never in code. Several\nkeys rotate: the first signs, all are accepted."
+        },
+        {
+          "name": "basePath",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where the auth routes live. Default `/admin/auth`."
+        },
+        {
+          "name": "signInPath",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The app's sign-in page (a route rendering `<SignIn>` from `@mortar-kit/admin`). Default `/admin/sign-in`."
+        },
+        {
+          "name": "protect",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly string[]",
+          "doc": "Paths (prefixes) that need a signed-in user; `handle` redirects (GET) or refuses (401) the rest. Default `['/admin']`."
+        },
+        {
+          "name": "home",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where to go after signing in when no `returnTo` was given. Default `/admin`."
+        },
+        {
+          "name": "maxAge",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "How long a session lasts, in seconds. Default 14 days."
+        },
+        {
+          "name": "cookieName",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The session cookie's name. Default `mortar_session`."
+        },
+        {
+          "name": "baseUrl",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's public origin, e.g. `https://example.com`: OAuth redirect\nURIs, email links and the same-origin check use it. Set it behind a\nproxy, where the request's own URL may be `http://localhost:3000`.\nDefault: the origin of each request."
+        }
+      ]
+    },
+    {
+      "name": "AuthorizeInput",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What `authorize` receives.",
+      "signature": "interface AuthorizeInput",
+      "members": [
+        {
+          "name": "identity",
+          "optional": false,
+          "readonly": false,
+          "type": "Identity",
+          "doc": "Who the method (or the session cookie) says this is."
+        },
+        {
+          "name": "request",
+          "optional": false,
+          "readonly": false,
+          "type": "Request",
+          "doc": "The request being authorized."
+        }
+      ]
+    },
+    {
+      "name": "AuthSuccess",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What a method's `callback` returns once it knows who someone is.",
+      "signature": "interface AuthSuccess",
+      "members": [
+        {
+          "name": "identity",
+          "optional": false,
+          "readonly": false,
+          "type": "Identity",
+          "doc": ""
+        },
+        {
+          "name": "returnTo",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Path to go to after signing in, if the method carried one through; `ctx.returnTo` otherwise."
+        }
+      ]
+    },
+    {
+      "name": "consoleMailer",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A mailer that prints each message (sign-in links and codes included) to\nthe server's console instead of sending it. For development only.",
+      "signature": "function consoleMailer(log?: (text: string) => void): Mailer",
+      "params": [
+        {
+          "name": "log",
+          "type": "(text: string) => void",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Mailer",
+      "examples": []
+    },
+    {
+      "name": "createAuth",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Sign-in for the admin. Put `handle` first in the app's middleware and\n`require` first in each server function that writes.",
+      "signature": "function createAuth<User>(options: AuthOptions<User>): Auth<User>",
+      "params": [
+        {
+          "name": "options",
+          "type": "AuthOptions<User>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Auth<User>",
+      "examples": [
+        "```ts\nconst auth = createAuth({\n  methods: [google({ clientId, clientSecret }), email({ mailer, store })],\n  authorize: allowEmails(['you@example.com', '*@example.com']),\n  secret: process.env.MORTAR_AUTH_SECRET!,\n});\n```"
+      ]
+    },
+    {
+      "name": "createSealer",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A sealer over `secret`: one key, or several to rotate (the first signs,\nevery one is accepted). Each must be at least 32 characters, e.g.\n`openssl rand -base64 32`.",
+      "signature": "function createSealer(secret: string | readonly string[]): Sealer",
+      "params": [
+        {
+          "name": "secret",
+          "type": "string | readonly string[]",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Sealer",
+      "examples": []
+    },
+    {
+      "name": "email",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Sign in with a link or code sent by email.",
+      "signature": "function email(options: EmailOptions): AuthMethod",
+      "params": [
+        {
+          "name": "options",
+          "type": "EmailOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "AuthMethod",
+      "examples": []
+    },
+    {
+      "name": "EMAIL_TOKENS_COLLECTION",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "variable",
+      "summary": "The reserved collection pending email sign-ins are stored in.",
+      "signature": "const EMAIL_TOKENS_COLLECTION: \"mortar-auth-tokens\""
+    },
+    {
+      "name": "EmailOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `email`.",
+      "signature": "interface EmailOptions",
+      "members": [
+        {
+          "name": "mailer",
+          "optional": false,
+          "readonly": false,
+          "type": "Mailer",
+          "doc": "Sends the sign-in emails. `consoleMailer()` prints them, for development."
+        },
+        {
+          "name": "store",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentStore",
+          "doc": "Keeps pending sign-ins (hashes, for minutes). Any ContentStore works;\nwith the JSON-file store, use a directory outside your content and git\n(e.g. `createJsonFileStore({ dir: '.data' })`)."
+        },
+        {
+          "name": "siteName",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's name in the email's subject and text. Default: the site's host."
+        },
+        {
+          "name": "expiresIn",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "Minutes until a link or code expires. Default 15."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Label of the email field's button. Default \"Email me a sign-in link\"."
+        },
+        {
+          "name": "id",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The method's id, in its URLs. Default `email`."
+        }
+      ]
+    },
+    {
+      "name": "EmailUser",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "The user `allowEmails` signs in.",
+      "signature": "interface EmailUser",
+      "members": [
+        {
+          "name": "email",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "google",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Sign in with a Google account. Add `<baseUrl>/admin/auth/google/callback`\n(or your `basePath`) as an authorized redirect URI of the OAuth client.",
+      "signature": "function google(options: GoogleOptions): AuthMethod",
+      "params": [
+        {
+          "name": "options",
+          "type": "GoogleOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "AuthMethod",
+      "examples": []
+    },
+    {
+      "name": "GoogleOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `google`.",
+      "signature": "interface GoogleOptions",
+      "members": [
+        {
+          "name": "clientId",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "OAuth client id (Google Cloud console › APIs & Services › Credentials, type \"Web application\")."
+        },
+        {
+          "name": "clientSecret",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The client's secret: from the environment, never in code."
+        },
+        {
+          "name": "hostedDomain",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Only accept accounts of this Google Workspace domain, e.g. `example.com` (also hints the account picker)."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Button text. Default \"Continue with Google\"."
+        },
+        {
+          "name": "id",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The method's id, in its URLs. Default `google`."
+        },
+        {
+          "name": "fetch",
+          "optional": true,
+          "readonly": false,
+          "type": "{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | Request | URL, init?: RequestInit): Promise<Response> }",
+          "doc": "For tests: the fetch that calls Google's token endpoint."
+        }
+      ]
+    },
+    {
+      "name": "Identity",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Who a sign-in method says someone is.",
+      "signature": "interface Identity",
+      "members": [
+        {
+          "name": "email",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Email address, lowercased. Methods only return addresses they have verified."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Display name, when the method knows it."
+        },
+        {
+          "name": "method",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The `id` of the method that signed them in, e.g. `'google'`."
+        }
+      ]
+    },
+    {
+      "name": "Mailer",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Sends email. Implement it over your provider; the sender address is the\nmailer's business. Throw if the message wasn't accepted.",
+      "signature": "interface Mailer",
+      "members": [
+        {
+          "name": "send",
+          "optional": false,
+          "readonly": false,
+          "type": "(message: MailMessage) => Promise<void>",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "MailMessage",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "One email to send.",
+      "signature": "interface MailMessage",
+      "members": [
+        {
+          "name": "to",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "subject",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "text",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "Plain-text body."
+        },
+        {
+          "name": "html",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "HTML body, for clients that show it."
+        }
+      ]
+    },
+    {
+      "name": "Sealer",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Signs, checks and hashes values with the app's secret.",
+      "signature": "interface Sealer",
+      "members": [
+        {
+          "name": "seal",
+          "optional": false,
+          "readonly": false,
+          "type": "(value: unknown, maxAge: number) => Promise<string>",
+          "doc": "`value` as a signed token that `open` accepts until `maxAge` seconds from now."
+        },
+        {
+          "name": "open",
+          "optional": false,
+          "readonly": false,
+          "type": "(token: string) => Promise<unknown>",
+          "doc": "The value inside a token from `seal`, or null if it was changed, signed with an unknown key, or has expired."
+        },
+        {
+          "name": "hash",
+          "optional": false,
+          "readonly": false,
+          "type": "(value: string) => Promise<string>",
+          "doc": "A keyed hash (hex) of `value`: what to store instead of a one-time token or code."
         }
       ]
     },

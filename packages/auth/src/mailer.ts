@@ -1,0 +1,42 @@
+// Sending email: the small adapter the email sign-in method sends through.
+// Mortar ships only a console mailer for development; a site wraps its
+// provider (Resend, Postmark, SES, SMTP via nodemailer) in a few lines.
+
+/** One email to send. */
+export interface MailMessage {
+  to: string;
+  subject: string;
+  /** Plain-text body. */
+  text: string;
+  /** HTML body, for clients that show it. */
+  html?: string;
+}
+
+/**
+ * Sends email. Implement it over your provider; the sender address is the
+ * mailer's business. Throw if the message wasn't accepted.
+ *
+ * @example
+ * ```ts
+ * const mailer: Mailer = {
+ *   async send(message) {
+ *     await resend.emails.send({ from: 'Site <admin@example.com>', ...message });
+ *   },
+ * };
+ * ```
+ */
+export interface Mailer {
+  send(message: MailMessage): Promise<void>;
+}
+
+/**
+ * A mailer that prints each message (sign-in links and codes included) to
+ * the server's console instead of sending it. For development only.
+ */
+export function consoleMailer(log: (text: string) => void = console.log): Mailer {
+  return {
+    async send(message) {
+      log(`\n[mortar] Email to ${message.to}: ${message.subject}\n\n${message.text}\n`);
+    },
+  };
+}

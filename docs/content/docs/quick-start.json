@@ -36,7 +36,7 @@
       "data": {
         "tone": "warning",
         "title": "Guard the admin",
-        "body": "Mortar has no auth. `/admin` and the save and delete functions are open to anyone who can reach them, so protect them in your app, for example in middleware."
+        "body": "Anyone who can reach `/admin` and the save and delete functions can use them until you add sign-in. See [Sign-in](/docs/sign-in): `@mortar-kit/auth` guards the routes in middleware and each write in its server function."
       }
     }
   ]

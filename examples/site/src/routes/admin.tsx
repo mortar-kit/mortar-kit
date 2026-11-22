@@ -4,16 +4,16 @@
 // documents can be linked and back/forward moves between them. Leaving a
 // document with unsaved changes asks first: the editor guards closing the
 // tab, and this route guards router navigation (links, back/forward, and
-// switching documents, which changes the URL). Unprotected: guard /admin
-// in your own app.
+// switching documents, which changes the URL). Only signed-in admins get
+// here (src/middleware.ts); the rail shows who, with Sign out.
 import { Admin, type AdminLocation } from '@mortar-kit/admin';
 import type { Content } from '@mortar-kit/core';
 import { useBeforeLeave, useSearchParams, type BeforeLeaveEventArgs } from '@solidjs/router';
-import { createSignal } from 'solid-js';
+import { createMemo, createSignal } from 'solid-js';
 
 import { bricks } from '../bricks/index.ts';
 import { collections } from '../collections.ts';
-import { adminContent } from '../content.ts';
+import { adminContent, getUser } from '../content.ts';
 
 /** The document a URL of this site shows (see router.ts), so ⌘/Ctrl-clicking a link in the preview opens it. */
 function resolveLink(url: URL): { collection: string; slug: string } | undefined {
@@ -30,6 +30,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default function AdminRoute() {
   const [params, setParams] = useSearchParams();
   const [dirty, setDirty] = createSignal(false);
+  const user = createMemo(() => getUser());
   // The save in flight, if any. Not reactive state: only the guard reads it.
   let saving: Promise<unknown> | undefined;
   // The navigation waiting for the leave confirm, if one is scheduled.
@@ -98,6 +99,7 @@ export default function AdminRoute() {
       onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null, view: to.view ?? null })}
       onDirtyChange={setDirty}
       resolveLink={resolveLink}
+      user={user()}
     />
   );
 }
