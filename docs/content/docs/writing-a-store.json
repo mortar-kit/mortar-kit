@@ -20,7 +20,7 @@
       "data": {
         "tone": "tip",
         "title": "Other stores",
-        "body": "The same four methods fit a database table keyed by collection and slug, a key-value store, or a headless API. Keep the rules out of the store: that's what `createContent` is for."
+        "body": "The same four methods fit a database table keyed by collection and slug, a key-value store, or a headless API. Keep the rules out of the store: that's what `createContent` is for. Uploaded files have their own adapter, a `BlobStore`, with the same split: see [Assets](/docs/assets)."
       }
     }
   ]

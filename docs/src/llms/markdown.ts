@@ -79,6 +79,11 @@ export const brickMarkdown: Record<string, (data: Data, context: BrickContext) =
       .map((line) => (line ? `> ${line}` : '>'))
       .join('\n');
   },
+  figure: (data) => {
+    const image = (data.image ?? {}) as Data;
+    const src = text(image.src);
+    return [src ? `![${text(image.alt)}](${src})` : '', text(data.caption) ? `_${text(data.caption)}_` : ''].filter(Boolean).join('\n\n');
+  },
   'api-entry': (data, context) => {
     const entry = context.findEntry(text(data.name));
     return entry ? entryMarkdown(entry, 2) : `No Mortar export is named “${text(data.name)}”.`;
