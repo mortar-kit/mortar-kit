@@ -29,6 +29,25 @@ export interface RefreshMessage {
   type: 'mortar:refresh';
 }
 
+/**
+ * Editor → preview: the selected entry, by id (null when the document's
+ * fields or nothing is selected), so the preview outlines it.
+ * Preview → editor: an entry was clicked in the preview; select it.
+ */
+export interface SelectMessage {
+  type: 'mortar:select';
+  id: string | null;
+}
+
+/**
+ * Preview → editor: a same-origin link was followed (⌘/Ctrl-click) in the
+ * preview. The editor opens the document it points to, if any, or a new tab.
+ */
+export interface LinkMessage {
+  type: 'mortar:link';
+  href: string;
+}
+
 function hasType(data: unknown, type: string): boolean {
   return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === type;
 }
@@ -55,4 +74,13 @@ export function isDocMessage(data: unknown): data is DocMessage {
 
 export function isRefreshMessage(data: unknown): data is RefreshMessage {
   return hasType(data, 'mortar:refresh');
+}
+
+export function isSelectMessage(data: unknown): data is SelectMessage {
+  const id = (data as Partial<SelectMessage>)?.id;
+  return hasType(data, 'mortar:select') && (id === null || typeof id === 'string');
+}
+
+export function isLinkMessage(data: unknown): data is LinkMessage {
+  return hasType(data, 'mortar:link') && typeof (data as Partial<LinkMessage>).href === 'string';
 }

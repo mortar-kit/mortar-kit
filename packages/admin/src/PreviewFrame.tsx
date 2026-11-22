@@ -3,12 +3,14 @@
 // every change, the whole document is posted to it. Either side may load first:
 // the preview announces itself when it mounts, and the editor says hello
 // once it is listening, which the preview answers. After a save the
-// preview is told to refresh, so bricks that load data load again.
+// preview is told to refresh, so bricks that load data load again. The
+// selected entry is posted too (the preview outlines it); a brick clicked
+// in the preview, or a link followed there, comes back as a callback.
 import type { Doc } from '@mortar-kit/core';
 import { createEffect, createSignal, deep, onSettled, snapshot } from 'solid-js';
 
 import styles from './PreviewFrame.module.css';
-import { isReadyMessage, type DocMessage, type HelloMessage, type RefreshMessage } from './protocol.ts';
+import { isLinkMessage, isReadyMessage, isSelectMessage, type DocMessage, type HelloMessage, type RefreshMessage, type SelectMessage } from './protocol.ts';
 
 export interface PreviewFrameProps {
   /** URL of the app route that renders `<PreviewPage>`. */
@@ -20,6 +22,12 @@ export interface PreviewFrameProps {
   doc: Doc;
   /** Bump it after saved content changes (a save, a delete): the preview reloads what bricks loaded. */
   refresh?: number;
+  /** The selected entry's id, outlined in the preview; null when none (or the document's fields) is selected. */
+  selected?: string | null;
+  /** An entry was clicked in the preview. */
+  onSelect?: (id: string) => void;
+  /** A same-origin link was ⌘/Ctrl-clicked in the preview (others open in a new tab from there). */
+  onLink?: (url: URL) => void;
 }
 
 export function PreviewFrame(props: PreviewFrameProps) {
@@ -31,6 +39,11 @@ export function PreviewFrame(props: PreviewFrameProps) {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== location.origin || event.source !== frame?.contentWindow) return;
       if (isReadyMessage(event.data)) setHandshakes((n) => n + 1);
+      if (isSelectMessage(event.data) && event.data.id !== null) props.onSelect?.(event.data.id);
+      if (isLinkMessage(event.data)) {
+        const url = URL.canParse(event.data.href) ? new URL(event.data.href) : undefined;
+        if (url?.origin === location.origin) props.onLink?.(url);
+      }
     };
     window.addEventListener('message', onMessage);
     const hello: HelloMessage = { type: 'mortar:hello' };
@@ -43,6 +56,15 @@ export function PreviewFrame(props: PreviewFrameProps) {
     (doc) => {
       if (!doc) return;
       const message: DocMessage = { type: 'mortar:doc', collection: props.collection, body: props.body, doc: snapshot(doc) };
+      frame?.contentWindow?.postMessage(message, location.origin);
+    },
+  );
+
+  createEffect(
+    () => (handshakes() > 0 ? { id: props.selected ?? null } : undefined),
+    (selected) => {
+      if (!selected) return;
+      const message: SelectMessage = { type: 'mortar:select', id: selected.id };
       frame?.contentWindow?.postMessage(message, location.origin);
     },
   );

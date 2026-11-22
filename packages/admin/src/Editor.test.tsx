@@ -249,6 +249,7 @@ describe('<Editor>', () => {
     const frame = container.querySelector('iframe')!;
     expect(frame.getAttribute('src')).toBe('/preview');
     const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    const docs = () => post.mock.calls.filter(([m]) => (m as { type: string }).type === 'mortar:doc');
 
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:ready' }, origin: 'https://evil.test', source: frame.contentWindow }));
     flush();
@@ -256,19 +257,66 @@ describe('<Editor>', () => {
 
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:ready' }, origin: location.origin, source: frame.contentWindow }));
     flush();
-    expect(post).toHaveBeenCalledTimes(1);
-    expect(post.mock.lastCall?.[0]).toMatchObject({
+    expect(docs()).toHaveLength(1);
+    expect(docs()[0]?.[0]).toMatchObject({
       type: 'mortar:doc',
       collection: 'pages',
       doc: { id: 'home-id', slug: 'home', entries: [{ id: 'h' }, { id: 't' }] },
     });
-    expect(post.mock.lastCall?.[1]).toBe(location.origin);
+    expect(docs()[0]?.[1]).toBe(location.origin);
 
     fireEvent.input(input('Text'), { target: { value: 'Live' } });
     flush();
-    expect(post).toHaveBeenCalledTimes(2);
-    const sent = post.mock.lastCall?.[0] as { doc: Doc } | undefined;
+    expect(docs()).toHaveLength(2);
+    const sent = docs()[1]?.[0] as { doc: Doc } | undefined;
     expect(sent?.doc.entries?.[0]?.data.text).toBe('Live');
+  });
+
+  it('posts the selection to the preview, and selects what is clicked there', () => {
+    const { container } = setup();
+    const frame = container.querySelector('iframe')!;
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    const fromPreview = (data: unknown) => {
+      window.dispatchEvent(new MessageEvent('message', { data, origin: location.origin, source: frame.contentWindow }));
+      flush();
+    };
+    const selections = () => post.mock.calls.map(([m]) => m as { type: string; id?: unknown }).filter((m) => m.type === 'mortar:select');
+
+    fromPreview({ type: 'mortar:ready' });
+    expect(selections().at(-1)).toEqual({ type: 'mortar:select', id: 'h' });
+    click('Tags');
+    expect(selections().at(-1)).toEqual({ type: 'mortar:select', id: 't' });
+    click('Details');
+    expect(selections().at(-1)).toEqual({ type: 'mortar:select', id: null });
+
+    fromPreview({ type: 'mortar:select', id: 'h' });
+    expect(screen.getByRole('region', { name: 'Edit brick' })).toBeInTheDocument();
+    expect(input('Text').value).toBe('Welcome');
+    // An id that isn't in the body changes nothing.
+    fromPreview({ type: 'mortar:select', id: 'gone' });
+    expect(input('Text').value).toBe('Welcome');
+  });
+
+  it('follows links clicked in the preview with onFollowLink, or in a new tab', () => {
+    const onFollowLink = vi.fn<(url: URL) => void>();
+    const { container, unmount } = render(() => <Editor bricks={bricks} collection={pages} doc={doc()} previewUrl="/preview" onFollowLink={onFollowLink} />);
+    const send = (frame: HTMLIFrameElement, href: string) => {
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:link', href }, origin: location.origin, source: frame.contentWindow }));
+      flush();
+    };
+    send(container.querySelector('iframe')!, `${location.origin}/posts/hello`);
+    expect(onFollowLink).toHaveBeenCalledTimes(1);
+    expect(onFollowLink.mock.lastCall?.[0].pathname).toBe('/posts/hello');
+    // Other origins are the preview's to open.
+    send(container.querySelector('iframe')!, 'https://example.com/');
+    expect(onFollowLink).toHaveBeenCalledTimes(1);
+    unmount();
+
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const plain = setup();
+    send(plain.container.querySelector('iframe')!, `${location.origin}/about`);
+    expect(open).toHaveBeenCalledWith(`${location.origin}/about`, '_blank', 'noopener');
+    open.mockRestore();
   });
 
   it('ignores ready messages from a window other than the preview', () => {
@@ -397,7 +445,10 @@ describe('<Editor> without a body', () => {
     const post = vi.spyOn(frame.contentWindow!, 'postMessage');
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:ready' }, origin: location.origin, source: frame.contentWindow }));
     flush();
-    expect(post.mock.lastCall?.[0]).toMatchObject({ type: 'mortar:doc', collection: 'authors', doc: { id: 'ada-id', fields: { name: 'Ada' } } });
+    const sent = post.mock.calls.find(([m]) => (m as { type: string }).type === 'mortar:doc');
+    expect(sent?.[0]).toMatchObject({ type: 'mortar:doc', collection: 'authors', doc: { id: 'ada-id', fields: { name: 'Ada' } } });
+    // The details are selected, which the preview doesn't outline.
+    expect(post).toHaveBeenCalledWith({ type: 'mortar:select', id: null }, location.origin);
   });
 });
 
