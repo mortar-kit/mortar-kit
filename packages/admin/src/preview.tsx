@@ -3,12 +3,15 @@
 // site's own styles and shows whatever document the editor posts to it,
 // inside the app's layout for that collection when it passes one. Bricks
 // that load data read `content`, again after every save. Kept free of
-// editor code so the route stays small. Clicking a brick selects it in the
+// editor code so the route stays small. A collection without a layout
+// previews as <DocPreview> (its fields, then its body) when the page is
+// given the collections. Clicking a brick selects it in the
 // editor, and links are followed with ⌘/Ctrl-click (see PreviewPicker).
-import { brickMap, ContentContext, PageView, type AnyBrick, type ContentSource, type Doc } from '@mortar-kit/core';
+import { brickMap, ContentContext, PageView, type AnyBrick, type AnyCollection, type ContentSource, type Doc } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
 import { createMemo, createSignal, createStore, Errored, onSettled, reconcile, Show } from 'solid-js';
 
+import { DocPreview } from './DocPreview.tsx';
 import styles from './preview.module.css';
 import { PreviewPicker } from './PreviewPicker.tsx';
 import { isDocMessage, isHelloMessage, isRefreshMessage, isSelectMessage, type LinkMessage, type ReadyMessage, type SelectMessage } from './protocol.ts';
@@ -25,9 +28,15 @@ export interface PreviewPageProps {
    */
   content?: ContentSource;
   /**
-   * The site's layout for each collection, by name, e.g. a post's title
-   * and date around its body. Without one, a collection with a body
-   * previews the body alone.
+   * The same collections the editor uses. A collection without a layout
+   * then previews as `<DocPreview>`: its title, fields and body.
+   */
+  collections?: readonly AnyCollection[];
+  /**
+   * How each collection's documents preview, by collection name: usually
+   * the site's own layout, e.g. a post's title and date around its body.
+   * Without one, a collection previews as `<DocPreview>` (given
+   * `collections`), or else as its body alone.
    */
   layouts?: Readonly<Record<string, PreviewLayout>>;
 }
@@ -40,6 +49,7 @@ export function PreviewPage(props: PreviewPageProps) {
   // The selected entry's id, as the editor last said (or a click here, until it answers).
   const [selected, setSelected] = createSignal<string | null>(null);
   const byName = createMemo(() => brickMap(props.bricks));
+  const collection = createMemo(() => props.collections?.find((c) => c.name === state.collection));
   const label = (id: string) => {
     const entry = state.doc?.entries?.find((e) => e.id === id);
     return entry ? (byName().get(entry.brick)?.label ?? `Unknown brick "${entry.brick}"`) : '';
@@ -108,8 +118,19 @@ export function PreviewPage(props: PreviewPageProps) {
               <Show
                 when={props.layouts?.[state.collection]}
                 fallback={
-                  <Show when={state.body} fallback={<p role="note" class={styles.note}>There is no preview for this collection.</p>}>
-                    {body}
+                  <Show
+                    when={collection()}
+                    fallback={
+                      <Show when={state.body} fallback={<p role="note" class={styles.note}>There is no preview for this collection.</p>}>
+                        {body}
+                      </Show>
+                    }
+                  >
+                    {(c) => (
+                      <DocPreview collection={c()} doc={doc} collections={props.collections}>
+                        {state.body ? body : null}
+                      </DocPreview>
+                    )}
                   </Show>
                 }
               >
@@ -142,4 +163,5 @@ function BrickError(props: { name: string; error: unknown }) {
   );
 }
 
+export { DocPreview, type DocPreviewProps } from './DocPreview.tsx';
 export type { DocMessage, HelloMessage, LinkMessage, ReadyMessage, RefreshMessage, SelectMessage } from './protocol.ts';

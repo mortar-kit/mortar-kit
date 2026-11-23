@@ -6,7 +6,7 @@ import { PreviewPage } from '@mortar-kit/admin/preview';
 import type { JSX } from '@solidjs/web';
 
 import { bricks } from '../bricks/index.ts';
-import type { docs } from '../collections.ts';
+import { collections, type docs } from '../collections.ts';
 import { source } from '../content/content.ts';
 import { DocsLayout } from '../layouts/DocsLayout.tsx';
 import layoutStyles from '../layouts/layouts.module.css';
@@ -23,5 +23,5 @@ const layouts = {
 };
 
 export default function AdminPreview() {
-  return <PreviewPage bricks={bricks} content={source} layouts={layouts} />;
+  return <PreviewPage bricks={bricks} collections={collections} content={source} layouts={layouts} />;
 }
