@@ -49,6 +49,20 @@ further construction puns).
   empty collections only, validated like editor saves. Default adapter: **JSON files**
   `content/<collection>/<slug>.json` (the slug is the file name, not stored
   inside); listing reads the whole folder (fine for small sites).
+- **Content server** (2026-11-23): `createContentServer({ content, auth })`
+  (`core/server`) returns the 12 plain functions an app's `'use server'`
+  module re-exports one `export const` each (`list`, `get`, `save`,
+  `remove`, `move`, `listAssets`, `uploadAsset` (one FormData),
+  `removeAsset`, `updateAsset`, `listAssetFolders`, `saveAssetFolder`,
+  `removeAssetFolder`). Writes call `auth.require` on the current request
+  (`auth: false` opens them) and `respond(…, { revalidate: '' })`; `list`
+  takes null options (a GET sends a trailing undefined as null). It raises
+  the server-function body limit from `content.assets.maxSize`, so the
+  upload limit lives only in `createContent` (the app imports its module
+  from `serverFunctions.serverSetup`). `contentClient(server, { read, cache,
+  onWrite })` (main entry) builds `source` (cached), `freshSource` and the
+  admin's `content`; the router's `query` and `GET` are passed in, so core
+  depends on neither.
 - **Assets** (2026-11-22): uploaded files live in a `BlobStore` adapter
   (`list/get/put/remove/url`), separate from `ContentStore`, passed to
   `createContent({ blobs })`, which checks type (extension allowlist, no
@@ -196,9 +210,12 @@ further construction puns).
   provider, which would shift hydration keys. The contact form is an island
   (see Islands): `src/entry-client.tsx` imports `src/islands.ts` on pages
   with islands and `Root.tsx` otherwise, each lazily. Content is JSON files in
-  `examples/site/content/<collection>/`, read and written by the
-  `'use server'` module `src/server/content.ts`; `src/content.ts` wraps it
-  (GET reads: cached router queries for routes, fresh for the admin).
+  `examples/site/content/<collection>/`: `src/server/mortar.ts` builds
+  `createContent` and `createContentServer`, the `'use server'` module
+  `src/server/content.ts` re-exports its functions (plus `runBrickAction`),
+  and `src/content.ts` wraps them with `contentClient` (GET reads: cached
+  router queries for routes, fresh for the admin). `src/server-functions-setup.ts`
+  imports `server/mortar.ts` so the upload body limit is set before any call.
 - `docs`: the Mortar docs site (private app `mortar-docs`), written in
   Mortar. Collections `docs` (guides: section, position, brick body) and
   `pages` (home); bricks Markdown (marked), Callout, Figure, API entry, Hero, Cards.
@@ -227,7 +244,7 @@ further construction puns).
   `src/llms/markdown.ts` (a test fails without one).
 - Auth in the example: `src/server/auth.ts` (`authFromEnv`; without
   `RESEND_API_KEY` dev emails print to the console), `src/middleware.ts`, `/admin/sign-in`
-  (`src/routes/sign-in.tsx`), and `requireAdmin()` in every write (save, delete, upload, remove asset). Pending email
+  (`src/routes/sign-in.tsx`), and `auth` passed to `createContentServer`, whose every write checks it. Pending email
   sign-ins live in `examples/site/.data/` (git-ignored). Dev default admin:
   `admin@example.com`.
 

@@ -104,6 +104,8 @@ export type FolderResult = { ok: true; folder: AssetFolder } | { ok: false; mess
  * what needs them (details, folders).
  */
 export interface Assets {
+  /** The largest file `upload` accepts, in bytes (createContent's `maxAssetSize`). */
+  readonly maxSize?: number;
   /** Every uploaded file, newest first. */
   list(): Promise<Asset[]>;
   /**
@@ -377,6 +379,7 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
     },
 
     assets: blobs && {
+      maxSize: maxAssetSize,
       async list() {
         const [files, library] = await Promise.all([blobs.list(), readLibrary()]);
         const valid = files.filter((file) => isValidAssetKey(file.key));

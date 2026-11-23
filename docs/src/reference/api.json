@@ -2491,6 +2491,13 @@
       "signature": "interface Assets",
       "members": [
         {
+          "name": "maxSize",
+          "optional": true,
+          "readonly": true,
+          "type": "number",
+          "doc": "The largest file `upload` accepts, in bytes (createContent's `maxAssetSize`)."
+        },
+        {
           "name": "list",
           "optional": false,
           "readonly": false,
@@ -3207,6 +3214,94 @@
       ]
     },
     {
+      "name": "contentClient",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The app's content in the browser (and during SSR), over the functions of\nits \"use server\" module.",
+      "signature": "function contentClient(server: ContentServer, options?: ContentClientOptions): ContentClient",
+      "params": [
+        {
+          "name": "server",
+          "type": "ContentServer",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "options",
+          "type": "ContentClientOptions",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "ContentClient",
+      "examples": [
+        "```ts\n// src/content.ts\nimport { query } from '@solidjs/router';\nimport { GET } from '@solidjs/web/server-functions';\nimport * as server from './server/content.ts';\n\nexport const { source, freshSource, content } = contentClient(server, { read: GET, cache: query, onWrite: () => query.clear() });\n```"
+      ]
+    },
+    {
+      "name": "ContentClient",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What `contentClient` builds.",
+      "signature": "interface ContentClient",
+      "members": [
+        {
+          "name": "source",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentSource",
+          "doc": "Cached reads, for routes, layouts and bricks (`<ContentContext value={source}>`)."
+        },
+        {
+          "name": "freshSource",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentSource",
+          "doc": "Uncached reads, for the admin's preview: always what is saved now."
+        },
+        {
+          "name": "content",
+          "optional": false,
+          "readonly": false,
+          "type": "Content",
+          "doc": "Reads and writes for `<Admin content>`."
+        }
+      ]
+    },
+    {
+      "name": "ContentClientOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `contentClient`. Pass the router's and server functions' helpers; Mortar depends on neither.",
+      "signature": "interface ContentClientOptions",
+      "members": [
+        {
+          "name": "read",
+          "optional": true,
+          "readonly": false,
+          "type": "(fn: (args: never[]) => Promise<unknown>) => unknown",
+          "doc": "Declares a read as a GET (`GET` from `@solidjs/web/server-functions`), so reads aren't mutations that revalidate everything."
+        },
+        {
+          "name": "cache",
+          "optional": true,
+          "readonly": false,
+          "type": "(fn: (args: never[]) => Promise<unknown>, key: string) => unknown",
+          "doc": "Caches a read per request and across hydration (`query` from `@solidjs/router`)."
+        },
+        {
+          "name": "onWrite",
+          "optional": true,
+          "readonly": false,
+          "type": "() => void",
+          "doc": "Runs after each successful write, to drop cached reads (`() => query.clear()`)."
+        }
+      ]
+    },
+    {
       "name": "ContentContext",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -3298,6 +3393,100 @@
           "readonly": false,
           "type": "(collection: Collection<F>, ref: DocRef) => Promise<Doc<InferFields<F>> | null>",
           "doc": "One document of the collection, or null."
+        }
+      ]
+    },
+    {
+      "name": "ContentServer",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "The content functions an app's \"use server\" module exports, by these names, for `contentClient`.",
+      "signature": "interface ContentServer",
+      "members": [
+        {
+          "name": "list",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, options?: ListOptions) => Promise<DocSummary[]>",
+          "doc": "Documents of a collection, without their bodies."
+        },
+        {
+          "name": "get",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, ref: DocRef) => Promise<Doc<Record<string, unknown>> | null>",
+          "doc": "One document, or null."
+        },
+        {
+          "name": "save",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, doc: Doc) => Promise<SaveResult>",
+          "doc": "Validates and stores a document (signed-in only)."
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, id: string) => Promise<RemoveResult>",
+          "doc": "Deletes a document, unless others reference it (signed-in only)."
+        },
+        {
+          "name": "move",
+          "optional": false,
+          "readonly": false,
+          "type": "(collection: string, id: string, index: number) => Promise<void>",
+          "doc": "Moves a document of an orderable collection (signed-in only)."
+        },
+        {
+          "name": "listAssets",
+          "optional": false,
+          "readonly": false,
+          "type": "() => Promise<Asset[]>",
+          "doc": "Every uploaded file, newest first ([] without a blob store)."
+        },
+        {
+          "name": "uploadAsset",
+          "optional": false,
+          "readonly": false,
+          "type": "(form: FormData) => Promise<UploadResult>",
+          "doc": "Stores a file sent as form data: `file`, plus optional `folder`, `title` and `alt` (signed-in only)."
+        },
+        {
+          "name": "removeAsset",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string) => Promise<RemoveResult>",
+          "doc": "Deletes a file, unless documents use it (signed-in only)."
+        },
+        {
+          "name": "updateAsset",
+          "optional": false,
+          "readonly": false,
+          "type": "(key: string, details: AssetDetails) => Promise<UpdateAssetResult>",
+          "doc": "Sets a file's default title, alt text or folder (signed-in only)."
+        },
+        {
+          "name": "listAssetFolders",
+          "optional": false,
+          "readonly": false,
+          "type": "() => Promise<AssetFolder[]>",
+          "doc": "Every asset folder."
+        },
+        {
+          "name": "saveAssetFolder",
+          "optional": false,
+          "readonly": false,
+          "type": "(folder: { id?: string; name: string }) => Promise<FolderResult>",
+          "doc": "Creates or renames an asset folder (signed-in only)."
+        },
+        {
+          "name": "removeAssetFolder",
+          "optional": false,
+          "readonly": false,
+          "type": "(id: string) => Promise<void>",
+          "doc": "Deletes an asset folder; its files stay (signed-in only)."
         }
       ]
     },
@@ -5205,6 +5394,50 @@
       ],
       "returns": "RenderManifest",
       "examples": []
+    },
+    {
+      "name": "ContentServerOptions",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `createContentServer`.",
+      "signature": "interface ContentServerOptions",
+      "members": [
+        {
+          "name": "content",
+          "optional": false,
+          "readonly": false,
+          "type": "Content",
+          "doc": "The app's `createContent(...)`."
+        },
+        {
+          "name": "auth",
+          "optional": false,
+          "readonly": false,
+          "type": "false | { require: any }",
+          "doc": "Who may write: `auth.require(request)` resolves for a signed-in editor\nand throws a Response otherwise (`createAuth` from `@mortar-kit/auth`).\n`false` leaves writes open to anyone: only for local experiments."
+        }
+      ]
+    },
+    {
+      "name": "createContentServer",
+      "module": "@mortar-kit/core/server",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The server side of the app's content, for its \"use server\" module to\nexport. It also raises the server-function request body limit to fit\nthe content's largest upload, so import the module that calls it from\nthe plugin's `serverFunctions.serverSetup`.",
+      "signature": "function createContentServer(options: ContentServerOptions): ContentServer",
+      "params": [
+        {
+          "name": "options",
+          "type": "ContentServerOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "ContentServer",
+      "examples": [
+        "```ts\n// src/server/mortar.ts (imported by serverFunctions.serverSetup too)\nexport const server = createContentServer({ content, auth });\n\n// src/server/content.ts\n'use server';\nimport { server } from './mortar.ts';\nexport const list = server.list;\nexport const get = server.get;\nexport const save = server.save;\n// …and the same for remove, move, listAssets, uploadAsset, removeAsset,\n// updateAsset, listAssetFolders, saveAssetFolder and removeAssetFolder\n```"
+      ]
     },
     {
       "name": "createFileBlobStore",
