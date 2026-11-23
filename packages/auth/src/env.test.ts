@@ -7,6 +7,7 @@ import type { AuthorizeInput } from './auth.ts';
 import { authFromEnv } from './env.ts';
 import { allowMembers } from './members.ts';
 import { resendMailer } from './resend.ts';
+import { createSealer } from './seal.ts';
 
 const SECRET = 'a-test-secret-that-is-long-enough-123';
 const identity = (email: string, name?: string): AuthorizeInput => ({
@@ -57,6 +58,25 @@ describe('authFromEnv', () => {
     const auth = authFromEnv({ dev: false, secret: SECRET, authorize, mailer: { send: async () => {} }, store: createMemoryStore(), env: {} });
     expect(auth.methods.map((m) => m.id)).toEqual(['email']);
     expect(await auth.user(new Request('http://site.test/'))).toBeNull();
+  });
+
+  it('lets MORTAR_ADMINS in as well as whoever authorize accepts', async () => {
+    const authorize = vi.fn(({ identity }: AuthorizeInput) => (identity.email === 'bo@example.com' ? { email: identity.email, role: 'editor' } : null));
+    const auth = authFromEnv({ dev: false, authorize, store: createMemoryStore(), mailer: { send: async () => {} }, env: { MORTAR_AUTH_SECRET: SECRET, MORTAR_ADMINS: 'ada@example.com' } });
+    const sealer = createSealer(SECRET);
+    const as = async (email: string) => {
+      const session = await sealer.seal({ email, method: 'email' }, 60);
+      return auth.user(new Request('http://site.test/admin', { headers: { cookie: `mortar_session=${session}` } }));
+    };
+    expect(await as('ada@example.com')).toEqual({ email: 'ada@example.com' });
+    expect(await as('bo@example.com')).toEqual({ email: 'bo@example.com', role: 'editor' });
+    expect(await as('eve@example.com')).toBeNull();
+  });
+
+  it('uses only authorize without MORTAR_ADMINS, even in development', async () => {
+    const auth = authFromEnv({ dev: true, authorize: () => null, store: createMemoryStore(), env: {} });
+    const session = await createSealer('development-only-secret-do-not-use-in-production').seal({ email: 'admin@example.com', method: 'email' }, 60);
+    expect(await auth.user(new Request('http://site.test/admin', { headers: { cookie: `mortar_session=${session}` } }))).toBeNull();
   });
 });
 
