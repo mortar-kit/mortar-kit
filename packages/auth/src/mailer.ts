@@ -11,6 +11,8 @@ export interface MailMessage {
   text: string;
   /** HTML body, for clients that show it. */
   html?: string;
+  /** Where replies go instead of the sender, e.g. the visitor who filled in a contact form. */
+  replyTo?: string;
 }
 
 /**
@@ -37,7 +39,8 @@ export interface Mailer {
 export function consoleMailer(log: (text: string) => void = console.log): Mailer {
   return {
     async send(message) {
-      log(`\n[mortar] Email to ${message.to}: ${message.subject}\n\n${message.text}\n`);
+      const replyTo = message.replyTo ? ` (reply to ${message.replyTo})` : '';
+      log(`\n[mortar] Email to ${message.to}${replyTo}: ${message.subject}\n\n${message.text}\n`);
     },
   };
 }

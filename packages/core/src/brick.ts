@@ -1,6 +1,7 @@
 // defineBrick: pairs a developer's component with the schema describing its
 // editable data. The schema drives validation, defaults, and (in the admin
-// package) the generated edit form.
+// package) the generated edit form. A brick may also load data and handle
+// its own form posts (`action`, see actions.tsx).
 import type { Component } from 'solid-js';
 import * as v from 'valibot';
 
@@ -8,15 +9,60 @@ import type { ContentReader } from './content.ts';
 import { defaultsOf, type Fields, type InferFields } from './fields.ts';
 
 /** Props every brick component receives. */
-export interface BrickProps<D, L = undefined> {
+export interface BrickProps<D, L = undefined, R = undefined> {
   /** The brick's data: the right shape, with defaults filled in (see `Brick.normalize`). */
   data: D;
   /** What the brick's `load` returned; undefined for a brick without one. */
   loaded: L;
+  /**
+   * The latest post of this entry's form (`<ActionForm>`) to its `action`:
+   * pending, then what it returned or threw. Undefined until the form is
+   * sent, and for a brick without an action.
+   */
+  submission?: Submission<R>;
+}
+
+/** A form post to a brick's `action`, as its component sees it. */
+export interface Submission<R> {
+  /** True while the post is in flight (only with JavaScript; a plain post reloads the page). */
+  pending: boolean;
+  /** What the action returned. */
+  result?: R;
+  /** What the action threw, if it threw (in production, a generic error). */
+  error?: unknown;
+}
+
+/**
+ * What the app passes to every action, besides the post: services that live
+ * on the server (a mailer, a database), so the brick's module (which the
+ * browser loads too) imports none of them. Empty by default; declare yours
+ * by augmenting it:
+ *
+ * @example
+ * ```ts
+ * declare module '@mortar-kit/core' {
+ *   interface ActionContext {
+ *     mailer: Mailer;
+ *   }
+ * }
+ * ```
+ */
+export interface ActionContext {}
+
+/** What a brick's `action` receives. */
+export interface ActionInput<D> {
+  /** The posted form. Untrusted: check every value. */
+  form: FormData;
+  /** The entry's stored data, read on the server (never sent by the browser), normalized. */
+  data: D;
+  /** The request the post arrived in, when the app passes it (e.g. for a per-client limit). */
+  request: Request | undefined;
+  /** The app's server-side services (see `ActionContext`). */
+  context: ActionContext;
 }
 
 /** What a developer passes to `defineBrick`. */
-export interface BrickDefinition<F extends Fields, L = undefined> {
+export interface BrickDefinition<F extends Fields, L = undefined, R = undefined> {
   /** Stable identifier stored in entries. Lowercase, e.g. `hero` or `feature-grid`. */
   name: string;
   /** Human-readable name for the admin panel. Defaults to `name`. */
@@ -33,8 +79,19 @@ export interface BrickDefinition<F extends Fields, L = undefined> {
    * `component`, so `props.loaded` gets its type.
    */
   load?: (data: InferFields<F>, content: ContentReader) => L | Promise<L>;
-  /** Renders the brick. Read `props.data.x` (and `props.loaded`); don't destructure props. */
-  component: Component<BrickProps<InferFields<F>, L>>;
+  /**
+   * Handles a post of the brick's form (`<ActionForm>` in its component).
+   * Runs on the server only, through the app's runner (`Content.runAction`),
+   * which reads the entry's stored `data`; what it returns (plain JSON)
+   * reaches the component as `props.submission.result`. Without
+   * JavaScript the post reloads the page with the result; with it, only
+   * the brick updates. The brick's module also reaches the browser, so
+   * take server-only services from `context`, not from imports. Write it
+   * before `component`, so the result gets its type.
+   */
+  action?: (input: ActionInput<InferFields<F>>) => R | Promise<R>;
+  /** Renders the brick. Read `props.data.x` (and `props.loaded`, `props.submission`); don't destructure props. */
+  component: Component<BrickProps<InferFields<F>, L, R>>;
 }
 
 /** A validation problem, located by its path inside the brick's data. */
@@ -47,22 +104,23 @@ export interface Issue {
 export type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] };
 
 /** A registered brick. `defaults()` is used when the brick is added to a body. */
-export interface Brick<F extends Fields = Fields, L = undefined> extends SchemaOps<F> {
+export interface Brick<F extends Fields = Fields, L = undefined, R = undefined> extends SchemaOps<F> {
   readonly name: string;
   readonly label: string;
   readonly schema: F;
   readonly load: ((data: InferFields<F>, content: ContentReader) => L | Promise<L>) | undefined;
-  readonly component: Component<BrickProps<InferFields<F>, L>>;
+  readonly action: ((input: ActionInput<InferFields<F>>) => R | Promise<R>) | undefined;
+  readonly component: Component<BrickProps<InferFields<F>, L, R>>;
 }
 
 /** A brick of any schema, e.g. in a list of bricks. */
 // oxlint-disable-next-line typescript/no-explicit-any -- component props are contravariant.
-export type AnyBrick = Brick<any, any>;
+export type AnyBrick = Brick<any, any, any>;
 
 const NAME = /^[a-z][a-z0-9-]*$/;
 
 /** Registers a brick: a named component plus the schema of its data. */
-export function defineBrick<const F extends Fields, L = undefined>(def: BrickDefinition<F, L>): Brick<F, L> {
+export function defineBrick<const F extends Fields, L = undefined, R = undefined>(def: BrickDefinition<F, L, R>): Brick<F, L, R> {
   if (!NAME.test(def.name)) {
     throw new Error(`defineBrick: invalid name "${def.name}" (use lowercase letters, digits and dashes)`);
   }
@@ -71,6 +129,7 @@ export function defineBrick<const F extends Fields, L = undefined>(def: BrickDef
     label: def.label ?? def.name,
     schema: def.schema,
     load: def.load,
+    action: def.action,
     component: def.component,
     ...schemaOps(def.schema),
   };

@@ -1,0 +1,71 @@
+{
+  "id": "forms",
+  "fields": {
+    "title": "Handling forms",
+    "description": "Give a brick an action: its form works without JavaScript, and with it only the brick updates.",
+    "section": "guides",
+    "order": 60
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "A brick can handle its own form: a contact form, a newsletter sign-up, a quote request. Give it an `action`, render a `<ActionForm>` in its component, and read the outcome from `props.submission`.\n\n- **Without JavaScript** (Mortar's [pages without JavaScript](/docs/no-javascript)), the form is a plain post. The action runs on the server, and the browser comes back to the same page with the result, which the brick shows. A refresh doesn't post twice.\n- **With JavaScript** (the admin, or a brick that hydrates), the same form is sent in the background, and only that brick updates. The page doesn't reload.\n\nThe brick is the same either way. The example site (`examples/site`) has a working contact form at `/contact`.\n\n## The brick\n\n```tsx\nimport { ActionForm, defineBrick, fields } from '@mortar-kit/core';\nimport { Show } from 'solid-js';\n\ntype Result = { status: 'sent' } | { status: 'invalid'; values: Record<string, string> } | { status: 'failed' };\n\nexport const contactForm = defineBrick({\n  name: 'contact-form',\n  label: 'Contact form',\n  schema: {\n    heading: fields.text({ label: 'Heading', default: 'Get in touch' }),\n    to: fields.text({ label: 'Send to', help: \"Empty: the site's inbox.\" }),\n  },\n  async action({ form, data, context }): Promise<Result> {\n    const name = String(form.get('name') ?? '').trim();\n    const email = String(form.get('email') ?? '').trim();\n    const message = String(form.get('message') ?? '').trim();\n    if (!name || !email.includes('@') || !message) return { status: 'invalid', values: { name, email, message } };\n    const to = data.to || context.inbox;\n    if (!context.mailer || !to) return { status: 'failed' };\n    await context.mailer.send({ to, replyTo: email, subject: `Contact form: ${name}`, text: message });\n    return { status: 'sent' };\n  },\n  component: (props) => (\n    <section>\n      <h2>{props.data.heading}</h2>\n      <Show when={props.submission?.result?.status !== 'sent'} fallback={<p role=\"status\">Thanks! We'll reply by email.</p>}>\n        <ActionForm>\n          <input name=\"name\" required />\n          <input name=\"email\" type=\"email\" required />\n          <textarea name=\"message\" required />\n          <button type=\"submit\" disabled={props.submission?.pending}>Send</button>\n        </ActionForm>\n      </Show>\n    </section>\n  ),\n});\n```\n\n- `action` gets the posted `form` (untrusted: check every value), the entry's `data`, the `request`, and the app's `context`. What it returns is the result: keep it plain JSON, and small, since without JavaScript it rides back in a cookie (about 4 kB).\n- `props.submission` is the entry's latest post: `pending`, then `result`, or `error` if the action threw. It's undefined until the form is sent.\n- Write `action` before `component`, so the result has its type."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-2",
+      "data": {
+        "tone": "note",
+        "title": "The data comes from storage, not the form",
+        "body": "A `<ActionForm>` names its entry (collection, document and entry id), never its data. The server reads the entry and passes its stored `data` to the action, so a visitor can't change what the editor set. An editable \"Send to\" address is safe for that reason."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "md-3",
+      "data": {
+        "source": "## Server-only services\n\nThe brick's module also reaches the browser (in the admin, and in a brick that hydrates), so an action doesn't import the mailer, a database or a secret. The app passes them in `context`, and declares their types by augmenting `ActionContext`:\n\n```ts\ndeclare module '@mortar-kit/core' {\n  interface ActionContext {\n    mailer?: Mailer;\n    inbox?: string;\n  }\n}\n```\n\n## Wiring it up\n\nActions run through one server function in the app, which calls `content.runAction` with the reference and form the browser sent. That's the place for a per-client limit, since the form is public:\n\n```ts\n// src/server/content.ts\n'use server';\nexport async function runBrickAction(ref: EntryRef, form: FormData | URLSearchParams): Promise<unknown> {\n  const request = getRequestEvent()?.request;\n  if (overLimit(request)) throw new Error('Too many form posts.');\n  return respond(await content.runAction(ref, form, { request, context: { mailer, inbox } }), { revalidate: '' });\n}\n```\n\nThen the app tells Mortar where forms post and how to read results back, with `BrickActionsContext`. With Solid's router, a form action over that server function does both. It posts plainly without JavaScript (the result comes back in a one-time cookie the router reads), and in the background with it:\n\n```ts\n// src/actions.ts\nconst post = formAction(runBrickAction, 'mortar-brick-action');\n\nexport const brickActions: BrickActions = {\n  action: (ref) => post.with(ref),\n  useSubmission: (ref) => {\n    const all = useSubmissions(post, (input) => sameEntry(input[0], ref()));\n    return () => {\n      const last = all.at(-1);\n      return last && { pending: last.result === undefined && last.error === undefined, result: last.result, error: last.error };\n    };\n  },\n};\n```\n\n```tsx\n// App.tsx: around the router\n<BrickActionsContext value={brickActions}>\n  <Router>…</Router>\n</BrickActionsContext>\n```\n\nFinally, pass the document to `PageView`, so each form can name its entry: `<PageView bricks={bricks} entries={page.entries ?? []} doc={{ collection: 'pages', id: page.id }} />`. The admin preview does this itself. It doesn't send forms, so editors can click around in them."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-4",
+      "data": {
+        "tone": "tip",
+        "title": "Spam",
+        "body": "The example adds a hidden honeypot field (a bot fills it in, and the action answers \"sent\" without sending) and a per-client limit with `createLimiter` in the server function. For a busy form, add a CAPTCHA and verify its token in the action."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-5",
+      "data": {
+        "name": "ActionForm"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-6",
+      "data": {
+        "name": "BrickActions"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-7",
+      "data": {
+        "name": "ActionInput"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-8",
+      "data": {
+        "name": "Submission"
+      }
+    }
+  ]
+}

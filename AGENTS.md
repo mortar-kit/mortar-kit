@@ -62,6 +62,20 @@ further construction puns).
   (pages without JavaScript included) and in the admin preview (saved
   content, again after each save via `ContentSource.track`). Detail page
   layouts are the app's code; Mortar stays out of routing.
+- **Brick actions** (2026-11-23): `defineBrick({ action })` handles the
+  brick's form. The component renders `<ActionForm>` (a plain post form) and
+  reads `props.submission` (`{ pending, result?, error? }`). The form names
+  its entry (`EntryRef`: collection, doc id, entry id; `PageView` needs
+  `doc`), never its data: `Content.runAction(ref, form, { request, context })`
+  reads the stored entry and calls the action with its normalized `data`, so
+  editor-set values (a recipient) can't be forged. Server-only services
+  reach actions through `context` (`ActionContext`, augmented by the app),
+  since brick modules reach the browser. The app runs actions through one
+  `'use server'` function and provides `BrickActions` (`action(ref)`,
+  `useSubmission(ref)`) with `BrickActionsContext`; with the router that's
+  `formAction(...).with(ref)` + `useSubmissions`, which posts plainly without
+  JS (result back in Solid's flash cookie, ~4 kB) and in the background with
+  JS (only the brick updates). The admin preview doesn't submit forms.
 - **Packages**: `@mortar-kit/core` (fields, bricks, collections, documents,
   storage rules, `PageView`, content context) and `@mortar-kit/admin`
   (`<Admin>`, `<Editor>`, `<SignIn>`), plus `@mortar-kit/auth` (server-only
@@ -130,7 +144,10 @@ further construction puns).
   no bricks or collections of its own; the example declares pages, posts,
   products (orderable) and categories (`src/collections.ts`), bricks (two load data:
   latest posts, a product grid), and layouts (`src/layouts/`) shared by its
-  routes and the admin preview. Its entries are authored (`src/entry-server.tsx`,
+  routes and the admin preview. The contact-form brick has an `action` (see
+  Brick actions); `src/actions.ts` wires brick forms to the router, and
+  `src/server/mail.ts` gives actions a mailer, the inbox (`CONTACT_TO`) and
+  a per-client limit. Its entries are authored (`src/entry-server.tsx`,
   `src/entry-client.tsx`, shared tree in `src/Root.tsx`) so public pages ship
   **no JavaScript**: the server entry is `createRender({ manifest, app })`
   from `@mortar-kit/core/render` (`hydrate` default `['/admin']`); other

@@ -8,9 +8,13 @@
 // through a deferred memo under its own <Loading>: the first load shows
 // the loading fallback (never in a server-rendered page, which waits), and
 // later loads keep the previous result on screen until the new one lands.
+// Given the document it renders (`doc`), it tells each entry where it is
+// stored, so a brick's <ActionForm> can post to its action, and hands the
+// brick its latest submission (BrickActionsContext).
 import type { JSX } from '@solidjs/web';
 import { createDeferred, createMemo, createProjection, dynamicComponent, Errored, For, Loading, Show, useContext } from 'solid-js';
 
+import { BrickActionsContext, EntryRefContext, type EntryRef } from './actions.tsx';
 import { brickMap, type AnyBrick } from './brick.ts';
 import { ContentContext, contentReader } from './content.ts';
 import type { PageEntry } from './entries.ts';
@@ -20,6 +24,12 @@ export interface PageViewProps {
   bricks: readonly AnyBrick[];
   /** The entries to render, in order: a page's or a document's body. */
   entries: readonly PageEntry[];
+  /**
+   * The document the entries belong to. Bricks with an `action` need it:
+   * their forms name the entry by collection, document and entry id, so
+   * the server can read its stored data. Without it, their forms don't post.
+   */
+  doc?: { collection: string; id: string };
   /**
    * Rendered in place of an entry whose brick isn't defined (e.g. a brick
    * that was removed from the code). Default: nothing, which suits a public
@@ -48,6 +58,7 @@ export interface PageViewProps {
 export function PageView(props: PageViewProps) {
   const byName = createMemo(() => brickMap(props.bricks));
   const source = useContext(ContentContext);
+  const actions = useContext(BrickActionsContext);
   return (
     <For each={props.entries} keyed={(entry) => entry.id}>
       {(entry) => {
@@ -55,6 +66,10 @@ export function PageView(props: PageViewProps) {
         const data = createProjection(() => brick()?.normalize(entry().data) ?? {});
         const Brick = dynamicComponent(() => brick()?.component);
         const loads = createMemo(() => brick()?.load !== undefined);
+        const ref = (): EntryRef | undefined => (props.doc ? { collection: props.doc.collection, doc: props.doc.id, entry: entry().id } : undefined);
+        // Asked once per entry, whatever its brick: the app's hook may use the router.
+        const submission = actions ? actions.useSubmission(() => ref() ?? { collection: '', doc: '', entry: '' }) : () => undefined;
+        const live = () => (brick()?.action && ref() ? submission() : undefined);
         const loaded = createDeferred(() => {
           const b = brick();
           if (!b?.load) return undefined;
@@ -64,12 +79,13 @@ export function PageView(props: PageViewProps) {
         });
         const view = () => (
           <Loading fallback={props.loadingFallback?.(entry())}>
-            <Brick data={data} loaded={loaded()} />
+            <Brick data={data} loaded={loaded()} submission={live()} />
           </Loading>
         );
-        const rendered = (
+        // A function: created inside EntryRefContext below, so ActionForm can read it.
+        const rendered = () => (
           <Show when={brick()} fallback={props.fallback?.(entry())}>
-            <Show when={loads()} fallback={<Brick data={data} loaded={undefined} />}>
+            <Show when={loads()} fallback={<Brick data={data} loaded={undefined} submission={live()} />}>
               <Show when={props.errorFallback} fallback={view()}>
                 {(onError) => <Errored fallback={(error) => onError()(entry(), error())}>{view()}</Errored>}
               </Show>
@@ -77,7 +93,7 @@ export function PageView(props: PageViewProps) {
           </Show>
         );
         // In JSX, so props.wrap and the entry are read where they're tracked.
-        return <>{props.wrap ? props.wrap(entry().id, rendered) : rendered}</>;
+        return <EntryRefContext value={ref}>{props.wrap ? props.wrap(entry().id, rendered()) : rendered()}</EntryRefContext>;
       }}
     </For>
   );
