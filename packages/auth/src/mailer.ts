@@ -1,6 +1,7 @@
 // Sending email: the small adapter the email sign-in method sends through.
-// Mortar ships only a console mailer for development; a site wraps its
-// provider (Resend, Postmark, SES, SMTP via nodemailer) in a few lines.
+// Mortar ships a console mailer for development and `resendMailer`
+// (resend.ts); a site wraps any other provider (Postmark, SES, SMTP via
+// nodemailer) in a few lines.
 
 /** One email to send. */
 export interface MailMessage {
