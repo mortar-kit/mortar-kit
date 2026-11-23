@@ -7,7 +7,7 @@ import { flush } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { PreviewPage } from './preview.tsx';
-import { author, bricks, doc } from './test/bricks.tsx';
+import { author, bricks, doc, pages } from './test/bricks.tsx';
 
 function postMessage(data: unknown, origin = location.origin) {
   window.dispatchEvent(new MessageEvent('message', { data, origin, source: window.parent }));
@@ -314,5 +314,82 @@ describe('<PreviewPage> review fixes', () => {
     await settle();
     expect(list).toHaveBeenCalledTimes(2);
     expect(document.querySelector('.late')).toHaveTextContent('2');
+  });
+});
+
+describe('<PreviewPage> default preview (no layout)', () => {
+  const settle = async () => {
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    flush();
+  };
+  const categories = defineCollection({ name: 'categories', label: 'Categories', fields: { name: fields.text({ label: 'Name' }) } });
+  const products = defineCollection({
+    name: 'products',
+    label: 'Products',
+    fields: {
+      name: fields.text({ label: 'Name' }),
+      price: fields.number({ label: 'Price' }),
+      image: fields.image({ label: 'Image' }),
+      category: fields.reference({ label: 'Category', collection: 'categories' }),
+      size: fields.select({ label: 'Size', options: { s: 'Small', l: 'Large' } }),
+      tags: fields.list({ label: 'Tags', of: fields.text({ label: 'Tag' }) }),
+      notes: fields.textarea({ label: 'Notes' }),
+    },
+  });
+  const mug = (): Doc => ({
+    id: 'mug-id',
+    slug: 'mug',
+    fields: {
+      name: 'Mug',
+      price: 14,
+      image: { src: '/mug.jpg', alt: 'A blue mug', asset: '' },
+      category: 'cat-id',
+      size: 'l',
+      tags: ['blue', 'stoneware'],
+      notes: '',
+    },
+  });
+  const rows = (container: HTMLElement) =>
+    Object.fromEntries([...container.querySelectorAll('dl > div')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]));
+
+  it("shows the document's title, lead image and fields, and updates in place", () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} collections={[products, categories]} />);
+    flush();
+    post(mug(), location.origin, 'products', false);
+    expect(container.querySelector('h1')).toHaveTextContent('Mug');
+    expect(container.querySelector('header')).toHaveTextContent('Products');
+    expect(container.querySelector('img')).toHaveAttribute('src', '/mug.jpg');
+    expect(rows(container)).toEqual({ Price: '14', Category: 'cat-id', Size: 'Large', Tags: 'bluestoneware', Notes: '—' });
+    const img = container.querySelector('img');
+    post({ ...mug(), fields: { ...mug().fields, name: 'Big mug', notes: 'Holds 500 ml.' } }, location.origin, 'products', false);
+    expect(container.querySelector('h1')).toHaveTextContent('Big mug');
+    expect(rows(container).Notes).toBe('Holds 500 ml.');
+    expect(container.querySelector('img')).toBe(img);
+  });
+
+  it('shows a reference by its document’s title, read from the content', async () => {
+    const content: ContentSource = { list: async () => [], get: async (_c, ref) => ('id' in ref && ref.id === 'cat-id' ? { id: 'cat-id', slug: 'mugs', fields: { name: 'Mugs' } } : null) };
+    const { container } = render(() => <PreviewPage bricks={bricks} collections={[products, categories]} content={content} />);
+    flush();
+    post(mug(), location.origin, 'products', false);
+    await settle();
+    expect(rows(container).Category).toBe('Mugs');
+    post({ ...mug(), fields: { ...mug().fields, category: 'gone' } }, location.origin, 'products', false);
+    await settle();
+    expect(rows(container).Category).toBe('Missing document');
+  });
+
+  it('shows the body under the fields, and a layout still wins', () => {
+    const { container } = render(() => <PreviewPage bricks={bricks} collections={[pages]} />);
+    flush();
+    post(doc());
+    expect(container.querySelector('h1')).toHaveTextContent('Home');
+    expect(container.querySelector('h2')).toHaveTextContent('Welcome');
+
+    const other = render(() => <PreviewPage bricks={bricks} collections={[pages]} layouts={{ pages: (d) => <p class="layout">{String(d.fields.title)}</p> }} />);
+    flush();
+    post(doc());
+    expect(other.container.querySelector('.layout')).toHaveTextContent('Home');
+    expect(other.container.querySelector('h1')).toBeNull();
   });
 });

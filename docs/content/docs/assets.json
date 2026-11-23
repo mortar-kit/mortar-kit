@@ -11,14 +11,21 @@
       "brick": "markdown",
       "id": "intro",
       "data": {
-        "source": "Documents and files are kept apart. A **content store** keeps documents (JSON files, a database); a **blob store** keeps the bytes of uploaded files (a folder, a bucket). Pick each on its own: JSON files with S3, or a database with a folder. `createContent` takes both and applies the rules.\n\n```ts\nimport { createContent } from '@mortar-kit/core';\nimport { createFileBlobStore, createJsonFileStore } from '@mortar-kit/core/server';\n\nconst content = createContent({\n  store: createJsonFileStore({ dir: 'content' }),\n  blobs: createFileBlobStore({ dir: 'uploads', baseUrl: '/uploads/' }),\n  collections,\n  bricks,\n});\n```\n\nWith a blob store, `content.assets` has `list`, `upload` and `remove`, and the admin shows its asset library.\n\n## Keys, not records\n\nAn uploaded file is stored under a **key** made from its name: `Hero Photo.png` becomes `hero-photo-x7k2q9.png`. The six random characters keep two uploads of the same name apart, and the extension says what the file is. There's no table of assets: a store only has to list its files, which any folder or bucket can do.\n\n## The rules\n\n`content.assets`, whatever the blob store:\n\n- **checks the type** by extension: images (JPEG, PNG, GIF, WebP, AVIF), video (MP4, WebM, MOV), audio (MP3, M4A, Ogg, WAV) and PDF. SVG is refused, since it can carry script and uploads are served from your own origin;\n- **checks the size**, 25 MB by default (`maxAssetSize`);\n- returns problems (`{ ok: false, message }`) instead of throwing;\n- **refuses to delete** a file while documents use it, and returns those documents, as for references.\n\n## Fields that point at files\n\n`fields.image` stores `{ src, alt, asset }` and `fields.file({ accept })` stores `{ src, asset }`. For an upload, `asset` is the key, and `createContent` stores `src` empty and fills it in from `blobs.url(asset)` on every read. So bricks render `src` and nothing else, and moving files to a CDN only changes `url`. A plain URL still works: `asset` is then `''`.\n\n```tsx\nconst video = defineBrick({\n  name: 'video',\n  schema: { video: fields.file({ label: 'Video', accept: ['video'], required: true }) },\n  component: (props) => <video src={props.data.video.src} controls />,\n});\n```"
+        "source": "Documents and files are kept apart. A **content store** keeps documents (JSON files, a database); a **blob store** keeps the bytes of uploaded files (a folder, a bucket). Pick each on its own: JSON files with S3, or a database with a folder. `createContent` takes both and applies the rules.\n\n```ts\nimport { createContent } from '@mortar-kit/core';\nimport { createFileBlobStore, createJsonFileStore } from '@mortar-kit/core/server';\n\nconst content = createContent({\n  store: createJsonFileStore({ dir: 'content' }),\n  blobs: createFileBlobStore({ dir: 'uploads', baseUrl: '/uploads/' }),\n  collections,\n  bricks,\n});\n```\n\nWith a blob store, `content.assets` has `list`, `upload`, `remove`, `update` and the folder methods, and the admin shows its asset library.\n\n## Keys\n\nAn uploaded file is stored under a **key** made from its name: `Hero Photo.png` becomes `hero-photo-x7k2q9.png`. The six random characters keep two uploads of the same name apart, and the extension says what the file is. A blob store only has to list its files, which any folder or bucket can do.\n\n## The rules\n\n`content.assets`, whatever the blob store:\n\n- **checks the type** by extension: images (JPEG, PNG, GIF, WebP, AVIF), video (MP4, WebM, MOV), audio (MP3, M4A, Ogg, WAV) and PDF. SVG is refused, since it can carry script and uploads are served from your own origin;\n- **checks the size**, 25 MB by default (`maxAssetSize`);\n- returns problems (`{ ok: false, message }`) instead of throwing;\n- **refuses to delete** a file while documents use it, and returns those documents, as for references.\n\n## Fields that point at files\n\n`fields.image` stores `{ src, alt, title, asset }` and `fields.file({ accept })` stores `{ src, title, asset }`. For an upload, `asset` is the key, and `createContent` stores `src` empty and fills it in from `blobs.url(asset)` on every read. So bricks render `src` and nothing else, and moving files to a CDN only changes `url`. A plain URL still works: `asset` is then `''`.\n\n```tsx\nconst video = defineBrick({\n  name: 'video',\n  schema: { video: fields.file({ label: 'Video', accept: ['video'], required: true }) },\n  component: (props) => <video src={props.data.video.src} controls />,\n});\n```"
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "details",
+      "data": {
+        "source": "## Titles, alt text and folders\n\nEditors can give each file a **default title** and, for images, **default alt text**, and put files in **folders**. Picking a file for an image or file field copies its defaults into the field (where the file has them; otherwise what was typed stays), and the field can still be edited. The library searches names, titles and alt text, and uploads go into the folder being shown, several files at once.\n\n```ts\nconst folder = await content.assets.saveFolder({ name: 'Products' }); // { ok, folder: { id, name } }\nawait content.assets.upload(file, { folder: folder.id });\nawait content.assets.update(key, { title: 'Red mug', alt: 'A red enamel mug on a table' });\nawait content.assets.removeFolder(folder.id); // its files stay, in no folder\n```\n\nThese details live in the **content store**, not the blob store: one document, `mortar-assets/library` (with JSON files, `content/mortar-assets/library.json`), so every blob store gets them with no change and there's nothing to migrate. Files without details simply have none. The collection name `mortar-assets` is reserved.\n\nFolders are one level deep, and a file's folder is a detail, so moving a file never changes its key or breaks a document that uses it."
       }
     },
     {
       "brick": "markdown",
       "id": "serving",
       "data": {
-        "source": "## Serving files\n\nA folder isn't public by itself. `serveBlob(blobs, key, request)` answers a request for one file: its type from the key, `nosniff`, a long cache (keys never change content) and byte ranges, so video can seek. Mount it on a route or a middleware:\n\n```ts\n// src/middleware.ts (start.middleware)\nimport { serveBlob } from '@mortar-kit/core';\n\nexport default (event, next) => {\n  const path = new URL(event.request.url).pathname;\n  if (event.request.method === 'GET' && path.startsWith('/uploads/')) {\n    return serveBlob(blobs, path.slice('/uploads/'.length), event.request);\n  }\n  return next();\n};\n```\n\nUploads cross a server function as a `File`. Server functions accept 1 MiB by default, so raise `bodySizeLimit` with `configureServerFunctionsServer` in your `serverFunctions.serverSetup` module."
+        "source": "## Serving files\n\nA folder isn't public by itself. `serveBlob(blobs, key, request)` answers a request for one file: its type from the key, `nosniff`, a long cache (keys never change content) and byte ranges, so video can seek. Mount it on a route or a middleware:\n\n```ts\n// src/middleware.ts (start.middleware)\nimport { serveBlob } from '@mortar-kit/core';\n\nexport default (event, next) => {\n  const path = new URL(event.request.url).pathname;\n  if (event.request.method === 'GET' && path.startsWith('/uploads/')) {\n    return serveBlob(blobs, path.slice('/uploads/'.length), event.request);\n  }\n  return next();\n};\n```\n\nUploads cross a server function as a `File`. Send it as a single `FormData` (`file`, plus `folder`, `title`, `alt` when given), since a server function encodes a lone `File` or `FormData` natively but not a file beside other arguments; the example site's `src/content.ts` shows the wrapper. Server functions accept 1 MiB by default, so raise `bodySizeLimit` with `configureServerFunctionsServer` in your `serverFunctions.serverSetup` module."
       }
     },
     {
@@ -63,6 +70,20 @@
       "id": "api-serve-blob",
       "data": {
         "name": "serveBlob"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-asset",
+      "data": {
+        "name": "Asset"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-asset-details",
+      "data": {
+        "name": "AssetDetails"
       }
     }
   ]

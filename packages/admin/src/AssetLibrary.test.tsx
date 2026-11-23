@@ -99,7 +99,7 @@ describe('assets in <Admin>', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await settle();
-    expect(((await store.get('people', 'ada')) as Doc).fields.photo).toEqual({ src: '', alt: '', asset: key });
+    expect(((await store.get('people', 'ada')) as Doc).fields.photo).toEqual({ src: '', alt: '', title: '', asset: key });
 
     fireEvent.click(nav().getByRole('button', { name: 'Assets' }));
     await settle();
@@ -131,5 +131,107 @@ describe('assets in <Admin>', () => {
     flush();
     expect(photo.querySelector('img')).toBeNull();
     expect(within(photo).getByLabelText('Or a URL')).toBeInTheDocument();
+  });
+
+  it('sets a default title and alt text in the viewer, and searches by them', async () => {
+    const { content } = setup();
+    await content.assets!.upload(file('harbour.png'));
+    await content.assets!.upload(file('mug.png'));
+    await settle();
+    fireEvent.click(nav().getByRole('button', { name: 'Assets' }));
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Open harbour.png' }));
+    await settle();
+    const viewer = screen.getByRole('dialog', { name: 'harbour.png' });
+    fireEvent.input(within(viewer).getByLabelText('Title'), { target: { value: 'Harbour at dusk' } });
+    fireEvent.input(within(viewer).getByLabelText('Alt text'), { target: { value: 'Fishing boats moored at dusk' } });
+    flush();
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Save' }));
+    await settle();
+    expect((await content.assets!.list()).find((a) => a.name === 'harbour.png')).toMatchObject({ title: 'Harbour at dusk', alt: 'Fishing boats moored at dusk' });
+    expect(screen.getByRole('dialog', { name: 'Harbour at dusk' })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+    await settle();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(tiles().map((li) => li.querySelector('[title]')?.textContent)).toContain('Harbour at dusk');
+
+    const search = screen.getByRole('searchbox', { name: 'Search assets' });
+    fireEvent.input(search, { target: { value: 'BOATS dusk' } });
+    await settle();
+    expect(tileNames()).toEqual(['Harbour at dusk']);
+    fireEvent.input(search, { target: { value: 'mug' } });
+    await settle();
+    expect(tileNames()).toEqual(['mug.png']);
+    fireEvent.input(search, { target: { value: 'nothing like it' } });
+    await settle();
+    expect(screen.getByText('Nothing matches "nothing like it".')).toBeInTheDocument();
+  });
+
+  it('creates folders, uploads several files into one, and deletes it keeping the files', async () => {
+    const { content } = setup();
+    await content.assets!.upload(file('loose.png'));
+    await settle();
+    fireEvent.click(nav().getByRole('button', { name: 'Assets' }));
+    await settle();
+    const folders = () => within(screen.getByRole('group', { name: 'Folders' }));
+    fireEvent.click(folders().getByRole('button', { name: 'New folder' }));
+    await settle();
+    fireEvent.input(folders().getByLabelText('New folder name'), { target: { value: 'Team' } });
+    fireEvent.submit(folders().getByLabelText('New folder name').closest('form') as HTMLFormElement);
+    await settle();
+    expect(folders().getByRole('button', { name: 'Team', pressed: true })).toBeInTheDocument();
+    expect(screen.getByText('Team is empty. Upload or drop files to add them.')).toBeInTheDocument();
+
+    await upload(screen.getByRole('region', { name: 'Asset library' }), file('ada.png'), file('grace.png'));
+    expect(tileNames().sort()).toEqual(['ada.png', 'grace.png']);
+    const team = (await content.assets!.folders())[0]!;
+    expect((await content.assets!.list()).filter((a) => a.folder === team.id).map((a) => a.name).sort()).toEqual(['ada.png', 'grace.png']);
+
+    fireEvent.click(folders().getByRole('button', { name: 'Unfiled' }));
+    await settle();
+    expect(tileNames()).toEqual(['loose.png']);
+    fireEvent.click(folders().getByRole('button', { name: 'All folders' }));
+    await settle();
+    expect(tileNames().length).toBe(3);
+
+    // Moving a file through the viewer.
+    fireEvent.click(screen.getByRole('button', { name: 'Open loose.png' }));
+    await settle();
+    const viewer = screen.getByRole('dialog', { name: 'loose.png' });
+    fireEvent.change(within(viewer).getByLabelText('Folder'), { target: { value: team.id } });
+    flush();
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Save' }));
+    await settle();
+    expect((await content.assets!.list()).every((a) => a.folder === team.id)).toBe(true);
+    fireEvent.click(within(viewer).getByRole('button', { name: 'Close' }));
+    await settle();
+
+    fireEvent.click(folders().getByRole('button', { name: 'Team' }));
+    await settle();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fireEvent.click(folders().getByRole('button', { name: 'Delete the folder Team' }));
+    await settle();
+    expect(await content.assets!.folders()).toEqual([]);
+    expect(tileNames().length).toBe(3);
+  });
+
+  it('fills an image field with the picked asset\'s default title and alt text', async () => {
+    const { store, content } = setup();
+    const uploaded = await content.assets!.upload(file('portrait.png'));
+    const key = uploaded.ok ? uploaded.asset.key : '';
+    await content.assets!.update(key, { title: 'Ada Lovelace', alt: 'Portrait of Ada Lovelace' });
+    await settle();
+    fireEvent.click(within(screen.getByRole('list', { name: 'People documents' })).getByRole('button', { name: 'Ada' }));
+    await settle();
+    const photo = screen.getByRole('group', { name: 'Photo' });
+    fireEvent.click(within(photo).getByRole('button', { name: 'Choose…' }));
+    await settle();
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Choose: Photo' })).getByRole('button', { name: 'Choose portrait.png' }));
+    await settle();
+    expect((within(photo).getByLabelText('Alt text') as HTMLInputElement).value).toBe('Portrait of Ada Lovelace');
+    expect((within(photo).getByLabelText('Title') as HTMLInputElement).value).toBe('Ada Lovelace');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await settle();
+    expect(((await store.get('people', 'ada')) as Doc).fields.photo).toEqual({ src: '', alt: 'Portrait of Ada Lovelace', title: 'Ada Lovelace', asset: key });
   });
 });

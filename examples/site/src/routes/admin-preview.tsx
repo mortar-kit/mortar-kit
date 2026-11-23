@@ -1,12 +1,13 @@
 // Preview route loaded in the admin's iframe: renders whatever document the
 // editor posts, with the site's real bricks, layouts and styles. Bricks
-// that load data read fresh (uncached) content.
+// that load data read fresh (uncached) content. A collection added without
+// a layout previews as Mortar's default: its fields, then its body.
 import type { Doc, DocOf } from '@mortar-kit/core';
 import type { JSX } from '@solidjs/web';
 import { PreviewPage } from '@mortar-kit/admin/preview';
 
 import { bricks } from '../bricks/index.ts';
-import type { categories, pages, posts, products } from '../collections.ts';
+import { collections, type categories, type pages, type posts, type products } from '../collections.ts';
 import { freshSource } from '../content.ts';
 import { CategoryLayout } from '../layouts/CategoryLayout.tsx';
 import { PageLayout } from '../layouts/PageLayout.tsx';
@@ -24,7 +25,7 @@ const layouts = {
 export default function AdminPreview() {
   return (
     <main>
-      <PreviewPage bricks={bricks} content={freshSource} layouts={layouts} />
+      <PreviewPage bricks={bricks} collections={collections} content={freshSource} layouts={layouts} />
     </main>
   );
 }

@@ -43,10 +43,18 @@ further construction puns).
 - **Assets** (2026-11-22): uploaded files live in a `BlobStore` adapter
   (`list/get/put/remove/url`), separate from `ContentStore`, passed to
   `createContent({ blobs })`, which checks type (extension allowlist, no
-  SVG), size and key, and refuses deletes while documents use a file. No
-  asset records: keys are `<name>-<6 random>.<ext>`. Image and file fields
-  store the key in `asset`; `src` is stored empty and filled from
-  `blobs.url` on read. Adapters: memory (core), folder (`core/server`),
+  SVG), size and key, and refuses deletes while documents use a file. Keys
+  are `<name>-<6 random>.<ext>`; blob stores keep only bytes. Asset details
+  (2026-11-22: default `title` and `alt`, `folder`) and folders (one level,
+  stable ids) are one document in the *content* store, `mortar-assets/library`
+  (a reserved collection name), so every blob store gets them unchanged;
+  assets without details need no migration. `Assets.update`, `folders`,
+  `saveFolder`, `removeFolder` are optional on the interface (the admin
+  hides details and folders without them); `createContent` always has
+  them. Deleting a folder keeps its files (they become unfiled). Image and
+  file fields store the key in `asset` plus a `title` (images also `alt`);
+  picking an asset copies its defaults where it has them; `src` is stored
+  empty and filled from `blobs.url` on read. Adapters: memory (core), folder (`core/server`),
   served by the app with `serveBlob`.
 - **Loading data**: a brick may declare `load(data, content)`; it reads
   through a typed `ContentReader` from the `ContentSource` the app provides
@@ -71,7 +79,11 @@ further construction puns).
 - **Admin mount**: a route in the consuming app (e.g. `/admin`) rendering
   `<Admin>` (collections and their documents) or a single `<Editor>`; the
   preview is a same-origin iframe rendering the real bricks inside the app's
-  layouts (`PreviewPage` `layouts`). The admin's location can live in the
+  layouts (`PreviewPage` `layouts`: a preview component per collection).
+  A collection without one previews as `DocPreview` (title, lead image,
+  labelled fields, then the body) when `PreviewPage` gets `collections`;
+  layouts stay in the preview route, not on `defineCollection`, so
+  collection files never import UI. The admin's location can live in the
   app's URL (`location` + `onNavigate`).
 - **Auth** (2026-11-22): `createAuth({ methods: [google(), email()], authorize, secret })`
   in `@mortar-kit/auth`, Fetch `Request` in, `Response` out (framework-neutral).

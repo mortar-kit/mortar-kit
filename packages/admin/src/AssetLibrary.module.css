@@ -1,5 +1,7 @@
-/* The asset library (a grid of uploaded files with an upload bar) and the
-   picker dialog around it. Every value comes from the --mortar-* tokens. */
+/* The asset library (a grid of uploaded files under an upload and search
+   bar and a row of folders), the viewer (one file and its details) and the
+   picker dialog around the library. Every colour comes from the --mortar-*
+   tokens. */
 .library {
   display: flex;
   flex-direction: column;
@@ -19,6 +21,91 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+}
+.status {
+  flex: 1 1 12rem;
+}
+.search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 1 16rem;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  color: var(--mortar-muted);
+}
+.search:focus-within {
+  border-color: var(--mortar-accent);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--mortar-text);
+  font: inherit;
+}
+
+/* Folders: a row of toggles, then New folder (and, on a folder, Rename and Delete). */
+.folders {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chip,
+.chipAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.85rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: 999px;
+  background: var(--mortar-panel);
+  color: inherit;
+  font: inherit;
+  font-size: 0.92em;
+  cursor: pointer;
+}
+.chip:hover,
+.chipAction:hover {
+  border-color: var(--mortar-accent);
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--mortar-selected);
+  background: var(--mortar-selected);
+  color: var(--mortar-on-selected);
+}
+.chipAction {
+  border-style: dashed;
+  color: var(--mortar-muted);
+}
+.folderActions {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.folderForm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.folderInput {
+  min-height: 2rem;
+  width: 12rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--mortar-accent);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  color: inherit;
+  font: inherit;
 }
 .upload {
   position: relative;
@@ -181,23 +268,47 @@
   font-size: 0.85em;
 }
 
-/* The picker: a large modal over the admin. */
-.dialog {
-  width: min(56rem, calc(100vw - 2rem));
-  height: min(40rem, calc(100vh - 2rem));
+/* Dialogs: modal, centred by their own rules, since a page's CSS reset
+   (`* { margin: 0 }`) would remove the browser's `margin: auto`. */
+.dialog,
+.viewer {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   padding: 0;
+  max-width: none;
+  max-height: none;
   border: 1px solid var(--mortar-border);
   border-radius: var(--mortar-panel-radius);
   background: var(--mortar-panel);
   color: var(--mortar-text);
   font: var(--mortar-font-size) / 1.45 var(--mortar-font);
   box-shadow: 0 16px 48px rgb(0 0 0 / 0.25);
+  box-sizing: border-box;
 }
-.dialog[open] {
+.dialog *,
+.viewer * {
+  box-sizing: border-box;
+}
+/* The picker: a large modal over the admin. */
+.dialog {
+  width: min(56rem, calc(100vw - 2rem));
+  height: min(40rem, calc(100dvh - 2rem));
+}
+/* The viewer: one file and its details, as tall as it needs. */
+.viewer {
+  width: min(52rem, calc(100vw - 2rem));
+  height: fit-content;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+.dialog[open],
+.viewer[open] {
   display: flex;
   flex-direction: column;
 }
-.dialog::backdrop {
+.dialog::backdrop,
+.viewer::backdrop {
   background: rgb(0 0 0 / 0.35);
 }
 .dialogHead {
@@ -209,7 +320,118 @@
 }
 .dialogTitle {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--mortar-font-heading);
   font-size: 1.1em;
   font-weight: 600;
+}
+.viewerBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+@media (max-width: 40rem) {
+  .viewerBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.viewerPreview {
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+  max-height: 32rem;
+  padding: 0.5rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  overflow: hidden;
+}
+.viewerPreview img,
+.viewerPreview video {
+  max-width: 100%;
+  max-height: 30rem;
+  object-fit: contain;
+}
+.viewerPreview audio {
+  width: 100%;
+}
+.viewerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+.formField {
+  display: grid;
+  gap: 0.3rem;
+}
+.formLabel {
+  font-weight: 500;
+  font-size: 0.95em;
+}
+.formInput {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--mortar-border);
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-input);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.formInput:focus-visible {
+  outline: none;
+  border-color: var(--mortar-accent);
+}
+.formField small {
+  font-size: 0.88em;
+  line-height: 1.4;
+}
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.75rem;
+  margin: 0;
+  font-size: 0.92em;
+}
+.facts dt {
+  color: var(--mortar-muted);
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.viewerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+.viewerActions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.spacer {
+  flex: 1;
+}
+.primary {
+  min-height: 2rem;
+  padding: 0.25rem 0.9rem;
+  border: 0;
+  border-radius: var(--mortar-radius);
+  background: var(--mortar-accent);
+  color: var(--mortar-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
 }

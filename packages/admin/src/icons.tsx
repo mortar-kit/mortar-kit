@@ -81,3 +81,20 @@ export const FileIcon = () => (
     <path d="M14 3v5h5" />
   </Icon>
 );
+export const FolderIcon = () => (
+  <Icon>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </Icon>
+);
+export const SearchIcon = () => (
+  <Icon>
+    <circle cx="11" cy="11" r="6" />
+    <path d="m20 20-4.5-4.5" />
+  </Icon>
+);
+export const PencilIcon = () => (
+  <Icon>
+    <path d="M4 20h4L19 9l-4-4L4 16z" />
+    <path d="m13.5 6.5 4 4" />
+  </Icon>
+);
