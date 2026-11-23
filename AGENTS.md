@@ -166,13 +166,15 @@ further construction puns).
   optional, any provider in a few lines); pending sign-ins are
   hashes in a ContentStore under `mortar-auth-tokens`. The link opens the
   sign-in page, which posts it (mail scanners can't use it up).
-  `createMiddleware({ auth, blobs, rateLimit?, clientKey?, csp? })` is the
-  site's `start.middleware`: a per-client limit on sign-in posts (in memory;
+  `createMiddleware({ auth, blobs, rateLimit?, clientKey?, csp?, headers?,
+  sitemap?, robots?, dev? })` is the site's `start.middleware`: a per-client
+  limit on sign-in posts (sending and trying codes counted apart; in memory;
   keyed by X-Forwarded-For/X-Real-IP, unkeyed requests unlimited so nobody
   can lock editors out), then `auth.handle` (auth routes under `/admin/auth`,
-  redirects for `protect`ed `/admin`), then uploads at `blobs.url('')`, then
-  pages with a nonce CSP (`script-src 'nonce-…' 'strict-dynamic'`, sets
-  `event.nonce`). Every writing server function calls `auth.require(request)`
+  redirects for `protect`ed `/admin`), then `/sitemap.xml` and `/robots.txt`
+  when given, then uploads at `blobs.url('')`, then pages with a nonce CSP
+  (`script-src 'nonce-…' 'strict-dynamic'`, sets `event.nonce`; off by
+  default under Vite's dev server), and security headers on every response. Every writing server function calls `auth.require(request)`
   itself, since middleware can't tell the admin's calls.
 
 ## Layout
