@@ -100,10 +100,15 @@ further construction puns).
   message through a `Mailer` (`consoleMailer()` for dev, `resendMailer()`
   optional, any provider in a few lines); pending sign-ins are
   hashes in a ContentStore under `mortar-auth-tokens`. The link opens the
-  sign-in page, which posts it (mail scanners can't use it up). `auth.handle`
-  goes first in `start.middleware` (auth routes under `/admin/auth`, redirects
-  for `protect`ed `/admin`); every writing server function calls
-  `auth.require(request)` itself, since middleware can't tell the admin's calls.
+  sign-in page, which posts it (mail scanners can't use it up).
+  `createMiddleware({ auth, blobs, rateLimit?, clientKey?, csp? })` is the
+  site's `start.middleware`: a per-client limit on sign-in posts (in memory;
+  keyed by X-Forwarded-For/X-Real-IP, unkeyed requests unlimited so nobody
+  can lock editors out), then `auth.handle` (auth routes under `/admin/auth`,
+  redirects for `protect`ed `/admin`), then uploads at `blobs.url('')`, then
+  pages with a nonce CSP (`script-src 'nonce-…' 'strict-dynamic'`, sets
+  `event.nonce`). Every writing server function calls `auth.require(request)`
+  itself, since middleware can't tell the admin's calls.
 
 ## Layout
 

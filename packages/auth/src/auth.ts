@@ -132,6 +132,8 @@ export interface Auth<User> {
   readonly methods: readonly AuthMethodInfo[];
   /** The sign-in page's path. */
   readonly signInPath: string;
+  /** Where the auth routes live (`basePath`), e.g. `/admin/auth`. */
+  readonly basePath: string;
   /**
    * Answers the auth routes (sign-in methods, `POST <basePath>/sign-out`)
    * and guards `protect`ed paths; null means carry on (the request is
@@ -300,6 +302,7 @@ export function createAuth<User>(options: AuthOptions<User>): Auth<User> {
   return {
     methods,
     signInPath,
+    basePath,
     async handle(request) {
       const url = new URL(request.url);
       const path = clean(url.pathname);

@@ -1127,6 +1127,13 @@
           "doc": "The sign-in page's path."
         },
         {
+          "name": "basePath",
+          "optional": false,
+          "readonly": true,
+          "type": "string",
+          "doc": "Where the auth routes live (`basePath`), e.g. `/admin/auth`."
+        },
+        {
           "name": "handle",
           "optional": false,
           "readonly": false,
@@ -1622,6 +1629,26 @@
       ]
     },
     {
+      "name": "createMiddleware",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The site's middleware: put it in `start.middleware`. Order: rate limit on\nsign-in posts, then `auth.handle` (auth routes, the `/admin` guard), then\nuploaded files, then the page (with a CSP) or server function.",
+      "signature": "function createMiddleware(options: MiddlewareOptions): Middleware",
+      "params": [
+        {
+          "name": "options",
+          "type": "MiddlewareOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Middleware",
+      "examples": [
+        "```ts\n// src/middleware.ts (vite.config: solid({ start: { middleware: './src/middleware.ts' } }))\nexport default createMiddleware({ auth, blobs });\n```"
+      ]
+    },
+    {
       "name": "createSealer",
       "module": "@mortar-kit/auth",
       "deprecated": false,
@@ -1894,6 +1921,83 @@
           "readonly": false,
           "type": "string",
           "doc": "HTML body, for clients that show it."
+        }
+      ]
+    },
+    {
+      "name": "Middleware",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "A middleware for `start.middleware`.",
+      "signature": "type Middleware = (event: MiddlewareEvent, next: () => Promise<Response>) => Promise<Response>"
+    },
+    {
+      "name": "MiddlewareEvent",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What the middleware reads and writes on the request event (`StartRequestEvent` fits).",
+      "signature": "interface MiddlewareEvent",
+      "members": [
+        {
+          "name": "request",
+          "optional": false,
+          "readonly": false,
+          "type": "Request",
+          "doc": ""
+        },
+        {
+          "name": "nonce",
+          "optional": true,
+          "readonly": false,
+          "type": "string | { script?: string | false; style?: string | false }",
+          "doc": "The CSP nonce the page render uses; set here when `csp` is on and nothing set it."
+        }
+      ]
+    },
+    {
+      "name": "MiddlewareOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `createMiddleware`.",
+      "signature": "interface MiddlewareOptions",
+      "members": [
+        {
+          "name": "auth",
+          "optional": false,
+          "readonly": false,
+          "type": "Auth<unknown>",
+          "doc": "The site's `createAuth` (or `authFromEnv`)."
+        },
+        {
+          "name": "blobs",
+          "optional": true,
+          "readonly": false,
+          "type": "BlobStore",
+          "doc": "Serves uploaded files from this store at the path its `url('')` gives (e.g. `/uploads/`), with `serveBlob`."
+        },
+        {
+          "name": "rateLimit",
+          "optional": true,
+          "readonly": false,
+          "type": "false | { max: number; window: number }",
+          "doc": "Limits sign-in attempts (posts to the auth routes) per client: `max`\nin each `window` of seconds, then 429 with Retry-After. Default\n`{ max: 10, window: 600 }`; `false` turns it off. Kept in memory, per\nserver process."
+        },
+        {
+          "name": "clientKey",
+          "optional": true,
+          "readonly": false,
+          "type": "(request: Request) => string | undefined",
+          "doc": "Who a request is from, for the rate limit; undefined means not\nlimited. Default: the first address in `X-Forwarded-For`, else\n`X-Real-IP`, which a proxy in front of the server sets. Without a\nproxy, a Fetch Request doesn't carry the client's address: pass your\nown (a shared bucket for everyone would let one client lock every\neditor out)."
+        },
+        {
+          "name": "csp",
+          "optional": true,
+          "readonly": false,
+          "type": "string | boolean",
+          "doc": "A Content-Security-Policy for HTML responses. `true` (default) sends\n`script-src 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'`,\nwith a fresh nonce per request that the page render puts on its\nscripts; a string is your own policy, where `{nonce}` is replaced by\nthat nonce; `false` sends none. The server entry must pass the nonce\nto `renderToStream` (the plugin's generated entries do)."
         }
       ]
     },
