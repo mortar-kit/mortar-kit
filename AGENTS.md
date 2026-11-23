@@ -158,6 +158,18 @@ further construction puns).
   there (set `lib.fakeHash`, build, copy the hash it prints). web-1 in
   albrighton-dev/config serves it at docs.mortar-kit.dev;
   `.github/workflows/notify-config.yml` asks config to bump it on merge.
+- Publishing: the `@mortar-kit` packages release to npm in lockstep from
+  `.github/workflows/publish.yml`. Bump them all with
+  `node scripts/release-version.mjs set <version>`, merge, then push the tag
+  `v<version>`; the workflow checks the tag against the versions, runs
+  typecheck/lint/test, packs each package with pnpm (`prepack` builds;
+  `publishConfig` and `workspace:` ranges are applied) and publishes with
+  npm through trusted publishing (OIDC, no token; provenance comes with
+  it), skipping versions already on npm. Running it by hand is a dry run.
+  npm only offers trusted publishing for a package that exists, so a new
+  package is first published once by hand (`pnpm pack` in its folder, then
+  `npm publish <tgz> --access public` while logged in), then given a
+  Trusted publisher (GitHub Actions, mortar-kit/mortar-kit, publish.yml).
 - Scripts (root): `typecheck`, `lint`, `test`, `dev` (example site), `docs`
   (docs site, port 3100), `reference` (regenerate the API reference), `build`.
   Keep all green at every step.

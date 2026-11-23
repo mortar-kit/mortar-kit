@@ -1,8 +1,14 @@
 {
   "name": "@mortar-kit/theme-soft",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Mortar admin theme: floating rounded panels on grey with an emerald accent",
   "license": "MIT",
+  "homepage": "https://docs.mortar-kit.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mortar-kit/mortar-kit.git",
+    "directory": "packages/theme-soft"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["index.js", "index.d.ts", "theme.css"],
