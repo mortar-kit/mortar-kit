@@ -105,6 +105,7 @@ export function PreviewPage(props: PreviewPageProps) {
             <PageView
               bricks={props.bricks}
               entries={state.body ? (doc.entries ?? []) : []}
+              doc={{ collection: state.collection, id: doc.id }}
               fallback={(entry) => <MissingBrick name={entry.brick} />}
               loadingFallback={() => <div class={styles.note}>Loading…</div>}
               errorFallback={(entry, error) => <BrickError name={entry.brick} error={error} />}

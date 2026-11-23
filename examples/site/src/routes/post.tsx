@@ -17,7 +17,7 @@ export default function Post() {
       {(p) => (
         <main>
           <PostLayout post={p()}>
-            <PageView bricks={bricks} entries={p().entries ?? []} />
+            <PageView bricks={bricks} entries={p().entries ?? []} doc={{ collection: posts.name, id: p().id }} />
           </PostLayout>
         </main>
       )}

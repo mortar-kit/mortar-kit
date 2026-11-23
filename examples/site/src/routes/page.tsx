@@ -18,7 +18,7 @@ export function PageRoute(props: { slug: string }) {
       {(p) => (
         <main>
           <PageLayout page={p()}>
-            <PageView bricks={bricks} entries={p().entries ?? []} />
+            <PageView bricks={bricks} entries={p().entries ?? []} doc={{ collection: pages.name, id: p().id }} />
           </PageLayout>
         </main>
       )}
