@@ -166,4 +166,4 @@ function isNotFound(error: unknown): boolean {
 
 export type { BlobStore } from './assets.ts';
 export type { ContentStore } from './store.ts';
-export { createContentServer, type ContentServer, type ContentServerOptions } from './content-server.ts';
+export { createContentServer, type ContentServer, type ContentServerOptions, type ContentWrite, type ContentWriteAction } from './content-server.ts';

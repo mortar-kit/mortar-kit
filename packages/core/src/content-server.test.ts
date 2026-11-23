@@ -71,6 +71,30 @@ describe('createContentServer', () => {
     expect(await as(true, () => server.uploadAsset(new FormData()))).toEqual({ ok: false, message: 'Not a file' });
   });
 
+  it('asks canWrite about each write, with the user and what it touches', async () => {
+    const content = createContent({ store: createMemoryStore(), blobs: createMemoryBlobStore(), collections: [posts], bricks: [] });
+    const seen: unknown[] = [];
+    const server = createContentServer({
+      content,
+      auth: { require: async () => ({ email: 'ed@example.com', role: 'editor' }) },
+      canWrite: ({ user, ...write }) => {
+        seen.push(write);
+        return user.role === 'owner' || write.collection !== 'posts';
+      },
+    });
+    await expect(as(true, () => server.save('posts', doc('Hello')))).rejects.toMatchObject({ status: 403 });
+    expect(await server.list('posts')).toEqual([]);
+    await expect(as(true, () => server.remove('posts', 'p-x'))).rejects.toMatchObject({ status: 403 });
+    await expect(as(true, () => server.removeAssetFolder('f1'))).resolves.toBeUndefined();
+    expect(seen).toEqual([
+      { action: 'save', collection: 'posts', id: 'p-hello', doc: doc('Hello') },
+      { action: 'remove', collection: 'posts', id: 'p-x' },
+      { action: 'removeAssetFolder', id: 'f1' },
+    ]);
+    const refused = await as(true, () => server.save('posts', doc('Hello'))).catch((error: Response) => error.text());
+    expect(refused).toBe('Not allowed');
+  });
+
   it('leaves writes open with auth: false', async () => {
     const content = createContent({ store: createMemoryStore(), collections: [posts], bricks: [] });
     const server = createContentServer({ content, auth: false });

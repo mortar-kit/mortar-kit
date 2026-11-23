@@ -55,7 +55,9 @@ further construction puns).
   `remove`, `move`, `listAssets`, `uploadAsset` (one FormData),
   `removeAsset`, `updateAsset`, `listAssetFolders`, `saveAssetFolder`,
   `removeAssetFolder`). Writes call `auth.require` on the current request
-  (`auth: false` opens them) and `respond(…, { revalidate: '' })`; `list`
+  (`auth: false` opens them), then the optional `canWrite({ user, action,
+  collection, id, doc })` (false: a 403 "Not allowed"), and
+  `respond(…, { revalidate: '' })`; `list`
   takes null options (a GET sends a trailing undefined as null). It raises
   the server-function body limit from `content.assets.maxSize`, so the
   upload limit lives only in `createContent` (the app imports its module
@@ -155,8 +157,9 @@ further construction puns).
   Methods are an array of `{ id, label, input, start, callback }` that verify an
   `Identity` (`{ email, name?, method }`); the app's `authorize({ identity })`
   returns its user or null (Thomas chose this over an allowlist option;
-  `allowEmails([...])` is the ready-made one, `allowMembers({ content, collection })`
-  reads a collection the site declares). It runs at sign-in and on every
+  `allowEmails([...])` is the ready-made one, `allowMembers({ content, collection, fields? })`
+  reads a collection the site declares, `fields` copying e.g. a role onto
+  the user). It runs at sign-in and on every
   guarded request. `authFromEnv({ store })` builds it all from env
   (`MORTAR_AUTH_SECRET`, `MORTAR_ADMINS`, `GOOGLE_CLIENT_*`, `RESEND_API_KEY` +
   `MORTAR_EMAIL_FROM`, `MORTAR_BASE_URL`); its dev fallbacks (secret, admin,

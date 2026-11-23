@@ -39,8 +39,33 @@ export interface ContentServer {
   removeAssetFolder(id: string): Promise<void>;
 }
 
+/** The writing functions of a `ContentServer`, by name. */
+export type ContentWriteAction =
+  | 'save'
+  | 'remove'
+  | 'move'
+  | 'uploadAsset'
+  | 'removeAsset'
+  | 'updateAsset'
+  | 'saveAssetFolder'
+  | 'removeAssetFolder';
+
+/** One write, as `canWrite` sees it. */
+export interface ContentWrite<User> {
+  /** Who is writing: what `auth.require` returned (undefined with `auth: false`). */
+  user: User;
+  /** The function called. */
+  action: ContentWriteAction;
+  /** The collection a document write touches; undefined for asset writes. */
+  collection?: string;
+  /** The document's id (save, remove, move), the asset's key (removeAsset, updateAsset) or the folder's id (folders; undefined for a new one). */
+  id?: string;
+  /** The document being saved (save only). */
+  doc?: Doc;
+}
+
 /** Options for `createContentServer`. */
-export interface ContentServerOptions {
+export interface ContentServerOptions<User = unknown> {
   /** The app's `createContent(...)`. */
   content: Content;
   /**
@@ -48,7 +73,19 @@ export interface ContentServerOptions {
    * and throws a Response otherwise (`createAuth` from `@mortar-kit/auth`).
    * `false` leaves writes open to anyone: only for local experiments.
    */
-  auth: { require(request: Request): Promise<unknown> } | false;
+  auth: { require(request: Request): Promise<User> } | false;
+  /**
+   * Which writes a signed-in editor may make, after `auth` let them in:
+   * false refuses the write with a 403 ("Not allowed"), which the admin
+   * shows. Default: every editor may write everything.
+   *
+   * @example
+   * ```ts
+   * // Only owners change who may sign in.
+   * canWrite: ({ user, collection }) => collection !== 'members' || user.role === 'owner',
+   * ```
+   */
+  canWrite?: (write: ContentWrite<User>) => boolean | Promise<boolean>;
 }
 
 /** Room for the form encoding around an upload, on top of the file itself. */
@@ -75,24 +112,31 @@ const FORM_OVERHEAD = 1024 * 1024;
  * // updateAsset, listAssetFolders, saveAssetFolder and removeAssetFolder
  * ```
  */
-export function createContentServer(options: ContentServerOptions): ContentServer {
+export function createContentServer<User = unknown>(options: ContentServerOptions<User>): ContentServer {
   const { content } = options;
   const assets = content.assets;
   if (assets?.maxSize) configureServerFunctionsServer({ bodySizeLimit: assets.maxSize + FORM_OVERHEAD });
 
-  const signedIn = async () => {
-    if (options.auth === false) return;
+  const signedIn = async (): Promise<User> => {
+    if (options.auth === false) return undefined as User;
     const event = getRequestEvent();
     if (!event) throw new Response('Sign in required', { status: 401 });
-    await options.auth.require(event.request);
+    return options.auth.require(event.request);
   };
-  /** A write: signed-in only, and answered without revalidating anything. */
+  /**
+   * A write: signed-in only, allowed by `canWrite`, and answered without
+   * revalidating anything. `describe` names what the call touches.
+   */
   const write =
-    <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
+    <A extends unknown[], R>(action: ContentWriteAction, describe: (args: NoInfer<A>) => Omit<ContentWrite<User>, 'user' | 'action'>, fn: (...args: A) => Promise<R>) =>
     async (...args: A): Promise<R> => {
-      await signedIn();
+      const user = await signedIn();
+      if (options.canWrite && !(await options.canWrite({ user, action, ...describe(args) }))) {
+        throw new Response('Not allowed', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
       return respond(await fn(...args), { revalidate: '' }) as R;
     };
+  const none = () => ({});
   const needAssets = () => {
     if (!assets) throw new Error('Mortar: this content has no blob store (createContent({ blobs }))');
     return assets;
@@ -106,14 +150,22 @@ export function createContentServer(options: ContentServerOptions): ContentServe
   return {
     list: async (collection, listOptions) => (listOptions === undefined || listOptions === null ? content.list(collection) : content.list(collection, listOptions)),
     get: async (collection, ref) => content.get(collection, ref),
-    save: write((collection: string, doc: Doc) => content.save(collection, doc)),
-    remove: write((collection: string, id: string) => content.remove(collection, id)),
-    move: write(async (collection: string, id: string, index: number) => {
+    save: write(
+      'save',
+      ([collection, doc]) => ({ collection, id: doc?.id, doc }),
+      (collection: string, doc: Doc) => content.save(collection, doc),
+    ),
+    remove: write(
+      'remove',
+      ([collection, id]) => ({ collection, id }),
+      (collection: string, id: string) => content.remove(collection, id),
+    ),
+    move: write('move', ([collection, id]) => ({ collection, id }), async (collection: string, id: string, index: number) => {
       if (!content.move) throw new Error('Mortar: this content cannot reorder documents');
       return content.move(collection, id, index);
     }),
     listAssets: async () => (assets ? assets.list() : []),
-    uploadAsset: write(async (form: FormData) => {
+    uploadAsset: write('uploadAsset', none, async (form: FormData) => {
       const file = form instanceof FormData ? form.get('file') : null;
       if (!(file instanceof File)) return { ok: false, message: 'Not a file' } satisfies UploadResult;
       const details: AssetDetails = {};
@@ -123,10 +175,14 @@ export function createContentServer(options: ContentServerOptions): ContentServe
       }
       return needAssets().upload(file, details);
     }),
-    removeAsset: write((key: string) => needAssets().remove(key)),
-    updateAsset: write((key: string, details: AssetDetails) => needs('update')(key, details)),
+    removeAsset: write('removeAsset', ([id]) => ({ id }), (key: string) => needAssets().remove(key)),
+    updateAsset: write('updateAsset', ([id]) => ({ id }), (key: string, details: AssetDetails) => needs('update')(key, details)),
     listAssetFolders: async () => (assets?.folders ? assets.folders() : []),
-    saveAssetFolder: write((folder: { id?: string; name: string }) => needs('saveFolder')(folder)),
-    removeAssetFolder: write((id: string) => needs('removeFolder')(id)),
+    saveAssetFolder: write(
+      'saveAssetFolder',
+      ([folder]) => ({ id: folder?.id }),
+      (folder: { id?: string; name: string }) => needs('saveFolder')(folder),
+    ),
+    removeAssetFolder: write('removeAssetFolder', ([id]) => ({ id }), (id: string) => needs('removeFolder')(id)),
   };
 }

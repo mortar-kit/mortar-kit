@@ -1082,18 +1082,18 @@
       "deprecated": false,
       "kind": "function",
       "summary": "An `authorize` that lets in anyone whose address is in a document of\n`collection` (compared case-insensitively). Removing the document locks\nthem out on their next request. It lists the collection each time, which\nsuits the handful of members a small site has.",
-      "signature": "function allowMembers(options: AllowMembersOptions): (input: AuthorizeInput) => Promise<EmailUser | null>",
+      "signature": "function allowMembers<Field extends string = never>(options: AllowMembersOptions<Field>): (input: AuthorizeInput) => Promise<MemberUser<Field> | null>",
       "params": [
         {
           "name": "options",
-          "type": "AllowMembersOptions",
+          "type": "AllowMembersOptions<Field>",
           "optional": false,
           "doc": ""
         }
       ],
-      "returns": "(input: AuthorizeInput) => Promise<EmailUser | null>",
+      "returns": "(input: AuthorizeInput) => Promise<MemberUser<Field> | null>",
       "examples": [
-        "```ts\nexport const members = defineCollection({\n  name: 'members',\n  label: 'Members',\n  fields: { email: fields.text({ label: 'Email', required: true }), name: fields.text({ label: 'Name' }) },\n});\ncreateAuth({ methods, secret, authorize: allowMembers({ content, collection: 'members' }) });\n```"
+        "```ts\nexport const members = defineCollection({\n  name: 'members',\n  label: 'Members',\n  fields: { email: fields.text({ label: 'Email', required: true }), name: fields.text({ label: 'Name' }) },\n});\ncreateAuth({ methods, secret, authorize: allowMembers({ content, collection: 'members' }) });\n\n// With roles: the user gets the member's `role` too.\nauthorize: allowMembers({ content, collection: 'members', fields: ['role'] }),\n```"
       ]
     },
     {
@@ -1102,7 +1102,7 @@
       "deprecated": false,
       "kind": "interface",
       "summary": "Options for `allowMembers`.",
-      "signature": "interface AllowMembersOptions",
+      "signature": "interface AllowMembersOptions<Field extends string = never>",
       "members": [
         {
           "name": "content",
@@ -1131,6 +1131,13 @@
           "readonly": false,
           "type": "string",
           "doc": "A field holding their display name, used over the one the sign-in method gives. Default `name`."
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly Field[]",
+          "doc": "More of the member's fields to put on the user, as stored (e.g.\n`['role']`), for `canWrite` and the rest of the app to read."
         }
       ]
     },
@@ -1990,6 +1997,14 @@
           "doc": "Where replies go instead of the sender, e.g. the visitor who filled in a contact form."
         }
       ]
+    },
+    {
+      "name": "MemberUser",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The user `allowMembers` signs in: the address, a name, and the `fields` asked for.",
+      "signature": "type MemberUser<Field extends string = never> = EmailUser & { [K in Field]?: unknown }"
     },
     {
       "name": "Middleware",
@@ -3558,6 +3573,59 @@
           "doc": "Removes the document under `slug`; nothing happens if there is none."
         }
       ]
+    },
+    {
+      "name": "ContentWrite",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "One write, as `canWrite` sees it.",
+      "signature": "interface ContentWrite<User>",
+      "members": [
+        {
+          "name": "user",
+          "optional": false,
+          "readonly": false,
+          "type": "User",
+          "doc": "Who is writing: what `auth.require` returned (undefined with `auth: false`)."
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentWriteAction",
+          "doc": "The function called."
+        },
+        {
+          "name": "collection",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The collection a document write touches; undefined for asset writes."
+        },
+        {
+          "name": "id",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The document's id (save, remove, move), the asset's key (removeAsset, updateAsset) or the folder's id (folders; undefined for a new one)."
+        },
+        {
+          "name": "doc",
+          "optional": true,
+          "readonly": false,
+          "type": "Doc<Record<string, unknown>>",
+          "doc": "The document being saved (save only)."
+        }
+      ]
+    },
+    {
+      "name": "ContentWriteAction",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The writing functions of a `ContentServer`, by name.",
+      "signature": "type ContentWriteAction = \"save\" | \"remove\" | \"move\" | \"uploadAsset\" | \"removeAsset\" | \"updateAsset\" | \"saveAssetFolder\" | \"removeAssetFolder\""
     },
     {
       "name": "createContent",
@@ -5401,7 +5469,7 @@
       "deprecated": false,
       "kind": "interface",
       "summary": "Options for `createContentServer`.",
-      "signature": "interface ContentServerOptions",
+      "signature": "interface ContentServerOptions<User = unknown>",
       "members": [
         {
           "name": "content",
@@ -5416,6 +5484,13 @@
           "readonly": false,
           "type": "false | { require: any }",
           "doc": "Who may write: `auth.require(request)` resolves for a signed-in editor\nand throws a Response otherwise (`createAuth` from `@mortar-kit/auth`).\n`false` leaves writes open to anyone: only for local experiments."
+        },
+        {
+          "name": "canWrite",
+          "optional": true,
+          "readonly": false,
+          "type": "(write: ContentWrite<User>) => boolean | Promise<boolean>",
+          "doc": "Which writes a signed-in editor may make, after `auth` let them in:\nfalse refuses the write with a 403 (\"Not allowed\"), which the admin\nshows. Default: every editor may write everything."
         }
       ]
     },
@@ -5425,11 +5500,11 @@
       "deprecated": false,
       "kind": "function",
       "summary": "The server side of the app's content, for its \"use server\" module to\nexport. It also raises the server-function request body limit to fit\nthe content's largest upload, so import the module that calls it from\nthe plugin's `serverFunctions.serverSetup`.",
-      "signature": "function createContentServer(options: ContentServerOptions): ContentServer",
+      "signature": "function createContentServer<User = unknown>(options: ContentServerOptions<User>): ContentServer",
       "params": [
         {
           "name": "options",
-          "type": "ContentServerOptions",
+          "type": "ContentServerOptions<User>",
           "optional": false,
           "doc": ""
         }

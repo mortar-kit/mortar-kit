@@ -104,4 +104,4 @@ export {
 export { resolveUrl, sitemap, type SitemapOptions } from './urls.ts';
 export { seed, type SeedDoc, type SeedResult } from './seed.ts';
 export { contentClient, type ContentClient, type ContentClientOptions } from './content-client.ts';
-export type { ContentServer } from './content-server.ts';
+export type { ContentServer, ContentWrite, ContentWriteAction } from './content-server.ts';
