@@ -2,7 +2,7 @@
   "id": "no-javascript",
   "fields": {
     "title": "Pages without JavaScript",
-    "description": "Send public pages as plain HTML and CSS, and hydrate only the admin.",
+    "description": "Send public pages as plain HTML and CSS, hydrate the admin, and hydrate single interactive bricks as islands.",
     "section": "advanced",
     "order": 30
   },
@@ -11,7 +11,7 @@
       "brick": "markdown",
       "id": "md-1",
       "data": {
-        "source": "A content site rarely needs JavaScript on its public pages. Mortar renders on the server (brick loaders included), so you can send those pages as plain HTML and hydrate only the admin.\n\n`createRender` from `@mortar-kit/core/render` does it. Use it as your server entry, and put `<ClientScripts />` in your document's head in place of the hydration script and client entry:\n\n```tsx\n// src/entry-server.tsx\nimport { createRender } from '@mortar-kit/core/render';\nimport manifest from 'virtual:solid-manifest';\nimport { Root } from './Root.tsx';\n\nexport const render = createRender({ manifest, app: () => <Root /> });\n```\n\n```tsx\n// src/entry-client.tsx\nimport { hydrate } from '@solidjs/web';\nimport { Root } from './Root.tsx';\n\nhydrate(() => <Root />, document);\n```\n\n```tsx\n// src/Document.tsx (Root renders it around your App)\nimport { ClientScripts } from '@mortar-kit/core';\n\nexport default function Document(props) {\n  return (\n    <html lang=\"en\">\n      <head>\n        <meta charset=\"utf-8\" />\n        <ClientScripts />\n      </head>\n      <body>{props.children}</body>\n    </html>\n  );\n}\n```\n\n`hydrate` picks the pages that load JavaScript. The default is `['/admin']`, so the editor and its preview hydrate. It also takes path prefixes (matched by whole segments, in any case), `true`, `false`, or a function of the path. On every other page:\n\n- the render runs under `<NoHydration>` with `noScripts`, so there are no hydration keys and no hydration data;\n- `<ClientScripts>` renders nothing, so there's no client entry;\n- the manifest gives stylesheets only, so the browser doesn't preload any JavaScript either;\n- the page is always sent as one settled document, since streamed content needs a script.\n\nWhen the plugin generates your entries, every page hydrates. Authoring the two entries above is what switches that off. `createRender` puts the request's CSP nonce on the scripts of hydrating pages.\n\nThe result: the example site's home page is about 1.3 kB of HTML plus two stylesheets, and no scripts."
+        "source": "A content site rarely needs JavaScript on its public pages. Mortar renders on the server (brick loaders included), so you can send those pages as plain HTML and hydrate only the admin.\n\n`createRender` from `@mortar-kit/core/render` does it. Use it as your server entry, and put `<ClientScripts />` in your document's head in place of the hydration script and client entry:\n\n```tsx\n// src/entry-server.tsx\nimport { createRender } from '@mortar-kit/core/render';\nimport manifest from 'virtual:solid-manifest';\nimport { Root } from './Root.tsx';\n\nexport const render = createRender({ manifest, app: () => <Root /> });\n```\n\n```tsx\n// src/entry-client.tsx\nimport { hydrate } from '@solidjs/web';\nimport { Root } from './Root.tsx';\n\nhydrate(() => <Root />, document);\n```\n\n```tsx\n// src/Document.tsx (Root renders it around your App)\nimport { ClientScripts } from '@mortar-kit/core';\n\nexport default function Document(props) {\n  return (\n    <html lang=\"en\">\n      <head>\n        <meta charset=\"utf-8\" />\n        <ClientScripts />\n      </head>\n      <body>{props.children}</body>\n    </html>\n  );\n}\n```\n\n`hydrate` picks the pages that load JavaScript. The default is `['/admin']`, so the editor and its preview hydrate. It also takes path prefixes (matched by whole segments, in any case), `true`, `false`, or a function of the path. On every other page:\n\n- the render runs under `<NoHydration>` with `noScripts`, so there are no hydration keys and no hydration data;\n- `<ClientScripts>` renders nothing, so there's no client entry (unless the page has [islands](#islands));\n- the manifest gives stylesheets only, so the browser doesn't preload any JavaScript either;\n- the page is always sent as one settled document, since streamed content needs a script.\n\nWhen the plugin generates your entries, every page hydrates. Authoring the two entries above is what switches that off. `createRender` puts the request's CSP nonce on the scripts of hydrating pages.\n\nThe result: the example site's home page is about 1.3 kB of HTML plus two stylesheets, and no scripts."
       }
     },
     {
@@ -27,7 +27,28 @@
       "brick": "markdown",
       "id": "md-3",
       "data": {
-        "source": "## Islands\n\nHydrating single interactive bricks on otherwise static pages is planned. The plan is for each interactive brick to render in its own `<Hydration>` zone, with the page's data deciding which islands render and a separate client entry hydrating each one."
+        "source": "## Islands\n\nA brick that needs the browser on a public page (a form that answers in place, a gallery, a calculator) says so:\n\n```tsx\nexport const contactForm = defineBrick({\n  name: 'contact-form',\n  interactive: true,\n  // schema, action, component as usual\n});\n```\n\nThe page knows its bricks before it's sent, so nothing else has to change on the page. When a page without JavaScript shows an interactive brick:\n\n- the brick renders in an **island**: an element around its own `<Hydration>` zone, carrying its data, what its `load` returned and its latest form result as JSON;\n- `createRender` adds Solid's hydration bootstrap and your client entry to that page only. Pages without an interactive brick stay script-free;\n- in the browser, only the islands hydrate. The rest of the page is never touched.\n\nYour client entry decides between the admin and islands. Importing each side lazily keeps the admin out of public pages:\n\n```tsx\n// src/entry-client.tsx\nimport { hasIslands } from '@mortar-kit/core';\nimport { hydrate } from '@solidjs/web';\n\nif (hasIslands()) {\n  void import('./islands.ts').then((islands) => islands.start());\n} else {\n  void import('./Root.tsx').then(({ Root }) => hydrate(() => <Root />, document));\n}\n```\n\n```ts\n// src/islands.ts\nimport { hydrateIslands, islandActions } from '@mortar-kit/core';\nimport { brickActions } from './actions.ts';\nimport { bricks } from './bricks/index.ts';\nimport { runBrickAction } from './server/content.ts';\n\nexport function start() {\n  hydrateIslands({ bricks, actions: islandActions({ action: brickActions.action, run: runBrickAction }) });\n}\n```\n\n`islandActions` is what lets an island's `<ActionForm>` post without the router: it calls your action's server function in the background and hands the brick each `pending` and result, so only the brick updates (see [Handling forms](/docs/forms)). Without JavaScript, the same form still posts plainly.\n\nIn the admin, interactive bricks render like any other brick, since the whole page hydrates there.\n\nKeep in mind:\n\n- An island's data is in the page's HTML. Mark fields only the server needs `private: true` (see [Fields](/docs/fields)), and they're left out. The contact form's \"Send to\" address is one.\n- `load` runs on the server only. The island gets its result and doesn't load again in the browser, so return plain JSON.\n- Do async work in `load`, not in the component: an island has no hydration data of its own to wait for."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-4",
+      "data": {
+        "name": "hydrateIslands"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-5",
+      "data": {
+        "name": "islandActions"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-6",
+      "data": {
+        "name": "hasIslands"
       }
     }
   ]

@@ -1,7 +1,9 @@
 // defineBrick: pairs a developer's component with the schema describing its
 // editable data. The schema drives validation, defaults, and (in the admin
 // package) the generated edit form. A brick may also load data and handle
-// its own form posts (`action`, see actions.tsx).
+// its own form posts (`action`, see actions.tsx), and ask to run in the
+// browser on pages that otherwise ship no JavaScript (`interactive`, see
+// islands.tsx).
 import type { Component } from 'solid-js';
 import * as v from 'valibot';
 
@@ -90,6 +92,17 @@ export interface BrickDefinition<F extends Fields, L = undefined, R = undefined>
    * before `component`, so the result gets its type.
    */
   action?: (input: ActionInput<InferFields<F>>) => R | Promise<R>;
+  /**
+   * Runs the brick in the browser (an island) on pages that are otherwise
+   * plain HTML: the page loads JavaScript only when it shows a brick like
+   * this, and only this brick hydrates; the rest of the page stays static.
+   * Its form (`<ActionForm>`) then posts in the background and updates only
+   * the brick. Its `data`, what `load` returned and its latest submission
+   * are sent along in the HTML (plain JSON), and `load` doesn't run again in
+   * the browser. Default false: the brick is server-rendered HTML. Pages
+   * that hydrate as a whole (the admin) render it like any other brick.
+   */
+  interactive?: boolean;
   /** Renders the brick. Read `props.data.x` (and `props.loaded`, `props.submission`); don't destructure props. */
   component: Component<BrickProps<InferFields<F>, L, R>>;
 }
@@ -110,6 +123,8 @@ export interface Brick<F extends Fields = Fields, L = undefined, R = undefined> 
   readonly schema: F;
   readonly load: ((data: InferFields<F>, content: ContentReader) => L | Promise<L>) | undefined;
   readonly action: ((input: ActionInput<InferFields<F>>) => R | Promise<R>) | undefined;
+  /** Whether the brick hydrates on its own on pages without JavaScript (see `BrickDefinition.interactive`). */
+  readonly interactive: boolean;
   readonly component: Component<BrickProps<InferFields<F>, L, R>>;
 }
 
@@ -130,6 +145,7 @@ export function defineBrick<const F extends Fields, L = undefined, R = undefined
     schema: def.schema,
     load: def.load,
     action: def.action,
+    interactive: def.interactive ?? false,
     component: def.component,
     ...schemaOps(def.schema),
   };

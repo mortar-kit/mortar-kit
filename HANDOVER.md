@@ -77,10 +77,7 @@ Steps 4–6 describe the page model (`Page`, `definePageMeta`, `PageStore`,
    and are always sent settled (a plain promise), since streamed content
    needs a script. The client script tag carries the request's CSP nonce.
    Result: home is ~1.3 kB of HTML plus two stylesheets, zero scripts.
-   For islands: static content under `<NoHydration>`, each interactive
-   brick in `<Hydration id={entry.id}>`, page data deciding which islands
-   render, hydration data and island chunks kept on those pages, and a
-   separate client entry hydrating each island root (see `client.ts`).
+   Islands came later (2026-11-23, see "Islands" below).
 
 8. Collections (user's request, 2026-11-22: reusable content such as
    posts with a list and a page each, products in categories). Designed
@@ -188,26 +185,18 @@ so; ask before building on them if it matters:
   (`?collection=&id=`); `<Admin>` also works without it.
 - **No title→slug helper** on the New form yet.
 
-### Islands (the user wants them; next big candidate)
+### Islands (built 2026-11-23)
 
-Public pages ship no JavaScript today (step 7). Islands would hydrate single
-interactive bricks on such pages. The plan (also in
-`examples/site/src/client.ts`):
-- Render the static page under `<NoHydration>` and each interactive brick
-  inside `<Hydration id={entry.id}>` (Solid's own island mechanism: each
-  Hydration zone gets its own id namespace).
-- The page data, not the path, decides which islands render: probably a
-  per-brick flag (e.g. `defineBrick({ interactive: true })`), so
-  `hydrates(pathname)` stays the switch for whole-document hydration only.
-- Island pages keep hydration data and their islands' chunks (so no
-  `noScripts` / `stylesOnly` there) and load a separate client entry that
-  hydrates each island root with `hydrate(..., { renderId })`.
-- Brick loaders already fit: in a Hydration zone the deferred `load`
-  result is serialized, so an island adopts it without fetching again
-  (loaders must return plain JSON, as their JSDoc says).
-- Once settled, consider moving the no-JS entries (`entry-server.tsx`,
-  `Root.tsx`, `styles-only.ts`, `client.ts`) into a Mortar package, so
-  sites don't copy them.
+`defineBrick({ interactive: true })`; see CLAUDE.md "Islands". Follow-ups:
+- Code splitting per island brick: `hydrateIslands` takes the whole bricks
+  list, so the island chunk holds every brick's component (fine for the
+  example). A lazy map (`{ name: () => import(...) }`) would load only the
+  islands on the page.
+- Async inside an island's component has no hydration data (static pages
+  keep `noScripts`); only `load` results are carried. Lifting that means
+  serializing just the zones' data.
+- Once settled, consider a Mortar helper for the example's
+  `entry-client.tsx` + `islands.ts` pattern, so sites don't copy it.
 
 ### Collections, later
 

@@ -8,7 +8,8 @@ import { defineConfig } from 'vite';
 
 // Example Mortar site: start mode with SSR. The entries are authored
 // (src/entry-server.tsx, src/entry-client.tsx) so public pages can be sent
-// without JavaScript; src/client.ts decides which pages hydrate. Server
+// without JavaScript, apart from islands (interactive bricks such as the
+// contact form); createRender (@mortar-kit/core/render) decides. Server
 // functions (src/server/) load and save documents as JSON files in
 // content/<collection>/<slug>.json, and uploads in uploads/<key>, served at
 // /uploads/ by src/middleware.ts.

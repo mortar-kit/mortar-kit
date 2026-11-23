@@ -76,6 +76,27 @@ further construction puns).
   `formAction(...).with(ref)` + `useSubmissions`, which posts plainly without
   JS (result back in Solid's flash cookie, ~4 kB) and in the background with
   JS (only the brick updates). The admin preview doesn't submit forms.
+- **Islands** (2026-11-23): `defineBrick({ interactive: true })` (Thomas
+  asked for `island: true`; `interactive` says what the brick needs).
+  On a page createRender sends without JavaScript (`rendersIslands()`: server
+  and not hydratable), PageView loads the entry as usual, then renders it in
+  `ServerIsland`: a `data-mortar-island` element (display: contents) whose
+  JSON payload is `{ id, brick, data, loaded?, ref?, submission? }`, around
+  `<Hydration id>`. Ids are `mi<n>-` per request and per entry (the server
+  may render an entry twice; the dash keeps prefixes apart). Inside the zone,
+  `islandView` is the same tree on both sides; the submission accessor is
+  made outside it (router hook vs `islandActions`). Static pages keep
+  `noScripts` (Solid's data would cover the whole page): `load` runs on the
+  server only and its result rides in the payload, so a component mustn't
+  await anything itself. createRender counts the request's islands and, if
+  any, puts `generateHydrationScript` + the client entry (`context.clientEntry`,
+  not async) before `</head>` of the settled HTML. Fields marked
+  `private: true` are reset to their defaults in the payload (and in the
+  server's island render, so both match). `hydrateIslands({ bricks, actions })`
+  hydrates each with `hydrate(..., el, { renderId })`; `islandActions({ action,
+  run })` gives `BrickActions.submit`, which `<ActionForm>` calls instead of
+  posting, and decodes the server function's answer (a whole `Response`
+  when it used `respond`, via `decodeResponse`).
 - **Packages**: `@mortar-kit/core` (fields, bricks, collections, documents,
   storage rules, `PageView`, content context) and `@mortar-kit/admin`
   (`<Admin>`, `<Editor>`, `<SignIn>`), plus `@mortar-kit/auth` (server-only
@@ -155,8 +176,9 @@ further construction puns).
   manifest (`stylesOnly`), and `<ClientScripts>` in `Document.tsx` renders
   nothing on them. It hands the page's settings to `<ClientScripts>` by
   request (a WeakMap keyed by the request event's Request), never a context
-  provider, which would shift hydration keys. Islands (hydrating single
-  bricks) are planned; `render.tsx` notes what they will need. Content is JSON files in
+  provider, which would shift hydration keys. The contact form is an island
+  (see Islands): `src/entry-client.tsx` imports `src/islands.ts` on pages
+  with islands and `Root.tsx` otherwise, each lazily. Content is JSON files in
   `examples/site/content/<collection>/`, read and written by the
   `'use server'` module `src/server/content.ts`; `src/content.ts` wraps it
   (GET reads: cached router queries for routes, fresh for the admin).

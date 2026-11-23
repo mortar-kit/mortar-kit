@@ -14,7 +14,17 @@ export {
   type BlobStore,
   type MemoryBlobStoreOptions,
 } from './assets.ts';
-export { BrickActionsContext, ActionForm, sameEntry, type BrickActions, type ActionFormProps, type EntryRef } from './actions.tsx';
+export {
+  BrickActionsContext,
+  ActionForm,
+  islandActions,
+  sameEntry,
+  type BrickActions,
+  type ActionFormProps,
+  type EntryRef,
+  type IslandActionsOptions,
+} from './actions.tsx';
+export { hasIslands, hydrateIslands, type HydrateIslandsOptions, type IslandPayload } from './islands.tsx';
 export {
   brickMap,
   defineBrick,

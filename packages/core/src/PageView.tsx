@@ -10,7 +10,10 @@
 // later loads keep the previous result on screen until the new one lands.
 // Given the document it renders (`doc`), it tells each entry where it is
 // stored, so a brick's <ActionForm> can post to its action, and hands the
-// brick its latest submission (BrickActionsContext).
+// brick its latest submission (BrickActionsContext). On a page rendered
+// without JavaScript, an `interactive` brick becomes an island (see
+// islands.tsx): it loads here as usual, then renders inside its own
+// hydration zone with everything the browser needs to take it over.
 import type { JSX } from '@solidjs/web';
 import { createDeferred, createMemo, createProjection, dynamicComponent, Errored, For, Loading, Show, useContext } from 'solid-js';
 
@@ -18,6 +21,7 @@ import { BrickActionsContext, EntryRefContext, type EntryRef } from './actions.t
 import { brickMap, type AnyBrick } from './brick.ts';
 import { ContentContext, contentReader } from './content.ts';
 import type { PageEntry } from './entries.ts';
+import { islandData, islandView, rendersIslands, ServerIsland } from './islands.tsx';
 
 export interface PageViewProps {
   /** The bricks this site defines. */
@@ -59,6 +63,7 @@ export function PageView(props: PageViewProps) {
   const byName = createMemo(() => brickMap(props.bricks));
   const source = useContext(ContentContext);
   const actions = useContext(BrickActionsContext);
+  const islands = rendersIslands();
   return (
     <For each={props.entries} keyed={(entry) => entry.id}>
       {(entry) => {
@@ -82,13 +87,33 @@ export function PageView(props: PageViewProps) {
             <Brick data={data} loaded={loaded()} submission={live()} />
           </Loading>
         );
+        // An interactive brick on a page without JavaScript: loaded here, outside its zone, then sent along.
+        const island = (b: AnyBrick) => {
+          const shared = createMemo(() => islandData(b, entry().data));
+          return (
+            <Loading fallback={props.loadingFallback?.(entry())}>
+              <ServerIsland
+                entry={JSON.stringify([props.doc?.collection, props.doc?.id, entry().id])}
+                payload={() => ({ brick: b.name, data: shared(), loaded: loaded(), ref: ref(), submission: live() })}
+                view={() => islandView({ brick: b, data: shared(), loaded: loaded(), ref: ref(), actions, submission: live })}
+              />
+            </Loading>
+          );
+        };
         // A function: created inside EntryRefContext below, so ActionForm can read it.
         const rendered = () => (
           <Show when={brick()} fallback={props.fallback?.(entry())}>
-            <Show when={loads()} fallback={<Brick data={data} loaded={undefined} submission={live()} />}>
-              <Show when={props.errorFallback} fallback={view()}>
-                {(onError) => <Errored fallback={(error) => onError()(entry(), error())}>{view()}</Errored>}
+            {(b) => (
+              <Show when={islands && b().interactive} fallback={plain()}>
+                {island(b())}
               </Show>
+            )}
+          </Show>
+        );
+        const plain = () => (
+          <Show when={loads()} fallback={<Brick data={data} loaded={undefined} submission={live()} />}>
+            <Show when={props.errorFallback} fallback={view()}>
+              {(onError) => <Errored fallback={(error) => onError()(entry(), error())}>{view()}</Errored>}
             </Show>
           </Show>
         );
