@@ -38,6 +38,7 @@ export function resendMailer(options: ResendMailerOptions): Mailer {
           subject: message.subject,
           text: message.text,
           ...(message.html ? { html: message.html } : {}),
+          ...(message.replyTo ? { reply_to: message.replyTo } : {}),
         }),
       });
       if (!response.ok) throw new Error(`Resend refused the email (${response.status}): ${await response.text().catch(() => '')}`);

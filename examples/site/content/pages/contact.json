@@ -1,0 +1,19 @@
+{
+  "id": "contact",
+  "fields": {
+    "title": "Contact",
+    "description": "Send us a message."
+  },
+  "entries": [
+    {
+      "brick": "contact-form",
+      "id": "contact-form-1",
+      "data": {
+        "heading": "Get in touch",
+        "intro": "Questions, ideas, a bug you found: send us a message. This form works without JavaScript.",
+        "buttonLabel": "Send message",
+        "sentMessage": "Thanks! Your message is on its way, and we will reply by email."
+      }
+    }
+  ]
+}

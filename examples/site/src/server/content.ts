@@ -5,7 +5,8 @@
 // client gets references to these functions, so node:fs never reaches the
 // browser.
 //
-// Reads are public (the site renders from them). Writes (saving, deleting,
+// Reads are public (the site renders from them), and so are brick forms
+// (runBrickAction, limited per client). Writes (saving, deleting,
 // reordering, uploads) need a signed-in admin: each checks for itself, since the
 // middleware that guards /admin pages can't tell the admin's
 // server-function calls apart.
@@ -17,6 +18,7 @@ import {
   type Doc,
   type DocRef,
   type DocSummary,
+  type EntryRef,
   type FolderResult,
   type ListOptions,
   type RemoveResult,
@@ -31,6 +33,7 @@ import { bricks } from '../bricks/index.ts';
 import { collections } from '../collections.ts';
 import { auth } from './auth.ts';
 import { blobs } from './blobs.ts';
+import { actionContext, overLimit } from './mail.ts';
 
 // `content/<collection>/<slug>.json` and `uploads/<key>`, resolved against the working directory: run the server from examples/site.
 const content = createContent({ store: createJsonFileStore({ dir: 'content' }), blobs, collections, bricks });
@@ -45,6 +48,23 @@ export async function listStoredDocs(collection: string, options?: ListOptions):
 /** One document, normalized for rendering, or null. */
 export async function getStoredDoc(collection: string, ref: DocRef): Promise<Doc | null> {
   return content.get(collection, ref);
+}
+
+/**
+ * Runs a brick's action with its posted form (src/actions.ts): Mortar
+ * reads the entry's stored data and calls the brick's `action`. Public,
+ * like the site's forms, but limited per client. Nothing to revalidate:
+ * the brick shows the result.
+ */
+export async function runBrickAction(ref: EntryRef, form: FormData | URLSearchParams): Promise<unknown> {
+  const request = getRequestEvent()?.request;
+  if (overLimit(request)) throw new Error('Too many form posts. Try again in a few minutes.');
+  try {
+    return respond(await content.runAction(ref, form, { request, context: actionContext }), { revalidate: '' });
+  } catch (error) {
+    console.error('Brick action failed:', error);
+    throw error;
+  }
 }
 
 /** Validates and stores a document from the admin. */

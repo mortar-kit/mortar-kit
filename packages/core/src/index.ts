@@ -14,15 +14,19 @@ export {
   type BlobStore,
   type MemoryBlobStoreOptions,
 } from './assets.ts';
+export { BrickActionsContext, ActionForm, sameEntry, type BrickActions, type ActionFormProps, type EntryRef } from './actions.tsx';
 export {
   brickMap,
   defineBrick,
+  type ActionContext,
+  type ActionInput,
   type AnyBrick,
   type Brick,
   type BrickDefinition,
   type BrickProps,
   type Issue,
   type SchemaOps,
+  type Submission,
   type ValidateResult,
 } from './brick.ts';
 export {
@@ -81,6 +85,7 @@ export {
   type ListOptions,
   type Referrer,
   type RemoveResult,
+  type RunActionOptions,
   type SaveResult,
   type UpdateAssetResult,
   type UploadResult,

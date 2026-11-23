@@ -22,7 +22,8 @@ import {
   type AssetFolder,
   type BlobStore,
 } from './assets.ts';
-import { brickMap, type AnyBrick } from './brick.ts';
+import type { EntryRef } from './actions.tsx';
+import { brickMap, type ActionContext, type AnyBrick } from './brick.ts';
 import { collectionMap, type AnyCollection, type SortOrder } from './collection.ts';
 import { isValidSlug, normalizeDoc, validateDoc, type Doc, type DocIssue, type DocRef, type DocSummary } from './doc.ts';
 import { assetsIn, assetValuesIn, hasAssetFields, referencedCollections, referencesIn, type Fields } from './fields.ts';
@@ -140,8 +141,27 @@ export interface Content extends ContentSource {
    * shows no reorder controls.
    */
   move?(collection: string, id: string, index: number): Promise<void>;
+  /**
+   * Runs the `action` of the brick behind an entry with a posted form: reads
+   * the document by id, finds the entry, and calls the action with the
+   * entry's stored (normalized) data. Resolves to what the action returns;
+   * throws when the reference names no entry with an action. Call it from
+   * the app's one server function for brick forms (a plain form post
+   * arrives as URLSearchParams, which becomes FormData; the reference and form
+   * come from the browser: both are untrusted, which is why the data
+   * doesn't travel with them). Optional for custom implementations.
+   */
+  runAction?(ref: EntryRef, form: FormData | URLSearchParams, options?: RunActionOptions): Promise<unknown>;
   /** Uploaded files; only when content has a blob store. */
   assets?: Assets;
+}
+
+/** What the app passes to `Content.runAction` besides the post. */
+export interface RunActionOptions {
+  /** The request the post arrived in, passed on to the action. */
+  request?: Request;
+  /** The app's server-side services for actions (see `ActionContext`). */
+  context?: ActionContext;
 }
 
 /**
@@ -201,7 +221,7 @@ const DEFAULT_MAX_ASSET_SIZE = 25 * 1024 * 1024;
  * server function receives them from the client): an unknown one throws.
  * Throws at creation if a reference field names an unknown collection.
  */
-export function createContent(options: ContentOptions): Content & Pick<Required<Content>, 'move'> & { assets?: Required<Assets> } {
+export function createContent(options: ContentOptions): Content & Pick<Required<Content>, 'move' | 'runAction'> & { assets?: Required<Assets> } {
   const { store, bricks, blobs } = options;
   const maxAssetSize = options.maxAssetSize ?? DEFAULT_MAX_ASSET_SIZE;
   const collections = collectionMap(options.collections);
@@ -286,6 +306,24 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
       }
       const doc = (await all(c)).find((d) => d.id === ref.id);
       return doc ? withUrls(c, doc) : null;
+    },
+
+    async runAction(ref, form, runOptions = {}) {
+      const r = (typeof ref === 'object' && ref !== null ? ref : {}) as Partial<EntryRef>;
+      const c = typeof r.collection === 'string' ? collections.get(r.collection) : undefined;
+      if (!c || !c.body || typeof r.doc !== 'string' || typeof r.entry !== 'string') throw new Error('Mortar: that form names no entry');
+      // A plain (urlencoded) form post arrives as URLSearchParams; actions always get FormData.
+      if (form instanceof URLSearchParams) {
+        const data = new FormData();
+        for (const [key, value] of form) data.append(key, value);
+        form = data;
+      }
+      if (!(form instanceof FormData)) throw new Error('Mortar: an action needs a posted form');
+      const doc = (await all(c)).find((d) => d.id === r.doc);
+      const entry = doc?.entries?.find((e) => e.id === r.entry);
+      const brick = entry ? byBrick.get(entry.brick) : undefined;
+      if (!entry || !brick?.action) throw new Error('Mortar: that form names no entry with an action');
+      return brick.action({ form, data: brick.normalize(entry.data), request: runOptions.request, context: runOptions.context ?? {} });
     },
 
     async save(name, raw) {

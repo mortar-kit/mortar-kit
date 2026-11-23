@@ -1629,6 +1629,36 @@
       ]
     },
     {
+      "name": "createLimiter",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A fixed-window counter per key: returns 0 while the key is under `max`\nhits in the current window, else the milliseconds until it resets.\nExpired windows are swept as it goes, so memory stays bounded by the\nclients seen in one window.",
+      "signature": "function createLimiter(max: number, windowMs: number, now?: () => number): (key: string) => number",
+      "params": [
+        {
+          "name": "max",
+          "type": "number",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "windowMs",
+          "type": "number",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "now",
+          "type": "() => number",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "(key: string) => number",
+      "examples": []
+    },
+    {
       "name": "createMiddleware",
       "module": "@mortar-kit/auth",
       "deprecated": false,
@@ -1921,6 +1951,13 @@
           "readonly": false,
           "type": "string",
           "doc": "HTML body, for clients that show it."
+        },
+        {
+          "name": "replyTo",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where replies go instead of the sender, e.g. the visitor who filled in a contact form."
         }
       ]
     },
@@ -2084,12 +2121,123 @@
       ]
     },
     {
+      "name": "ActionContext",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What the app passes to every action, besides the post: services that live\non the server (a mailer, a database), so the brick's module (which the\nbrowser loads too) imports none of them. Empty by default; declare yours\nby augmenting it:",
+      "signature": "interface ActionContext",
+      "members": [
+        {
+          "name": "mailer",
+          "optional": true,
+          "readonly": false,
+          "type": "Mailer",
+          "doc": "Sends email; undefined when none is configured."
+        },
+        {
+          "name": "inbox",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's inbox (CONTACT_TO)."
+        }
+      ]
+    },
+    {
+      "name": "ActionForm",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A form that posts to its brick's `action`. Use it in the component of a\nbrick that declares one. It's a plain `<form method=\"post\">`, so it works\nwithout JavaScript; the router (or whatever the app's `BrickActions`\nuses) can take over the submit when the page has scripts.",
+      "signature": "function ActionForm(props: ActionFormProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "ActionFormProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "ActionFormProps",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Props of `ActionForm`.",
+      "signature": "interface ActionFormProps",
+      "members": [
+        {
+          "name": "class",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The form's class."
+        },
+        {
+          "name": "aria-label",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Labels the form for assistive technology."
+        },
+        {
+          "name": "children",
+          "optional": true,
+          "readonly": false,
+          "type": "Element",
+          "doc": "The form's fields and its submit button."
+        }
+      ]
+    },
+    {
+      "name": "ActionInput",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What a brick's `action` receives.",
+      "signature": "interface ActionInput<D>",
+      "members": [
+        {
+          "name": "form",
+          "optional": false,
+          "readonly": false,
+          "type": "FormData",
+          "doc": "The posted form. Untrusted: check every value."
+        },
+        {
+          "name": "data",
+          "optional": false,
+          "readonly": false,
+          "type": "D",
+          "doc": "The entry's stored data, read on the server (never sent by the browser), normalized."
+        },
+        {
+          "name": "request",
+          "optional": false,
+          "readonly": false,
+          "type": "Request | undefined",
+          "doc": "The request the post arrived in, when the app passes it (e.g. for a per-client limit)."
+        },
+        {
+          "name": "context",
+          "optional": false,
+          "readonly": false,
+          "type": "ActionContext",
+          "doc": "The app's server-side services (see `ActionContext`)."
+        }
+      ]
+    },
+    {
       "name": "AnyBrick",
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "type",
       "summary": "A brick of any schema, e.g. in a list of bricks.",
-      "signature": "type AnyBrick = Brick<any, any>"
+      "signature": "type AnyBrick = Brick<any, any, any>"
     },
     {
       "name": "AnyCollection",
@@ -2493,7 +2641,7 @@
       "deprecated": false,
       "kind": "interface",
       "summary": "A registered brick. `defaults()` is used when the brick is added to a body.",
-      "signature": "interface Brick<F extends Fields = Fields, L = undefined> extends SchemaOps<F>",
+      "signature": "interface Brick<F extends Fields = Fields, L = undefined, R = undefined> extends SchemaOps<F>",
       "members": [
         {
           "name": "name",
@@ -2524,10 +2672,17 @@
           "doc": ""
         },
         {
+          "name": "action",
+          "optional": false,
+          "readonly": true,
+          "type": "((input: ActionInput<InferFields<F>>) => R | Promise<R>) | undefined",
+          "doc": ""
+        },
+        {
           "name": "component",
           "optional": false,
           "readonly": true,
-          "type": "Component<BrickProps<InferFields<F>, L>>",
+          "type": "Component<BrickProps<InferFields<F>, L, R>>",
           "doc": ""
         },
         {
@@ -2554,12 +2709,44 @@
       ]
     },
     {
+      "name": "BrickActions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "How the app connects brick forms to the server. Provide it with\n`BrickActionsContext` around the site; without it, a `<ActionForm>`\nrenders but doesn't post anywhere.",
+      "signature": "interface BrickActions",
+      "members": [
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "(ref: EntryRef) => string | SerializableAttributeValue",
+          "doc": "The `action` attribute of an entry's form: the URL (or the router's form action) its post goes to."
+        },
+        {
+          "name": "useSubmission",
+          "optional": false,
+          "readonly": false,
+          "type": "(ref: () => EntryRef) => () => Submission<unknown> | undefined",
+          "doc": "The entry's latest submission, for its component. Called once per\nentry while rendering (hooks are fine); `ref` is an accessor because an\nentry can move to another document in the admin preview."
+        }
+      ]
+    },
+    {
+      "name": "BrickActionsContext",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "variable",
+      "summary": "Provides the app's `BrickActions` to every `PageView` below it.",
+      "signature": "const BrickActionsContext: Context<BrickActions | null>"
+    },
+    {
       "name": "BrickDefinition",
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "interface",
       "summary": "What a developer passes to `defineBrick`.",
-      "signature": "interface BrickDefinition<F extends Fields, L = undefined>",
+      "signature": "interface BrickDefinition<F extends Fields, L = undefined, R = undefined>",
       "members": [
         {
           "name": "name",
@@ -2590,11 +2777,18 @@
           "doc": "Loads what the brick shows besides its own data, e.g. the latest posts.\nRuns on the server when the page renders (pages without JavaScript\nincluded) and in the browser in the admin preview, where it reads\nsaved content (not unsaved edits to other documents), again after each\nsave. Read the `data` fields it depends on before the first `await`:\nchanging those loads again, changing others doesn't. Return plain JSON. Write it before\n`component`, so `props.loaded` gets its type."
         },
         {
+          "name": "action",
+          "optional": true,
+          "readonly": false,
+          "type": "(input: ActionInput<InferFields<F>>) => R | Promise<R>",
+          "doc": "Handles a post of the brick's form (`<ActionForm>` in its component).\nRuns on the server only, through the app's runner (`Content.runAction`),\nwhich reads the entry's stored `data`; what it returns (plain JSON)\nreaches the component as `props.submission.result`. Without\nJavaScript the post reloads the page with the result; with it, only\nthe brick updates. The brick's module also reaches the browser, so\ntake server-only services from `context`, not from imports. Write it\nbefore `component`, so the result gets its type."
+        },
+        {
           "name": "component",
           "optional": false,
           "readonly": false,
-          "type": "Component<BrickProps<InferFields<F>, L>>",
-          "doc": "Renders the brick. Read `props.data.x` (and `props.loaded`); don't destructure props."
+          "type": "Component<BrickProps<InferFields<F>, L, R>>",
+          "doc": "Renders the brick. Read `props.data.x` (and `props.loaded`, `props.submission`); don't destructure props."
         }
       ]
     },
@@ -2622,7 +2816,7 @@
       "deprecated": false,
       "kind": "interface",
       "summary": "Props every brick component receives.",
-      "signature": "interface BrickProps<D, L = undefined>",
+      "signature": "interface BrickProps<D, L = undefined, R = undefined>",
       "members": [
         {
           "name": "data",
@@ -2637,6 +2831,13 @@
           "readonly": false,
           "type": "L",
           "doc": "What the brick's `load` returned; undefined for a brick without one."
+        },
+        {
+          "name": "submission",
+          "optional": true,
+          "readonly": false,
+          "type": "Submission<R>",
+          "doc": "The latest post of this entry's form (`<ActionForm>`) to its `action`:\npending, then what it returned or threw. Undefined until the form is\nsent, and for a brick without an action."
         }
       ]
     },
@@ -2876,6 +3077,13 @@
           "doc": "Moves a document of an `orderable` collection to `index` (from 0) in\nits manual order; an index past either end moves it to that end.\nThrows for a collection that isn't orderable, a bad index or an\nunknown id. Optional for custom implementations: without it the admin\nshows no reorder controls."
         },
         {
+          "name": "runAction",
+          "optional": true,
+          "readonly": false,
+          "type": "(ref: EntryRef, form: FormData | URLSearchParams, options?: RunActionOptions) => Promise<unknown>",
+          "doc": "Runs the `action` of the brick behind an entry with a posted form: reads\nthe document by id, finds the entry, and calls the action with the\nentry's stored (normalized) data. Resolves to what the action returns;\nthrows when the reference names no entry with an action. Call it from\nthe app's one server function for brick forms (a plain form post\narrives as URLSearchParams, which becomes FormData; the reference and form\ncome from the browser: both are untrusted, which is why the data\ndoesn't travel with them). Optional for custom implementations."
+        },
+        {
           "name": "assets",
           "optional": true,
           "readonly": false,
@@ -3054,7 +3262,7 @@
       "deprecated": false,
       "kind": "function",
       "summary": "The rules around a store. Collection names are checked on every call (a\nserver function receives them from the client): an unknown one throws.\nThrows at creation if a reference field names an unknown collection.",
-      "signature": "function createContent(options: ContentOptions): Content & Pick<Required<Content>, \"move\"> & { assets?: Required<Assets> }",
+      "signature": "function createContent(options: ContentOptions): Content & Pick<Required<Content>, \"move\" | \"runAction\"> & { assets?: Required<Assets> }",
       "params": [
         {
           "name": "options",
@@ -3063,7 +3271,7 @@
           "doc": ""
         }
       ],
-      "returns": "Content & Pick<Required<Content>, \"move\"> & { assets?: Required<Assets> }",
+      "returns": "Content & Pick<Required<Content>, \"move\" | \"runAction\"> & { assets?: Required<Assets> }",
       "examples": []
     },
     {
@@ -3144,16 +3352,16 @@
       "deprecated": false,
       "kind": "function",
       "summary": "Registers a brick: a named component plus the schema of its data.",
-      "signature": "function defineBrick<F extends Readonly<Record<string, AnyField>>, L = undefined>(def: BrickDefinition<F, L>): Brick<F, L>",
+      "signature": "function defineBrick<F extends Readonly<Record<string, AnyField>>, L = undefined, R = undefined>(def: BrickDefinition<F, L, R>): Brick<F, L, R>",
       "params": [
         {
           "name": "def",
-          "type": "BrickDefinition<F, L>",
+          "type": "BrickDefinition<F, L, R>",
           "optional": false,
           "doc": ""
         }
       ],
-      "returns": "Brick<F, L>",
+      "returns": "Brick<F, L, R>",
       "examples": []
     },
     {
@@ -3281,6 +3489,37 @@
           "readonly": false,
           "type": "string",
           "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "EntryRef",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Where an entry is stored: what a form post names, so the server can read the entry's data.",
+      "signature": "interface EntryRef",
+      "members": [
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The collection's name."
+        },
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The document's id."
+        },
+        {
+          "name": "entry",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The entry's id in the document's body."
         }
       ]
     },
@@ -3938,6 +4177,13 @@
           "doc": "The entries to render, in order: a page's or a document's body."
         },
         {
+          "name": "doc",
+          "optional": true,
+          "readonly": false,
+          "type": "{ collection: string; id: string }",
+          "doc": "The document the entries belong to. Bricks with an `action` need it:\ntheir forms name the entry by collection, document and entry id, so\nthe server can read its stored data. Without it, their forms don't post."
+        },
+        {
           "name": "fallback",
           "optional": true,
           "readonly": false,
@@ -4070,6 +4316,54 @@
       "signature": "type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] }"
     },
     {
+      "name": "RunActionOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What the app passes to `Content.runAction` besides the post.",
+      "signature": "interface RunActionOptions",
+      "members": [
+        {
+          "name": "request",
+          "optional": true,
+          "readonly": false,
+          "type": "Request",
+          "doc": "The request the post arrived in, passed on to the action."
+        },
+        {
+          "name": "context",
+          "optional": true,
+          "readonly": false,
+          "type": "ActionContext",
+          "doc": "The app's server-side services for actions (see `ActionContext`)."
+        }
+      ]
+    },
+    {
+      "name": "sameEntry",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "True when `value` names the same entry as `ref`: for filtering submissions by entry.",
+      "signature": "function sameEntry(value: unknown, ref: EntryRef | undefined): boolean",
+      "params": [
+        {
+          "name": "value",
+          "type": "unknown",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "ref",
+          "type": "EntryRef | undefined",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
+    },
+    {
       "name": "SaveResult",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -4159,6 +4453,37 @@
           "readonly": false,
           "type": "\"asc\" | \"desc\"",
           "doc": "Default `'asc'`."
+        }
+      ]
+    },
+    {
+      "name": "Submission",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A form post to a brick's `action`, as its component sees it.",
+      "signature": "interface Submission<R>",
+      "members": [
+        {
+          "name": "pending",
+          "optional": false,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "True while the post is in flight (only with JavaScript; a plain post reloads the page)."
+        },
+        {
+          "name": "result",
+          "optional": true,
+          "readonly": false,
+          "type": "R",
+          "doc": "What the action returned."
+        },
+        {
+          "name": "error",
+          "optional": true,
+          "readonly": false,
+          "type": "unknown",
+          "doc": "What the action threw, if it threw (in production, a generic error)."
         }
       ]
     },
