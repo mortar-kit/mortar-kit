@@ -71,7 +71,11 @@ further construction puns).
 - **Admin mount**: a route in the consuming app (e.g. `/admin`) rendering
   `<Admin>` (collections and their documents) or a single `<Editor>`; the
   preview is a same-origin iframe rendering the real bricks inside the app's
-  layouts (`PreviewPage` `layouts`). The admin's location can live in the
+  layouts (`PreviewPage` `layouts`: a preview component per collection).
+  A collection without one previews as `DocPreview` (title, lead image,
+  labelled fields, then the body) when `PreviewPage` gets `collections`;
+  layouts stay in the preview route, not on `defineCollection`, so
+  collection files never import UI. The admin's location can live in the
   app's URL (`location` + `onNavigate`).
 - **Auth** (2026-11-22): `createAuth({ methods: [google(), email()], authorize, secret })`
   in `@mortar-kit/auth`, Fetch `Request` in, `Response` out (framework-neutral).

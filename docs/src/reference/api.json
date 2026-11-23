@@ -749,6 +749,62 @@
       ]
     },
     {
+      "name": "DocPreview",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A readable preview of any document: its title, its first image large,\nthen every other field under its label, then `children` (the body).\n`<PreviewPage>` shows it for collections without a layout; a layout can\nrender it too, e.g. around a heading of its own.",
+      "signature": "function DocPreview(props: DocPreviewProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "DocPreviewProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": []
+    },
+    {
+      "name": "DocPreviewProps",
+      "module": "@mortar-kit/admin/preview",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "",
+      "signature": "interface DocPreviewProps",
+      "members": [
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "AnyCollection",
+          "doc": "The document's collection: its fields' labels and kinds, and its title field."
+        },
+        {
+          "name": "doc",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc",
+          "doc": ""
+        },
+        {
+          "name": "children",
+          "optional": true,
+          "readonly": false,
+          "type": "Element",
+          "doc": "The rendered body, shown under the fields (a collection with a body)."
+        },
+        {
+          "name": "collections",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly AnyCollection[]",
+          "doc": "Every collection, to show a reference by its document's title (otherwise its slug)."
+        }
+      ]
+    },
+    {
       "name": "HelloMessage",
       "module": "@mortar-kit/admin/preview",
       "deprecated": false,
@@ -838,11 +894,18 @@
           "doc": "Where bricks with `load` read content: use uncached reads, so the\npreview shows what is saved now. Without it such bricks show an error."
         },
         {
+          "name": "collections",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly AnyCollection[]",
+          "doc": "The same collections the editor uses. A collection without a layout\nthen previews as `<DocPreview>`: its title, fields and body."
+        },
+        {
           "name": "layouts",
           "optional": true,
           "readonly": false,
           "type": "Readonly<Record<string, PreviewLayout>>",
-          "doc": "The site's layout for each collection, by name, e.g. a post's title\nand date around its body. Without one, a collection with a body\npreviews the body alone."
+          "doc": "How each collection's documents preview, by collection name: usually\nthe site's own layout, e.g. a post's title and date around its body.\nWithout one, a collection previews as `<DocPreview>` (given\n`collections`), or else as its body alone."
         }
       ]
     },
