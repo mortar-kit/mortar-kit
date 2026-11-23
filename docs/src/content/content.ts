@@ -30,7 +30,7 @@ const content = createContent({
   collections,
   bricks,
 });
-const assets = content.assets as Assets;
+const assets = content.assets as Required<Assets>;
 
 const [version, setVersion] = createSignal(0);
 const [edited, setEdited] = createSignal(false);
@@ -76,8 +76,8 @@ export const editableContent: Content = {
       version();
       return assets.list();
     },
-    async upload(file) {
-      const result = await assets.upload(file);
+    async upload(file, details) {
+      const result = await assets.upload(file, details);
       if (result.ok) setEdited(true);
       return result;
     },
@@ -85,6 +85,24 @@ export const editableContent: Content = {
       const result = await assets.remove(key);
       if (result.ok) setEdited(hasAnything());
       return result;
+    },
+    async update(key, details) {
+      const result = await assets.update(key, details);
+      if (result.ok) setEdited(true);
+      return result;
+    },
+    folders() {
+      version();
+      return assets.folders();
+    },
+    async saveFolder(folder) {
+      const result = await assets.saveFolder(folder);
+      if (result.ok) setEdited(true);
+      return result;
+    },
+    async removeFolder(id) {
+      await assets.removeFolder(id);
+      setEdited(hasAnything());
     },
   },
 };

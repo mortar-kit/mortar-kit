@@ -42,12 +42,12 @@ describe('defaults', () => {
 
   it('never shares mutable defaults', () => {
     const a = brick.defaults();
-    a.cards.push({ title: 'x', image: { src: '', alt: '', asset: '' } });
+    a.cards.push({ title: 'x', image: { src: '', alt: '', title: '', asset: '' } });
     expect(brick.defaults().cards).toEqual([]);
   });
 
   it('builds nested object defaults', () => {
-    expect(defaultsOf({ card })).toEqual({ card: { title: '', image: { src: '', alt: '', asset: '' } } });
+    expect(defaultsOf({ card })).toEqual({ card: { title: '', image: { src: '', alt: '', title: '', asset: '' } } });
   });
 });
 
@@ -137,7 +137,7 @@ describe('field edge cases', () => {
   it('fills missing src/alt inside an image', () => {
     const img = defineBrick({ name: 'img', schema: { image: fields.image({ label: 'Image' }) }, component: () => null });
     const result = img.validate({ image: { src: '/a.png' } });
-    expect(result.success && result.data.image).toEqual({ src: '/a.png', alt: '', asset: '' });
+    expect(result.success && result.data.image).toEqual({ src: '/a.png', alt: '', title: '', asset: '' });
   });
 
   it('records required and maxLength for the form', () => {

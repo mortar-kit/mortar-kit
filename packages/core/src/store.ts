@@ -9,8 +9,19 @@
 // hold; several server processes sharing one store need it to lock. With a
 // `BlobStore` it also keeps assets: uploads are checked, documents store
 // an asset's key (its URL is filled in on read), and an asset documents
-// use can't be deleted.
-import { assetInfo, assetKeyFor, isValidAssetKey, type Asset, type BlobStore } from './assets.ts';
+// use can't be deleted. Asset details (default title and alt text, folder)
+// and folders are one document in the content store (`ASSET_LIBRARY`), so
+// every blob store gets them with no change.
+import {
+  assetInfo,
+  assetKeyFor,
+  isValidAssetKey,
+  randomSuffix,
+  type Asset,
+  type AssetDetails,
+  type AssetFolder,
+  type BlobStore,
+} from './assets.ts';
 import { brickMap, type AnyBrick } from './brick.ts';
 import { collectionMap, type AnyCollection, type SortOrder } from './collection.ts';
 import { isValidSlug, normalizeDoc, validateDoc, type Doc, type DocIssue, type DocRef, type DocSummary } from './doc.ts';
@@ -78,14 +89,37 @@ export type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] 
 /** Result of `Assets.upload`. */
 export type UploadResult = { ok: true; asset: Asset } | { ok: false; message: string };
 
-/** Uploaded files: what the admin's library and pickers need. */
+/** Result of `Assets.update`. */
+export type UpdateAssetResult = { ok: true; asset: Asset } | { ok: false; message: string };
+
+/** Result of `Assets.saveFolder`. */
+export type FolderResult = { ok: true; folder: AssetFolder } | { ok: false; message: string };
+
+/**
+ * Uploaded files: what the admin's library and pickers need. The methods
+ * marked optional are always there from `createContent`; an app wrapping
+ * them (in server functions) may leave them out, and the admin then hides
+ * what needs them (details, folders).
+ */
 export interface Assets {
   /** Every uploaded file, newest first. */
   list(): Promise<Asset[]>;
-  /** Checks a file (type by its name's extension, size) and stores it under a fresh key. Problems are returned, not thrown. */
-  upload(file: File): Promise<UploadResult>;
-  /** Deletes a file by key, unless documents use it (then they are returned). */
+  /**
+   * Checks a file (type by its name's extension, size) and stores it under
+   * a fresh key, with `details` (e.g. the folder to put it in). Problems are
+   * returned, not thrown.
+   */
+  upload(file: File, details?: AssetDetails): Promise<UploadResult>;
+  /** Deletes a file by key, unless documents use it (then they are returned). Its details go with it. */
   remove(key: string): Promise<RemoveResult>;
+  /** Sets a file's default title, alt text or folder. Problems are returned, not thrown. */
+  update?(key: string, details: AssetDetails): Promise<UpdateAssetResult>;
+  /** Every folder, by name. */
+  folders?(): Promise<AssetFolder[]>;
+  /** Creates a folder (no `id`) or renames one. Names are unique, ignoring case. */
+  saveFolder?(folder: { id?: string; name: string }): Promise<FolderResult>;
+  /** Deletes a folder; its files stay, in no folder. */
+  removeFolder?(id: string): Promise<void>;
 }
 
 /** Reading and writing documents: what the admin needs. */
@@ -108,6 +142,19 @@ export interface Content extends ContentSource {
   move?(collection: string, id: string, index: number): Promise<void>;
   /** Uploaded files; only when content has a blob store. */
   assets?: Assets;
+}
+
+/**
+ * The content store collection holding asset details and folders, as one
+ * document (slug `library`). No site collection may use this name.
+ */
+export const ASSET_LIBRARY = 'mortar-assets';
+
+/** What the asset library document keeps (its `fields`). */
+interface LibraryData {
+  folders: AssetFolder[];
+  /** Details by asset key; only assets that have any. */
+  files: Record<string, { title?: string; alt?: string; folder?: string }>;
 }
 
 /** A store that keeps documents in memory (tests, demos). Documents are copied in and out. */
@@ -154,10 +201,11 @@ const DEFAULT_MAX_ASSET_SIZE = 25 * 1024 * 1024;
  * server function receives them from the client): an unknown one throws.
  * Throws at creation if a reference field names an unknown collection.
  */
-export function createContent(options: ContentOptions): Content & Pick<Required<Content>, 'move'> {
+export function createContent(options: ContentOptions): Content & Pick<Required<Content>, 'move'> & { assets?: Required<Assets> } {
   const { store, bricks, blobs } = options;
   const maxAssetSize = options.maxAssetSize ?? DEFAULT_MAX_ASSET_SIZE;
   const collections = collectionMap(options.collections);
+  if (collections.has(ASSET_LIBRARY)) throw new Error(`Mortar: the collection name "${ASSET_LIBRARY}" is reserved for asset details`);
   const byBrick = brickMap(bricks);
   for (const [where, schema] of [
     ...options.collections.map((c) => [`collection "${c.name}"`, c.fields] as const),
@@ -287,11 +335,12 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
 
     assets: blobs && {
       async list() {
-        const files = (await blobs.list()).filter((file) => isValidAssetKey(file.key));
-        files.sort((a, b) => compare(b.modified ?? '', a.modified ?? '') || compare(a.key, b.key));
-        return files.map((file) => toAsset(blobs, file.key, file.size, file.modified));
+        const [files, library] = await Promise.all([blobs.list(), readLibrary()]);
+        const valid = files.filter((file) => isValidAssetKey(file.key));
+        valid.sort((a, b) => compare(b.modified ?? '', a.modified ?? '') || compare(a.key, b.key));
+        return valid.map((file) => toAsset(blobs, library, file.key, file.size, file.modified));
       },
-      async upload(file) {
+      async upload(file, details = {}) {
         if (typeof file !== 'object' || file === null || typeof (file as File).name !== 'string' || typeof (file as File).size !== 'number') {
           return { ok: false, message: 'Not a file' };
         }
@@ -299,8 +348,14 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
         if (!key) return { ok: false, message: `"${file.name}" isn't a file type the site accepts (images, video, audio or PDF)` };
         if (file.size === 0) return { ok: false, message: `"${file.name}" is empty` };
         if (file.size > maxAssetSize) return { ok: false, message: `"${file.name}" is larger than ${formatSize(maxAssetSize)}` };
-        await blobs.put(key, file);
-        return { ok: true, asset: toAsset(blobs, key, file.size, new Date().toISOString()) };
+        return oneAtATime(async (): Promise<UploadResult> => {
+          const library = await readLibrary();
+          const problem = applyDetails(library, key, details);
+          if (problem) return { ok: false, message: problem };
+          await blobs.put(key, file);
+          if (library.files[key]) await writeLibrary(library);
+          return { ok: true, asset: toAsset(blobs, library, key, file.size, new Date().toISOString()) };
+        });
       },
       remove(key) {
         if (!isValidAssetKey(key)) return Promise.resolve({ ok: true } as const);
@@ -311,11 +366,96 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
           );
           if (referencedBy.length > 0) return { ok: false, referencedBy };
           await blobs.remove(key);
+          const library = await readLibrary();
+          if (Object.hasOwn(library.files, key)) {
+            delete library.files[key];
+            await writeLibrary(library);
+          }
           return { ok: true };
+        });
+      },
+      update(key, details) {
+        return oneAtATime(async (): Promise<UpdateAssetResult> => {
+          const file = isValidAssetKey(key) ? (await blobs.list()).find((f) => f.key === key) : undefined;
+          if (!file) return { ok: false, message: `There is no asset "${String(key)}"` };
+          const library = await readLibrary();
+          const problem = applyDetails(library, key, details);
+          if (problem) return { ok: false, message: problem };
+          await writeLibrary(library);
+          return { ok: true, asset: toAsset(blobs, library, key, file.size, file.modified) };
+        });
+      },
+      async folders() {
+        return (await readLibrary()).folders;
+      },
+      saveFolder(folder) {
+        return oneAtATime(async (): Promise<FolderResult> => {
+          if (typeof folder !== 'object' || folder === null) return { ok: false, message: 'Not a folder' };
+          const name = typeof folder.name === 'string' ? folder.name.trim().replace(/\s+/g, ' ') : '';
+          if (name === '') return { ok: false, message: 'A folder needs a name' };
+          if (name.length > 60) return { ok: false, message: 'Folder names are at most 60 characters' };
+          const library = await readLibrary();
+          const clash = library.folders.find((f) => f.id !== folder.id && f.name.toLowerCase() === name.toLowerCase());
+          if (clash) return { ok: false, message: `There is already a folder named "${clash.name}"` };
+          let saved: AssetFolder;
+          if (folder.id === undefined) {
+            saved = { id: randomSuffix(), name };
+            library.folders.push(saved);
+          } else {
+            const existing = library.folders.find((f) => f.id === folder.id);
+            if (!existing) return { ok: false, message: 'That folder no longer exists' };
+            existing.name = name;
+            saved = existing;
+          }
+          await writeLibrary(library);
+          return { ok: true, folder: { ...saved } };
+        });
+      },
+      removeFolder(id) {
+        return oneAtATime(async () => {
+          const library = await readLibrary();
+          if (!library.folders.some((f) => f.id === id)) return;
+          library.folders = library.folders.filter((f) => f.id !== id);
+          for (const [key, details] of Object.entries(library.files)) {
+            if (details.folder === id) {
+              delete details.folder;
+              if (Object.keys(details).length === 0) delete library.files[key];
+            }
+          }
+          await writeLibrary(library);
         });
       },
     },
   };
+
+  /** The asset library document's data, checked (anything malformed in it is dropped). Folders by name. */
+  async function readLibrary(): Promise<LibraryData> {
+    const raw = await store.get(ASSET_LIBRARY, 'library');
+    const fields = typeof raw === 'object' && raw !== null ? (raw as { fields?: unknown }).fields : undefined;
+    const data = typeof fields === 'object' && fields !== null ? (fields as Partial<Record<keyof LibraryData, unknown>>) : {};
+    const folders: AssetFolder[] = [];
+    for (const f of Array.isArray(data.folders) ? data.folders : []) {
+      if (typeof f?.id === 'string' && typeof f?.name === 'string' && !folders.some((g) => g.id === f.id)) folders.push({ id: f.id, name: f.name });
+    }
+    folders.sort((a, b) => compare(a.name, b.name));
+    const files: LibraryData['files'] = {};
+    const stored = typeof data.files === 'object' && data.files !== null ? (data.files as Record<string, unknown>) : {};
+    for (const [key, value] of Object.entries(stored)) {
+      if (!isValidAssetKey(key) || typeof value !== 'object' || value === null) continue;
+      const details: LibraryData['files'][string] = {};
+      for (const part of ['title', 'alt', 'folder'] as const) {
+        const v = (value as Record<string, unknown>)[part];
+        if (typeof v === 'string' && v !== '') details[part] = v;
+      }
+      if (details.folder !== undefined && !folders.some((f) => f.id === details.folder)) delete details.folder;
+      if (Object.keys(details).length > 0) files[key] = details;
+    }
+    return { folders, files };
+  }
+
+  async function writeLibrary(library: LibraryData): Promise<void> {
+    await store.put(ASSET_LIBRARY, { id: ASSET_LIBRARY, slug: 'library', fields: { folders: library.folders, files: library.files } });
+  }
 
   /**
    * Every place a document uses something: `find` lists the matching paths
@@ -392,11 +532,51 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
   }
 }
 
-function toAsset(blobs: BlobStore, key: string, size: number, modified?: string): Asset {
+function toAsset(blobs: BlobStore, library: LibraryData, key: string, size: number, modified?: string): Asset {
   const info = assetInfo(key) as NonNullable<ReturnType<typeof assetInfo>>;
-  const asset: Asset = { key, name: info.name, kind: info.kind, type: info.type, size, src: blobs.url(key) };
+  const details = library.files[key] ?? {};
+  const asset: Asset = {
+    key,
+    name: info.name,
+    kind: info.kind,
+    type: info.type,
+    size,
+    src: blobs.url(key),
+    title: details.title ?? '',
+    alt: details.alt ?? '',
+    folder: details.folder ?? '',
+  };
   if (modified !== undefined) asset.modified = modified;
   return asset;
+}
+
+/**
+ * Checks `details` from an untrusted caller and sets them on `key` in
+ * `library` (an empty value clears that part). Returns a problem, or
+ * undefined when they were applied.
+ */
+function applyDetails(library: LibraryData, key: string, details: AssetDetails): string | undefined {
+  if (typeof details !== 'object' || details === null) return 'Details must be an object';
+  const next = { ...library.files[key] };
+  for (const [part, max] of [
+    ['title', 200],
+    ['alt', 1000],
+  ] as const) {
+    const value = details[part];
+    if (value === undefined) continue;
+    if (typeof value !== 'string') return `${part} must be a string`;
+    if (value.length > max) return `${part === 'alt' ? 'Alt text' : 'Title'} is at most ${max} characters`;
+    if (value.trim() === '') delete next[part];
+    else next[part] = value.trim();
+  }
+  if (details.folder !== undefined) {
+    if (details.folder === '') delete next.folder;
+    else if (typeof details.folder === 'string' && library.folders.some((f) => f.id === details.folder)) next.folder = details.folder;
+    else return 'That folder no longer exists';
+  }
+  if (Object.keys(next).length > 0) library.files[key] = next;
+  else delete library.files[key];
+  return undefined;
 }
 
 /** "25 MB", "300 KB". */

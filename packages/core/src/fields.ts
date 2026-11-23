@@ -174,7 +174,7 @@ function url(o: Common<string> & { placeholder?: string; required?: boolean }): 
   return field(s, o.default ?? '', { kind: 'url', label: o.label, help: o.help, placeholder: o.placeholder, required: o.required });
 }
 
-/** An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text. */
+/** An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text and a title. */
 export interface Image {
   /**
    * The URL to load. For an uploaded asset it is filled in when content is
@@ -182,6 +182,8 @@ export interface Image {
    */
   src: string;
   alt: string;
+  /** A title, e.g. for a caption or tooltip; '' if none. Picking an asset fills in its default. */
+  title: string;
   /** The uploaded asset's key, or '' for a plain URL. */
   asset: string;
 }
@@ -190,6 +192,8 @@ export interface Image {
 export interface FileValue {
   /** The URL to load; for an uploaded asset, filled in when content is read. */
   src: string;
+  /** A title, e.g. a download link's text; '' if none. Picking an asset fills in its default. */
+  title: string;
   /** The uploaded asset's key, or '' for a plain URL. */
   asset: string;
 }
@@ -230,10 +234,10 @@ function assetValue<T extends { src: string; asset: string }>(
   ) as unknown as v.GenericSchema<T>;
 }
 
-/** An image: an uploaded image or a URL, plus alt text. Missing parts default to ''. */
+/** An image: an uploaded image or a URL, plus alt text and a title. Missing parts default to ''. */
 function image(o: Common<Partial<Image>> & { required?: boolean }): Field<Image> {
-  const s = assetValue<Image>(o, ['image'], { alt: v.optional(v.string(), '') });
-  return field(s, fresh({ src: '', alt: '', asset: '', ...o.default }), {
+  const s = assetValue<Image>(o, ['image'], { alt: v.optional(v.string(), ''), title: v.optional(v.string(), '') });
+  return field(s, fresh({ src: '', alt: '', title: '', asset: '', ...o.default }), {
     kind: 'image',
     label: o.label,
     help: o.help,
@@ -249,8 +253,8 @@ function image(o: Common<Partial<Image>> & { required?: boolean }): Field<Image>
 function file(o: Common<Partial<FileValue>> & { accept?: readonly AssetKind[]; required?: boolean }): Field<FileValue> {
   const accept = o.accept ?? (['image', 'video', 'audio', 'document'] as const);
   if (accept.length === 0) throw new Error(`fields.file(${o.label}): accept must not be empty`);
-  const s = assetValue<FileValue>(o, accept, {});
-  return field(s, fresh({ src: '', asset: '', ...o.default }), {
+  const s = assetValue<FileValue>(o, accept, { title: v.optional(v.string(), '') });
+  return field(s, fresh({ src: '', title: '', asset: '', ...o.default }), {
     kind: 'file',
     label: o.label,
     help: o.help,

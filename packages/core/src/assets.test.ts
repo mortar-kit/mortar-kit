@@ -192,10 +192,10 @@ describe('createContent with a blob store', () => {
     };
     expect(await content.save('pages', doc)).toEqual({ ok: true });
     const stored = (await store.get('pages', 'home')) as typeof doc;
-    expect(stored.fields.cover).toEqual({ src: '', alt: 'Cover', asset: 'cover-abc123.jpg' });
+    expect(stored.fields.cover).toEqual({ src: '', alt: 'Cover', title: '', asset: 'cover-abc123.jpg' });
     expect(stored.entries[0]?.data.image.src).toBe('https://elsewhere.com/x.png');
     const read = await content.get('pages', { slug: 'home' });
-    expect(read?.fields.cover).toEqual({ src: 'https://cdn.example.com/cover-abc123.jpg', alt: 'Cover', asset: 'cover-abc123.jpg' });
+    expect(read?.fields.cover).toEqual({ src: 'https://cdn.example.com/cover-abc123.jpg', alt: 'Cover', title: '', asset: 'cover-abc123.jpg' });
     expect((await content.get('pages', { id: 'home' }))?.fields.cover).toMatchObject({ src: 'https://cdn.example.com/cover-abc123.jpg' });
     expect((await content.list('pages'))[0]?.fields.cover).toMatchObject({ src: 'https://cdn.example.com/cover-abc123.jpg' });
   });
@@ -222,5 +222,70 @@ describe('createContent with a blob store', () => {
     expect(await content.assets!.remove(key)).toEqual({ ok: true });
     expect(await content.assets!.list()).toEqual([]);
     expect(await content.assets!.remove('../nope')).toEqual({ ok: true });
+  });
+
+  it('keeps default titles and alt text, and finds no details for an asset without any', async () => {
+    const { store, content } = setup();
+    const assets = content.assets!;
+    const uploaded = await assets.upload(png('cover.jpg'));
+    const key = uploaded.ok ? uploaded.asset.key : '';
+    expect(uploaded.ok && uploaded.asset).toMatchObject({ title: '', alt: '', folder: '' });
+    expect(await store.get('mortar-assets', 'library')).toBeUndefined();
+    const updated = await assets.update(key, { title: '  Harbour at dusk ', alt: 'Boats moored at dusk' });
+    expect(updated).toEqual({ ok: true, asset: expect.objectContaining({ key, title: 'Harbour at dusk', alt: 'Boats moored at dusk', folder: '' }) });
+    expect((await assets.list())[0]).toMatchObject({ title: 'Harbour at dusk', alt: 'Boats moored at dusk' });
+    // A part left out stays; an empty one clears it.
+    await assets.update(key, { title: '' });
+    expect((await assets.list())[0]).toMatchObject({ title: '', alt: 'Boats moored at dusk' });
+    expect(await assets.update(key, { alt: 'x'.repeat(1001) })).toEqual({ ok: false, message: 'Alt text is at most 1000 characters' });
+    expect(await assets.update(key, { title: 3 as unknown as string })).toEqual({ ok: false, message: 'title must be a string' });
+    expect(await assets.update('missing-abc123.png', { title: 'x' })).toEqual({ ok: false, message: 'There is no asset "missing-abc123.png"' });
+    // Deleting the file drops its details.
+    await assets.remove(key);
+    expect(((await store.get('mortar-assets', 'library')) as { fields: unknown }).fields).toEqual({ folders: [], files: {} });
+  });
+
+  it('keeps folders: create, rename, upload into one, move files, delete it (files stay)', async () => {
+    const { content } = setup();
+    const assets = content.assets!;
+    const created = await assets.saveFolder({ name: ' Team   photos ' });
+    if (!created.ok) throw new Error(created.message);
+    const team = created.folder;
+    expect(team.name).toBe('Team photos');
+    expect(await assets.saveFolder({ name: 'team PHOTOS' })).toEqual({ ok: false, message: 'There is already a folder named "Team photos"' });
+    expect(await assets.saveFolder({ name: '  ' })).toEqual({ ok: false, message: 'A folder needs a name' });
+    const other = await assets.saveFolder({ name: 'Archive' });
+    expect((await assets.folders()).map((f) => f.name)).toEqual(['Archive', 'Team photos']);
+    expect(await assets.saveFolder({ id: team.id, name: 'People' })).toEqual({ ok: true, folder: { id: team.id, name: 'People' } });
+    expect(await assets.saveFolder({ id: 'gone12', name: 'X' })).toEqual({ ok: false, message: 'That folder no longer exists' });
+
+    const a = await assets.upload(png('a.png'), { folder: team.id });
+    const b = await assets.upload(png('b.png'));
+    expect(a.ok && a.asset.folder).toBe(team.id);
+    expect(b.ok && b.asset.folder).toBe('');
+    expect(await assets.upload(png('c.png'), { folder: 'nope12' })).toEqual({ ok: false, message: 'That folder no longer exists' });
+    expect((await assets.list()).length).toBe(2);
+    const bKey = b.ok ? b.asset.key : '';
+    expect(await assets.update(bKey, { folder: other.ok ? other.folder.id : '' })).toMatchObject({ ok: true, asset: { folder: other.ok && other.folder.id } });
+
+    await assets.removeFolder(team.id);
+    expect((await assets.folders()).map((f) => f.name)).toEqual(['Archive']);
+    const byName = Object.fromEntries((await assets.list()).map((x) => [x.name, x.folder]));
+    expect(byName).toEqual({ 'a.png': '', 'b.png': other.ok && other.folder.id });
+  });
+
+  it('reads a malformed library document as no details, and reserves its collection name', async () => {
+    const { store, content } = setup();
+    const uploaded = await content.assets!.upload(png('cover.jpg'));
+    const key = uploaded.ok ? uploaded.asset.key : '';
+    await store.put('mortar-assets', {
+      id: 'mortar-assets',
+      slug: 'library',
+      fields: { folders: [{ id: 'f1' }, 'x', { id: 'f2', name: 'Kept' }], files: { [key]: { title: 5, alt: 'Ok', folder: 'f1' }, '../x': { title: 'no' } } },
+    });
+    expect(await content.assets!.folders()).toEqual([{ id: 'f2', name: 'Kept' }]);
+    expect((await content.assets!.list())[0]).toMatchObject({ title: '', alt: 'Ok', folder: '' });
+    const reserved = defineCollection({ name: 'mortar-assets', label: 'X', fields: {} });
+    expect(() => createContent({ store, blobs, collections: [reserved], bricks: [] })).toThrow('reserved');
   });
 });
