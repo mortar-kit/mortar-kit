@@ -45,6 +45,8 @@ export interface FieldInfo {
   readonly collection?: string;
   /** `image` and `file`: the kinds of uploaded file it accepts. */
   readonly accept?: readonly AssetKind[];
+  /** Kept out of the browser on public pages (see `Common.private`). */
+  readonly private?: boolean;
 }
 
 /**
@@ -66,11 +68,19 @@ interface Common<T> {
   help?: string;
   /** Value used when the data has none (e.g. when a brick is added). */
   default?: T;
+  /**
+   * A brick field only the server reads, such as where a form's messages
+   * go: an interactive brick's island (sent to the browser on a public
+   * page) leaves it out, so its component sees the default there. The
+   * admin and the brick's `action` still get the stored value.
+   */
+  private?: boolean;
 }
 
 /** Wraps `schema` with a default and attaches its UI description. */
-function field<T>(schema: v.GenericSchema<T>, fallback: T | (() => T), info: FieldInfo): Field<T> {
-  return v.pipe(v.optional(schema, fallback as never), v.metadata({ mortar: info })) as unknown as Field<T>;
+function field<T>(schema: v.GenericSchema<T>, fallback: T | (() => T), info: FieldInfo, o: { private?: boolean }): Field<T> {
+  const mortar = o.private ? { ...info, private: true } : info;
+  return v.pipe(v.optional(schema, fallback as never), v.metadata({ mortar })) as unknown as Field<T>;
 }
 
 /** Copies plain data so mutable defaults (arrays, objects) are never shared. */
@@ -106,12 +116,12 @@ function textInfo(kind: 'text' | 'textarea', o: TextOptions): FieldInfo {
 
 /** A single-line string. */
 function text(o: TextOptions): Field<string> {
-  return field(stringSchema(o), o.default ?? '', textInfo('text', o));
+  return field(stringSchema(o), o.default ?? '', textInfo('text', o), o);
 }
 
 /** A multi-line plain-text string. */
 function textarea(o: TextOptions): Field<string> {
-  return field(stringSchema(o), o.default ?? '', textInfo('textarea', o));
+  return field(stringSchema(o), o.default ?? '', textInfo('textarea', o), o);
 }
 
 /** A number, optionally bounded. Defaults to 0 clamped into [min, max]. */
@@ -120,12 +130,12 @@ function number(o: Common<number> & { min?: number; max?: number; step?: number 
   if (o.min !== undefined) s = v.pipe(s, v.minValue(o.min, `${o.label} must be at least ${o.min}`));
   if (o.max !== undefined) s = v.pipe(s, v.maxValue(o.max, `${o.label} must be at most ${o.max}`));
   const fallback = o.default ?? Math.min(Math.max(0, o.min ?? -Infinity), o.max ?? Infinity);
-  return field(s, fallback, { kind: 'number', label: o.label, help: o.help, min: o.min, max: o.max, step: o.step });
+  return field(s, fallback, { kind: 'number', label: o.label, help: o.help, min: o.min, max: o.max, step: o.step }, o);
 }
 
 /** A true/false toggle. */
 function boolean(o: Common<boolean>): Field<boolean> {
-  return field(v.boolean(), o.default ?? false, { kind: 'boolean', label: o.label, help: o.help });
+  return field(v.boolean(), o.default ?? false, { kind: 'boolean', label: o.label, help: o.help }, o);
 }
 
 const INTEGER_KEY = /^(0|[1-9]\d*)$/;
@@ -150,7 +160,7 @@ function select<const O extends Readonly<Record<string, string>>>(
     label: o.label,
     help: o.help,
     options: o.options,
-  });
+  }, o);
 }
 
 /** Site-relative paths, anchors, queries, mailto: and tel: links. */
@@ -171,7 +181,7 @@ const linkMessage = (label: string) => `${label} must be an http(s) URL or a pat
 /** A link: an absolute http(s) URL or a site-relative path such as `/about`. */
 function url(o: Common<string> & { placeholder?: string; required?: boolean }): Field<string> {
   const s = v.pipe(stringSchema(o), v.check(isLink, linkMessage(o.label)));
-  return field(s, o.default ?? '', { kind: 'url', label: o.label, help: o.help, placeholder: o.placeholder, required: o.required });
+  return field(s, o.default ?? '', { kind: 'url', label: o.label, help: o.help, placeholder: o.placeholder, required: o.required }, o);
 }
 
 /** An image: an uploaded asset (`asset` holds its key) or a URL, plus alt text and a title. */
@@ -243,7 +253,7 @@ function image(o: Common<Partial<Image>> & { required?: boolean }): Field<Image>
     help: o.help,
     required: o.required,
     accept: ['image'],
-  });
+  }, o);
 }
 
 /**
@@ -260,7 +270,7 @@ function file(o: Common<Partial<FileValue>> & { accept?: readonly AssetKind[]; r
     help: o.help,
     required: o.required,
     accept,
-  });
+  }, o);
 }
 
 /**
@@ -272,14 +282,14 @@ function list<T>(o: Common<T[]> & { of: Field<T>; min?: number; max?: number }):
   if (o.min !== undefined) s = v.pipe(s, v.minLength(o.min, `${o.label} needs at least ${o.min} items`));
   if (o.max !== undefined) s = v.pipe(s, v.maxLength(o.max, `${o.label} allows at most ${o.max} items`));
   const fallback = o.default === undefined ? () => Array.from({ length: o.min ?? 0 }, () => defaultOf(o.of)) : fresh(o.default);
-  return field(s, fallback, { kind: 'list', label: o.label, help: o.help, item: o.of, min: o.min, max: o.max });
+  return field(s, fallback, { kind: 'list', label: o.label, help: o.help, item: o.of, min: o.min, max: o.max }, o);
 }
 
 /** A group of named fields, e.g. the shape of one item in a `list`. */
 function object<const F extends Fields>(o: Common<InferFields<F>> & { fields: F }): Field<InferFields<F>> {
   const s = v.object(o.fields) as unknown as v.GenericSchema<InferFields<F>>;
   const fallback = o.default === undefined ? () => defaultsOf(o.fields) : fresh(o.default);
-  return field(s, fallback, { kind: 'object', label: o.label, help: o.help, fields: o.fields });
+  return field(s, fallback, { kind: 'object', label: o.label, help: o.help, fields: o.fields }, o);
 }
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -296,7 +306,7 @@ function isDate(s: string): boolean {
 /** A calendar date, stored as `YYYY-MM-DD` (so dates sort as strings), or '' for none. */
 function date(o: Common<string> & { required?: boolean }): Field<string> {
   const s = v.pipe(stringSchema(o), v.check(isDate, `${o.label} must be a date (YYYY-MM-DD)`));
-  return field(s, o.default ?? '', { kind: 'date', label: o.label, help: o.help, required: o.required });
+  return field(s, o.default ?? '', { kind: 'date', label: o.label, help: o.help, required: o.required }, o);
 }
 
 /**
@@ -311,7 +321,7 @@ function reference(o: Common<string> & { collection: string; required?: boolean 
     help: o.help,
     required: o.required,
     collection: o.collection,
-  });
+  }, o);
 }
 
 /** A reference found in some data: where it is, which collection, and the id it holds. */

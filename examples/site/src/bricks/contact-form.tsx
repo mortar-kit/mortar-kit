@@ -1,9 +1,10 @@
 // Example brick that handles its own form: a contact form. Its `action`
 // runs on the server (Mortar reads the entry's stored data, so the "Send
 // to" address can't be swapped by a visitor), checks the post and emails
-// it; the component shows the result from `props.submission`. Without
-// JavaScript the post comes back to the page with the result; with it,
-// only this brick updates. The mailer comes from the action's context
+// it; the component shows the result from `props.submission`. It's
+// `interactive`: on a public page it hydrates on its own (an island), so
+// the form posts in the background and only this brick updates; without
+// JavaScript the post comes back to the page with the result. The mailer comes from the action's context
 // (src/server/mail.ts), so this module, which the browser loads too,
 // imports nothing from the server.
 import { ActionForm, defineBrick, fields } from '@mortar-kit/core';
@@ -27,6 +28,7 @@ const text = (form: FormData, name: string) => {
 export const contactForm = defineBrick({
   name: 'contact-form',
   label: 'Contact form',
+  interactive: true,
   schema: {
     heading: fields.text({ label: 'Heading', default: 'Get in touch' }),
     intro: fields.textarea({ label: 'Intro', default: 'Questions, ideas, a bug you found: send us a message.' }),
@@ -36,7 +38,8 @@ export const contactForm = defineBrick({
       help: 'Shown in place of the form once a message is sent.',
       default: 'Thanks! Your message is on its way, and we will reply by email.',
     }),
-    to: fields.text({ label: 'Send to', help: "Where messages go. Empty: the site's inbox (CONTACT_TO)." }),
+    // Private: the island sent to the browser leaves it out, so the address stays off the public page.
+    to: fields.text({ label: 'Send to', help: "Where messages go. Empty: the site's inbox (CONTACT_TO).", private: true }),
   },
   async action({ form, data, context }): Promise<ContactResult> {
     // The honeypot: hidden from people, so a value means a bot. Pretend it worked.

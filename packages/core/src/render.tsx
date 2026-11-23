@@ -10,17 +10,19 @@
 // Such pages are always sent as one settled document: streamed content
 // needs a script to swap it in.
 //
-// Islands (hydrating single bricks on an otherwise static page) will need
-// more than this yes/no: the static page stays under <NoHydration> with each
-// interactive brick inside <Hydration id={entry.id}>, the page data (not the
-// path) decides which islands render, island pages keep their hydration
-// data and their islands' chunks (so no `noScripts`/`stylesOnly` there), and
-// a separate client entry hydrates each island root.
+// Islands: an `interactive` brick on such a page renders in its own
+// hydration zone (see islands.tsx). Which page has one is only known once it
+// has rendered, so the hydration bootstrap and the client entry (which
+// calls `hydrateIslands`) are added to the settled HTML then. Solid's
+// hydration data stays off (`noScripts`): it would also carry data for the
+// static page (its boundaries), and an island brings its own (the payload
+// on its element), so a page without islands still has no script at all.
 import type { DevAssetResolver, StartServerRenderContext, ViteManifest } from '@solidjs/vite-plugin';
-import { getRequestEvent, renderToStream, type JSX } from '@solidjs/web';
+import { generateHydrationScript, getRequestEvent, renderToStream, type JSX } from '@solidjs/web';
 import { NoHydration } from 'solid-js';
 
 import { setRenderedPage } from './ClientScripts.tsx';
+import { islandCount } from './islands.tsx';
 
 /** The asset manifest the server entry gets from `virtual:solid-manifest`. */
 export type RenderManifest = ViteManifest | DevAssetResolver;
@@ -41,6 +43,8 @@ export interface RenderOptions {
    * Which pages load JavaScript and hydrate. Default `['/admin']`: the
    * editor and its preview hydrate, public pages are plain HTML. Prefixes
    * match whole path segments, case-insensitively (as routers do).
+   * Other pages still load the client entry when they show an interactive
+   * brick (an island), to hydrate just those bricks.
    */
   hydrate?: HydrateOption;
 }
@@ -65,19 +69,34 @@ export function createRender(options: RenderOptions): Render {
   return (request, context = {} as StartServerRenderContext) => {
     const hydrate = hydrates(new URL(request.url).pathname);
     const nonce = typeof context.nonce === 'string' ? context.nonce : context.nonce?.script || undefined;
-    setRenderedPage(getRequestEvent()?.request ?? request, { hydrate, nonce: hydrate ? nonce : undefined });
-    const stream = renderToStream(
-      () => (hydrate ? options.app() : <NoHydration>{options.app()}</NoHydration>),
-      {
-        manifest: hydrate ? options.manifest : staticManifest,
-        nonce: context.nonce ?? undefined,
-        signal: request.signal,
-        noScripts: !hydrate,
-      },
-    );
+    const key = getRequestEvent()?.request ?? request;
+    setRenderedPage(key, { hydrate, nonce: hydrate ? nonce : undefined });
+    const stream = renderToStream(() => (hydrate ? options.app() : <NoHydration>{options.app()}</NoHydration>), {
+      manifest: hydrate ? options.manifest : staticManifest,
+      nonce: context.nonce ?? undefined,
+      signal: request.signal,
+      noScripts: !hydrate,
+    });
+    if (hydrate) return stream;
     // A plain promise: the plugin waits for it whatever the render mode.
-    return hydrate ? stream : stream.then((html) => html);
+    return stream.then((html) => (islandCount(key) > 0 ? withIslandScripts(html, context.clientEntry || '/src/entry-client.tsx', nonce) : html));
   };
+}
+
+/**
+ * `html` with the hydration bootstrap and the client entry at the end of its
+ * head. The entry isn't `async`: it runs once the document is parsed, so the
+ * islands (and Solid's data for them, at the end of the body) are there.
+ */
+function withIslandScripts(html: string, src: string, nonce: string | undefined): string {
+  const nonceAttr = nonce ? ` nonce="${escapeAttribute(nonce)}"` : '';
+  const scripts = `${generateHydrationScript({ nonce })}<script type="module" src="${escapeAttribute(src)}"${nonceAttr}></script>`;
+  const at = html.indexOf('</head>');
+  return at < 0 ? scripts + html : html.slice(0, at) + scripts + html.slice(at);
+}
+
+function escapeAttribute(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
 /** `hydrate` as a test of a path. */

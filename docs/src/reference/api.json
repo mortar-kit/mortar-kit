@@ -2150,7 +2150,7 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "function",
-      "summary": "A form that posts to its brick's `action`. Use it in the component of a\nbrick that declares one. It's a plain `<form method=\"post\">`, so it works\nwithout JavaScript; the router (or whatever the app's `BrickActions`\nuses) can take over the submit when the page has scripts.",
+      "summary": "A form that posts to its brick's `action`. Use it in the component of a\nbrick that declares one. It's a plain `<form method=\"post\">`, so it works\nwithout JavaScript; the router (or whatever the app's `BrickActions`\nuses) can take over the submit when the page has scripts, and on an\nisland `BrickActions.submit` sends it in the background.",
       "signature": "function ActionForm(props: ActionFormProps): Element",
       "params": [
         {
@@ -2680,6 +2680,13 @@
           "doc": ""
         },
         {
+          "name": "interactive",
+          "optional": false,
+          "readonly": true,
+          "type": "boolean",
+          "doc": "Whether the brick hydrates on its own on pages without JavaScript (see `BrickDefinition.interactive`)."
+        },
+        {
           "name": "component",
           "optional": false,
           "readonly": true,
@@ -2730,6 +2737,13 @@
           "readonly": false,
           "type": "(ref: () => EntryRef) => () => Submission<unknown> | undefined",
           "doc": "The entry's latest submission, for its component. Called once per\nentry while rendering (hooks are fine); `ref` is an accessor because an\nentry can move to another document in the admin preview."
+        },
+        {
+          "name": "submit",
+          "optional": true,
+          "readonly": false,
+          "type": "(ref: EntryRef, form: FormData) => void",
+          "doc": "Sends an entry's form in the background. When present, `<ActionForm>`\nstops the browser's own post and calls it; without it, the post goes to\n`action(ref)` (where a router may take it over). `islandActions` has it."
         }
       ]
     },
@@ -2785,6 +2799,13 @@
           "doc": "Handles a post of the brick's form (`<ActionForm>` in its component).\nRuns on the server only, through the app's runner (`Content.runAction`),\nwhich reads the entry's stored `data`; what it returns (plain JSON)\nreaches the component as `props.submission.result`. Without\nJavaScript the post reloads the page with the result; with it, only\nthe brick updates. The brick's module also reaches the browser, so\ntake server-only services from `context`, not from imports. Write it\nbefore `component`, so the result gets its type."
         },
         {
+          "name": "interactive",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Runs the brick in the browser (an island) on pages that are otherwise\nplain HTML: the page loads JavaScript only when it shows a brick like\nthis, and only this brick hydrates; the rest of the page stays static.\nIts form (`<ActionForm>`) then posts in the background and updates only\nthe brick. Its `data`, what `load` returned and its latest submission\nare sent along in the HTML (plain JSON), and `load` doesn't run again in\nthe browser. Default false: the brick is server-rendered HTML. Pages\nthat hydrate as a whole (the admin) render it like any other brick."
+        },
+        {
           "name": "component",
           "optional": false,
           "readonly": false,
@@ -2792,6 +2813,14 @@
           "doc": "Renders the brick. Read `props.data.x` (and `props.loaded`, `props.submission`); don't destructure props."
         }
       ]
+    },
+    {
+      "name": "BrickLoader",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Loads one brick's module on demand and returns the brick (see `lazyBricks`).",
+      "signature": "type BrickLoader = () => Promise<AnyBrick>"
     },
     {
       "name": "brickMap",
@@ -3675,6 +3704,13 @@
           "readonly": true,
           "type": "readonly AssetKind[]",
           "doc": "`image` and `file`: the kinds of uploaded file it accepts."
+        },
+        {
+          "name": "private",
+          "optional": true,
+          "readonly": true,
+          "type": "boolean",
+          "doc": "Kept out of the browser on public pages (see `Common.private`)."
         }
       ]
     },
@@ -3901,6 +3937,75 @@
       "examples": []
     },
     {
+      "name": "hasIslands",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "True when the page (or `root`) has islands: the client entry's test for calling `hydrateIslands`.",
+      "signature": "function hasIslands(root?: ParentNode): boolean",
+      "params": [
+        {
+          "name": "root",
+          "type": "ParentNode",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "boolean",
+      "examples": []
+    },
+    {
+      "name": "hydrateIslands",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Hydrates every island on the page: each interactive brick the server\nrendered on a page without JavaScript, on its own. Call it from the\nclient entry on pages that have islands (`hasIslands()`), instead of\nhydrating the whole document. With loaders for `bricks`, it loads the\nbricks the page's islands use first, then hydrates them all at once.\nResolves to a function that disposes them.",
+      "signature": "function hydrateIslands(options: HydrateIslandsOptions): Promise<() => void>",
+      "params": [
+        {
+          "name": "options",
+          "type": "HydrateIslandsOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Promise<() => void>",
+      "examples": [
+        "```ts\n// src/entry-client.tsx\nif (hasIslands()) {\n  hydrateIslands({\n    bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')),\n    actions: islandActions({ action: brickActions.action, run: runBrickAction }),\n  });\n} else {\n  const { Root } = await import('./Root.tsx');\n  hydrate(() => <Root />, document);\n}\n```"
+      ]
+    },
+    {
+      "name": "HydrateIslandsOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `hydrateIslands`.",
+      "signature": "interface HydrateIslandsOptions",
+      "members": [
+        {
+          "name": "bricks",
+          "optional": false,
+          "readonly": false,
+          "type": "readonly AnyBrick[] | Readonly<Record<string, BrickLoader>>",
+          "doc": "The site's bricks: the list the server renders with, or loaders by\nbrick name (`lazyBricks(import.meta.glob(...))`), so a page downloads\nonly the bricks of its own islands."
+        },
+        {
+          "name": "actions",
+          "optional": true,
+          "readonly": false,
+          "type": "BrickActions",
+          "doc": "How island forms post: `islandActions(...)`. Without it, forms post as plain HTML forms."
+        },
+        {
+          "name": "root",
+          "optional": true,
+          "readonly": false,
+          "type": "ParentNode",
+          "doc": "Where to look for islands. Default: the document."
+        }
+      ]
+    },
+    {
       "name": "Image",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -3945,6 +4050,102 @@
       "kind": "type",
       "summary": "The data type described by a record of fields.",
       "signature": "type InferFields<F extends Fields> = { -readonly [K in keyof F]: v.InferOutput<F[K]> }"
+    },
+    {
+      "name": "islandActions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "`BrickActions` for islands (interactive bricks on pages without the\nrouter): a form post calls `run` in the background and only its brick\nupdates, pending until the result (or error) is back. Pass it to\n`hydrateIslands`.",
+      "signature": "function islandActions(options: IslandActionsOptions): BrickActions",
+      "params": [
+        {
+          "name": "options",
+          "type": "IslandActionsOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "BrickActions",
+      "examples": [
+        "```ts\n// src/islands.ts; runBrickAction is the \"use server\" function brickActions posts to.\nhydrateIslands({ bricks, actions: islandActions({ action: brickActions.action, run: runBrickAction }) });\n```"
+      ]
+    },
+    {
+      "name": "IslandActionsOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What `islandActions` needs from the app.",
+      "signature": "interface IslandActionsOptions",
+      "members": [
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "(ref: EntryRef) => string | SerializableAttributeValue",
+          "doc": "The forms' `action` attribute, as on the server (`brickActions.action`), for a post before the island hydrates."
+        },
+        {
+          "name": "run",
+          "optional": false,
+          "readonly": false,
+          "type": "(ref: EntryRef, form: FormData) => Promise<unknown>",
+          "doc": "Runs an entry's action on the server: the app's server function that calls `Content.runAction`."
+        }
+      ]
+    },
+    {
+      "name": "IslandPayload",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What an island's element carries to the browser (as JSON).",
+      "signature": "interface IslandPayload",
+      "members": [
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The island's hydration id, unique in the page."
+        },
+        {
+          "name": "brick",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The brick's name."
+        },
+        {
+          "name": "data",
+          "optional": false,
+          "readonly": false,
+          "type": "unknown",
+          "doc": "The entry's normalized data."
+        },
+        {
+          "name": "loaded",
+          "optional": true,
+          "readonly": false,
+          "type": "unknown",
+          "doc": "What the brick's `load` returned."
+        },
+        {
+          "name": "ref",
+          "optional": true,
+          "readonly": false,
+          "type": "EntryRef",
+          "doc": "Where the entry is stored, for its form."
+        },
+        {
+          "name": "submission",
+          "optional": true,
+          "readonly": false,
+          "type": "Submission<unknown>",
+          "doc": "The entry's latest submission when the page was rendered (after a post without JavaScript)."
+        }
+      ]
     },
     {
       "name": "Issue",
@@ -4023,6 +4224,26 @@
       ],
       "returns": "boolean",
       "examples": []
+    },
+    {
+      "name": "lazyBricks",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Loaders by brick name, from your brick modules as `import.meta.glob`\ngives them (unloaded): each file is named after its brick\n(`bricks/contact-form.tsx` exports the brick named `contact-form`).\nWith `hydrateIslands`, each brick becomes its own chunk, loaded only on\npages that show it.",
+      "signature": "function lazyBricks(modules: Readonly<Record<string, () => Promise<unknown>>>): Record<string, BrickLoader>",
+      "params": [
+        {
+          "name": "modules",
+          "type": "Readonly<Record<string, () => Promise<unknown>>>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Record<string, BrickLoader>",
+      "examples": [
+        "```ts\nhydrateIslands({ bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')) });\n```"
+      ]
     },
     {
       "name": "ListOptions",
@@ -4724,7 +4945,7 @@
           "optional": true,
           "readonly": false,
           "type": "HydrateOption",
-          "doc": "Which pages load JavaScript and hydrate. Default `['/admin']`: the\neditor and its preview hydrate, public pages are plain HTML. Prefixes\nmatch whole path segments, case-insensitively (as routers do)."
+          "doc": "Which pages load JavaScript and hydrate. Default `['/admin']`: the\neditor and its preview hydrate, public pages are plain HTML. Prefixes\nmatch whole path segments, case-insensitively (as routers do).\nOther pages still load the client entry when they show an interactive\nbrick (an island), to hydrate just those bricks."
         }
       ]
     },

@@ -1,10 +1,12 @@
 // Brick forms on the client: <ActionForm> posts where the app's BrickActions
-// says, and a submission reaches only its own entry's component.
+// says, and a submission reaches only its own entry's component. On an
+// island, islandActions sends the form in the background and keeps each
+// entry's latest submission.
 import { render } from '@solidjs/testing-library';
 import { createSignal, flush } from 'solid-js';
 import { describe, expect, it } from 'vitest';
 
-import { BrickActionsContext, ActionForm, sameEntry, type BrickActions, type EntryRef } from './actions.tsx';
+import { BrickActionsContext, ActionForm, islandActions, sameEntry, type BrickActions, type EntryRef } from './actions.tsx';
 import { defineBrick, type Submission } from './brick.ts';
 import { fields } from './fields.ts';
 import { PageView } from './PageView.tsx';
@@ -118,5 +120,73 @@ describe('sameEntry', () => {
     expect(sameEntry({ ...ref, entry: 'two' }, ref)).toBe(false);
     expect(sameEntry(null, ref)).toBe(false);
     expect(sameEntry(ref, undefined)).toBe(false);
+  });
+});
+
+describe('islandActions', () => {
+  const page = (actions: BrickActions) =>
+    render(() => (
+      <BrickActionsContext value={actions}>
+        <PageView bricks={[contact]} entries={entries} doc={{ collection: 'pages', id: 'home' }} />
+      </BrickActionsContext>
+    ));
+
+  it("sends an entry's form in the background, pending until the result is back", async () => {
+    const posts: [EntryRef, string | null][] = [];
+    let answer!: (value: unknown) => void;
+    const actions = islandActions({
+      action: (ref) => `/post/${ref.entry}`,
+      run: (ref, form) => {
+        posts.push([ref, form.get('note') as string | null]);
+        return new Promise((resolve) => (answer = resolve));
+      },
+    });
+    const { container } = page(actions);
+    const status = () => [...container.querySelectorAll('.status')].map((p) => p.textContent);
+    const form = container.querySelectorAll('form')[1]!;
+    expect(form.getAttribute('action')).toBe('/post/two');
+    const note = document.createElement('input');
+    note.name = 'note';
+    note.value = 'hi';
+    form.append(note);
+    const submit = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submit);
+    expect(submit.defaultPrevented).toBe(true);
+    expect(posts).toEqual([[{ collection: 'pages', doc: 'home', entry: 'two' }, 'hi']]);
+    flush();
+    expect(status()).toEqual(['idle', 'sending']);
+    answer({ sent: true });
+    await Promise.resolve();
+    await Promise.resolve();
+    flush();
+    expect(status()).toEqual(['idle', 'sent']);
+  });
+
+  it('unwraps a whole response from a server function that sets headers', async () => {
+    const actions = islandActions({ action: () => '/post', run: async () => new Response(null, { status: 200 }) });
+    const ref = { collection: 'pages', doc: 'home', entry: 'one' };
+    const latest = actions.useSubmission(() => ref);
+    await actions.submit!(ref, new FormData());
+    flush();
+    expect(latest()).toEqual({ pending: false, result: undefined });
+  });
+
+  it('keeps what the action threw', async () => {
+    const failure = new Error('nope');
+    const actions = islandActions({ action: () => '/post', run: () => Promise.reject(failure) });
+    const ref = { collection: 'pages', doc: 'home', entry: 'one' };
+    const latest = actions.useSubmission(() => ref);
+    await actions.submit!(ref, new FormData());
+    flush();
+    expect(latest()?.pending).toBe(false);
+    expect(latest()?.error).toBeDefined();
+  });
+
+  it("leaves the browser's post alone with BrickActions that have no submit", () => {
+    const { actions } = fakeActions();
+    const { container } = page(actions);
+    const submit = new Event('submit', { bubbles: true, cancelable: true });
+    container.querySelector('form')!.dispatchEvent(submit);
+    expect(submit.defaultPrevented).toBe(false);
   });
 });
