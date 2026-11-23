@@ -93,7 +93,11 @@ further construction puns).
   not async) before `</head>` of the settled HTML. Fields marked
   `private: true` are reset to their defaults in the payload (and in the
   server's island render, so both match). `hydrateIslands({ bricks, actions })`
-  hydrates each with `hydrate(..., el, { renderId })`; `islandActions({ action,
+  (async) takes the brick list or loaders by name (`lazyBricks(import.meta.glob(...))`:
+  files named after their brick, one chunk each), loads the page's island
+  bricks first, then hydrates them all at once (Solid ends hydration after the
+  first roots finish, so a later `hydrate` would render afresh), each with
+  `hydrate(..., el, { renderId })`; `islandActions({ action,
   run })` gives `BrickActions.submit`, which `<ActionForm>` calls instead of
   posting, and decodes the server function's answer (a whole `Response`
   when it used `respond`, via `decodeResponse`).

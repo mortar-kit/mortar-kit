@@ -24,7 +24,7 @@ export {
   type EntryRef,
   type IslandActionsOptions,
 } from './actions.tsx';
-export { hasIslands, hydrateIslands, type HydrateIslandsOptions, type IslandPayload } from './islands.tsx';
+export { hasIslands, hydrateIslands, lazyBricks, type BrickLoader, type HydrateIslandsOptions, type IslandPayload } from './islands.tsx';
 export {
   brickMap,
   defineBrick,

@@ -188,10 +188,9 @@ so; ask before building on them if it matters:
 ### Islands (built 2026-11-23)
 
 `defineBrick({ interactive: true })`; see CLAUDE.md "Islands". Follow-ups:
-- Code splitting per island brick: `hydrateIslands` takes the whole bricks
-  list, so the island chunk holds every brick's component (fine for the
-  example). A lazy map (`{ name: () => import(...) }`) would load only the
-  islands on the page.
+- Island pages load only their bricks (`lazyBricks`). Most of what an
+  island page downloads is Solid's web runtime and the server-function
+  client (~140 kB raw, ~50 kB gzip), shared with the admin.
 - Async inside an island's component has no hydration data (static pages
   keep `noScripts`); only `load` results are carried. Lifting that means
   serializing just the zones' data.

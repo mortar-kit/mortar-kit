@@ -7,7 +7,8 @@
 // its own id, so its hydration keys can't collide with another island's.
 // createRender sees that the page has islands and adds Solid's hydration
 // bootstrap and the client entry, which calls `hydrateIslands`: each island
-// hydrates on its own, the rest of the page is never touched.
+// hydrates on its own, the rest of the page is never touched. Given loaders
+// (`lazyBricks`), it downloads only the bricks the page's islands use.
 //
 // `islandView` is the tree inside the zone, the same on both sides (any
 // difference would shift the hydration keys). The brick's data and loaded
@@ -121,10 +122,17 @@ export function islandCount(request: Request): number {
   return islandIds.get(request)?.size ?? 0;
 }
 
+/** Loads one brick's module on demand and returns the brick (see `lazyBricks`). */
+export type BrickLoader = () => Promise<AnyBrick>;
+
 /** Options for `hydrateIslands`. */
 export interface HydrateIslandsOptions {
-  /** The site's bricks (the same list the server renders with). */
-  bricks: readonly AnyBrick[];
+  /**
+   * The site's bricks: the list the server renders with, or loaders by
+   * brick name (`lazyBricks(import.meta.glob(...))`), so a page downloads
+   * only the bricks of its own islands.
+   */
+  bricks: readonly AnyBrick[] | Readonly<Record<string, BrickLoader>>;
   /** How island forms post: `islandActions(...)`. Without it, forms post as plain HTML forms. */
   actions?: BrickActions;
   /** Where to look for islands. Default: the document. */
@@ -137,32 +145,72 @@ export function hasIslands(root: ParentNode = document): boolean {
 }
 
 /**
+ * Loaders by brick name, from your brick modules as `import.meta.glob`
+ * gives them (unloaded): each file is named after its brick
+ * (`bricks/contact-form.tsx` exports the brick named `contact-form`).
+ * With `hydrateIslands`, each brick becomes its own chunk, loaded only on
+ * pages that show it.
+ *
+ * @example
+ * ```ts
+ * hydrateIslands({ bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')) });
+ * ```
+ */
+export function lazyBricks(modules: Readonly<Record<string, () => Promise<unknown>>>): Record<string, BrickLoader> {
+  const loaders: Record<string, BrickLoader> = {};
+  for (const [path, load] of Object.entries(modules)) {
+    const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
+    loaders[name] = async () => {
+      const module = (await load()) as Record<string, unknown>;
+      const brick = Object.values(module).find((value) => isBrick(value) && value.name === name);
+      if (!brick) throw new Error(`Mortar: ${path} exports no brick named "${name}" (name brick files after their brick)`);
+      return brick as AnyBrick;
+    };
+  }
+  return loaders;
+}
+
+function isBrick(value: unknown): value is AnyBrick {
+  return typeof value === 'object' && value !== null && typeof (value as AnyBrick).name === 'string' && typeof (value as AnyBrick).component === 'function';
+}
+
+/**
  * Hydrates every island on the page: each interactive brick the server
  * rendered on a page without JavaScript, on its own. Call it from the
  * client entry on pages that have islands (`hasIslands()`), instead of
- * hydrating the whole document. Returns a function that disposes them.
+ * hydrating the whole document. With loaders for `bricks`, it loads the
+ * bricks the page's islands use first, then hydrates them all at once.
+ * Resolves to a function that disposes them.
  *
  * @example
  * ```ts
  * // src/entry-client.tsx
  * if (hasIslands()) {
- *   const { bricks } = await import('./bricks/index.ts');
- *   hydrateIslands({ bricks, actions: islandActions({ action: brickActions.action, run: runBrickAction }) });
+ *   hydrateIslands({
+ *     bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')),
+ *     actions: islandActions({ action: brickActions.action, run: runBrickAction }),
+ *   });
  * } else {
  *   const { Root } = await import('./Root.tsx');
  *   hydrate(() => <Root />, document);
  * }
  * ```
  */
-export function hydrateIslands(options: HydrateIslandsOptions): () => void {
-  const byName = brickMap(options.bricks);
-  const actions = options.actions ?? null;
-  const disposers: (() => void)[] = [];
+export async function hydrateIslands(options: HydrateIslandsOptions): Promise<() => void> {
+  const islands: { element: HTMLElement; payload: IslandPayload }[] = [];
   for (const element of (options.root ?? document).querySelectorAll<HTMLElement>(`[${ISLAND_ATTRIBUTE}]`)) {
     const payload = readPayload(element);
-    const brick = payload && byName.get(payload.brick);
-    if (!payload || !brick) {
-      console.warn(`Mortar: an island of brick "${payload?.brick ?? '?'}" can't hydrate: no such brick, or its data is unreadable`);
+    if (payload) islands.push({ element, payload });
+    else console.warn('Mortar: an island has unreadable data and is left as it is');
+  }
+  // Every brick first: Solid ends hydration once the first roots are done, and later ones would render afresh.
+  const byName = await resolveBricks(options.bricks, new Set(islands.map((island) => island.payload.brick)));
+  const actions = options.actions ?? null;
+  const disposers: (() => void)[] = [];
+  for (const { element, payload } of islands) {
+    const brick = byName.get(payload.brick);
+    if (!brick) {
+      console.warn(`Mortar: an island of brick "${payload.brick}" can't hydrate: no such brick`);
       continue;
     }
     // Outside the hydration root, so the hook's own computations don't take hydration keys.
@@ -190,6 +238,25 @@ export function hydrateIslands(options: HydrateIslandsOptions): () => void {
   return () => {
     for (const dispose of disposers) dispose();
   };
+}
+
+/** The bricks named `names`, from a list or loaded through their loaders (a brick that fails to load is left out, with a warning). */
+async function resolveBricks(bricks: HydrateIslandsOptions['bricks'], names: Set<string>): Promise<ReadonlyMap<string, AnyBrick>> {
+  if (Array.isArray(bricks)) return brickMap(bricks as readonly AnyBrick[]);
+  const loaders = bricks as Readonly<Record<string, BrickLoader>>;
+  const loaded = await Promise.all(
+    [...names].map(async (name) => {
+      const load = Object.hasOwn(loaders, name) ? loaders[name] : undefined;
+      if (!load) return undefined;
+      try {
+        return await load();
+      } catch (error) {
+        console.warn(`Mortar: brick "${name}" didn't load`, error);
+        return undefined;
+      }
+    }),
+  );
+  return brickMap(loaded.filter((brick) => brick !== undefined));
 }
 
 function readPayload(element: HTMLElement): IslandPayload | null {

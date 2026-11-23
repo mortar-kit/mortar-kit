@@ -2815,6 +2815,14 @@
       ]
     },
     {
+      "name": "BrickLoader",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Loads one brick's module on demand and returns the brick (see `lazyBricks`).",
+      "signature": "type BrickLoader = () => Promise<AnyBrick>"
+    },
+    {
       "name": "brickMap",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -3951,8 +3959,8 @@
       "module": "@mortar-kit/core",
       "deprecated": false,
       "kind": "function",
-      "summary": "Hydrates every island on the page: each interactive brick the server\nrendered on a page without JavaScript, on its own. Call it from the\nclient entry on pages that have islands (`hasIslands()`), instead of\nhydrating the whole document. Returns a function that disposes them.",
-      "signature": "function hydrateIslands(options: HydrateIslandsOptions): () => void",
+      "summary": "Hydrates every island on the page: each interactive brick the server\nrendered on a page without JavaScript, on its own. Call it from the\nclient entry on pages that have islands (`hasIslands()`), instead of\nhydrating the whole document. With loaders for `bricks`, it loads the\nbricks the page's islands use first, then hydrates them all at once.\nResolves to a function that disposes them.",
+      "signature": "function hydrateIslands(options: HydrateIslandsOptions): Promise<() => void>",
       "params": [
         {
           "name": "options",
@@ -3961,9 +3969,9 @@
           "doc": ""
         }
       ],
-      "returns": "() => void",
+      "returns": "Promise<() => void>",
       "examples": [
-        "```ts\n// src/entry-client.tsx\nif (hasIslands()) {\n  const { bricks } = await import('./bricks/index.ts');\n  hydrateIslands({ bricks, actions: islandActions({ action: brickActions.action, run: runBrickAction }) });\n} else {\n  const { Root } = await import('./Root.tsx');\n  hydrate(() => <Root />, document);\n}\n```"
+        "```ts\n// src/entry-client.tsx\nif (hasIslands()) {\n  hydrateIslands({\n    bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')),\n    actions: islandActions({ action: brickActions.action, run: runBrickAction }),\n  });\n} else {\n  const { Root } = await import('./Root.tsx');\n  hydrate(() => <Root />, document);\n}\n```"
       ]
     },
     {
@@ -3978,8 +3986,8 @@
           "name": "bricks",
           "optional": false,
           "readonly": false,
-          "type": "readonly AnyBrick[]",
-          "doc": "The site's bricks (the same list the server renders with)."
+          "type": "readonly AnyBrick[] | Readonly<Record<string, BrickLoader>>",
+          "doc": "The site's bricks: the list the server renders with, or loaders by\nbrick name (`lazyBricks(import.meta.glob(...))`), so a page downloads\nonly the bricks of its own islands."
         },
         {
           "name": "actions",
@@ -4216,6 +4224,26 @@
       ],
       "returns": "boolean",
       "examples": []
+    },
+    {
+      "name": "lazyBricks",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Loaders by brick name, from your brick modules as `import.meta.glob`\ngives them (unloaded): each file is named after its brick\n(`bricks/contact-form.tsx` exports the brick named `contact-form`).\nWith `hydrateIslands`, each brick becomes its own chunk, loaded only on\npages that show it.",
+      "signature": "function lazyBricks(modules: Readonly<Record<string, () => Promise<unknown>>>): Record<string, BrickLoader>",
+      "params": [
+        {
+          "name": "modules",
+          "type": "Readonly<Record<string, () => Promise<unknown>>>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Record<string, BrickLoader>",
+      "examples": [
+        "```ts\nhydrateIslands({ bricks: lazyBricks(import.meta.glob('./bricks/*.tsx')) });\n```"
+      ]
     },
     {
       "name": "ListOptions",
