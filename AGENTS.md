@@ -32,6 +32,14 @@ further construction puns).
   move or new-document save (no migration). `Content.move` is optional on
   the interface (the admin hides reorder controls without it);
   `createContent` always has it.
+- **URLs** (2026-11-23): a collection's optional `url` pattern (one `:slug`
+  segment, router syntax; `home` names the slug at the prefix, e.g. `/`)
+  is the one place a document's address is written: the app's routes take
+  `collection.url`, links use `collection.urlOf(doc)`, the admin's preview
+  links default to `resolveUrl(collections, url)` (most static segments
+  win), `sitemap(content, collections, { origin })` builds the XML, and
+  `createContent` refuses slugs another collection's pattern starts with
+  (`/posts/:slug` takes `posts` from `/:slug`). Mortar still doesn't route.
 - **Storage**: a dumb `ContentStore` adapter (`list/get/put/remove` raw
   documents by collection and slug) behind `createContent`, which applies
   every rule: normalize on read, validate on save, unique slugs, renames move
@@ -142,8 +150,9 @@ further construction puns).
 - `examples/site`: private app (`@solidjs/vite-plugin` start mode, SSR with
   `renderMode: 'async'`, so pages and head tags are in the HTML). Mortar ships
   no bricks or collections of its own; the example declares pages, posts,
-  products (orderable) and categories (`src/collections.ts`), bricks (two load data:
-  latest posts, a product grid), and layouts (`src/layouts/`) shared by its
+  products (orderable) and categories (`src/collections.ts`, each with a
+  `url` that its router, links and `/sitemap.xml` use), bricks (two load
+  data: latest posts, a product grid), and layouts (`src/layouts/`) shared by its
   routes and the admin preview. The contact-form brick has an `action` (see
   Brick actions); `src/actions.ts` wires brick forms to the router, and
   `src/server/mail.ts` gives actions a mailer, the inbox (`CONTACT_TO`) and

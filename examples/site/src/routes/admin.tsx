@@ -6,6 +6,8 @@
 // tab, and this route guards router navigation (links, back/forward, and
 // switching documents, which changes the URL). Only signed-in admins get
 // here (src/middleware.ts); the rail shows who, with Sign out.
+// ⌘/Ctrl-clicked links in the preview open the document they show, by the
+// collections' `url` patterns.
 import { Admin, type AdminLocation } from '@mortar-kit/admin';
 import type { Content } from '@mortar-kit/core';
 import { useBeforeLeave, useSearchParams, type BeforeLeaveEventArgs } from '@solidjs/router';
@@ -14,16 +16,6 @@ import { createMemo, createSignal } from 'solid-js';
 import { bricks } from '../bricks/index.ts';
 import { collections } from '../collections.ts';
 import { adminContent, getUser } from '../content.ts';
-
-/** The document a URL of this site shows (see router.ts), so ⌘/Ctrl-clicking a link in the preview opens it. */
-function resolveLink(url: URL): { collection: string; slug: string } | undefined {
-  const parts = url.pathname.split('/').filter(Boolean);
-  if (parts.length === 0) return { collection: 'pages', slug: 'home' };
-  if (parts.length === 1 && parts[0] !== 'posts' && parts[0] !== 'admin') return { collection: 'pages', slug: parts[0]! };
-  const byPrefix: Record<string, string> = { posts: 'posts', products: 'products', categories: 'categories' };
-  if (parts.length === 2 && byPrefix[parts[0]!]) return { collection: byPrefix[parts[0]!]!, slug: parts[1]! };
-  return undefined;
-}
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -98,7 +90,6 @@ export default function AdminRoute() {
       location={location()}
       onNavigate={(to) => setParams({ collection: to.collection, id: to.id ?? null, view: to.view ?? null })}
       onDirtyChange={setDirty}
-      resolveLink={resolveLink}
       user={user()}
     />
   );

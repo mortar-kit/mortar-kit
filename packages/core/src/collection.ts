@@ -6,6 +6,7 @@
 import { keepExtra, schemaOps, type SchemaOps } from './brick.ts';
 import type { Doc } from './doc.ts';
 import { fieldInfo, type Fields, type InferFields } from './fields.ts';
+import { checkUrlPattern, urlFor } from './urls.ts';
 
 /** A list order: by a field of the collection or by slug. */
 export interface SortOrder<K extends string = string> {
@@ -42,8 +43,23 @@ export interface CollectionDefinition<F extends Fields> {
    * document's `position`, which `createContent` manages. Default false.
    */
   orderable?: boolean;
-  /** Slugs documents may not use, e.g. the app's own route segments next to `/:slug`. */
+  /**
+   * Slugs documents may not use, e.g. the app's own route segments next to
+   * `/:slug` (`admin`). Segments other collections' `url`s start with are
+   * refused anyway (see `url`).
+   */
   reservedSlugs?: readonly string[];
+  /**
+   * Where a document is on the site: a path with one `:slug` segment, e.g.
+   * `/posts/:slug` or `/:slug`. One pattern drives the app's route (the
+   * same syntax as @solidjs/router), links (`urlOf`), the admin's preview
+   * links, and the sitemap; next to `/posts/:slug`, a `/:slug` collection
+   * can't use the slug `posts`. Mortar doesn't route: the app still
+   * declares its routes, from this.
+   */
+  url?: string;
+  /** With `url`: the slug of the document at the pattern's prefix instead, e.g. `home` at `/` for `/:slug`. */
+  home?: string;
 }
 
 /** A registered collection. Its `SchemaOps` apply to a document's `fields` (keys outside the schema are kept). */
@@ -57,6 +73,12 @@ export interface Collection<F extends Fields = Fields> extends SchemaOps<F> {
   /** Whether documents are in a manual order (see `CollectionDefinition.orderable`). */
   readonly orderable: boolean;
   readonly reservedSlugs: readonly string[];
+  /** The document path pattern (see `CollectionDefinition.url`). */
+  readonly url: string | undefined;
+  /** The slug of the document at the pattern's prefix (see `CollectionDefinition.home`). */
+  readonly home: string | undefined;
+  /** A document's path on the site, from `url`; undefined without one. */
+  urlOf(doc: { slug: string }): string | undefined;
   /** A document's label in lists: its title field, or its slug when that is empty or there is no title field. */
   titleOf(doc: { slug: string; fields: Record<string, unknown> }): string;
   /** A new, unsaved document with a fresh id and default fields. Call it from event handlers, not during render. */
@@ -92,6 +114,8 @@ export function defineCollection<const F extends Fields>(def: CollectionDefiniti
   const title = def.title ?? Object.keys(def.fields).find(isText);
   const sortField = def.sort?.field ?? title ?? 'slug';
   if (sortField !== 'slug' && !Object.hasOwn(def.fields, sortField)) throw new Error(`${where}: cannot sort by unknown field "${sortField}"`);
+  if (def.url !== undefined) checkUrlPattern(where, def.url);
+  if (def.home !== undefined && def.url === undefined) throw new Error(`${where}: home needs a url`);
   const body = def.body ?? false;
   const ops = keepExtra(schemaOps(def.fields), def.fields);
   return {
@@ -103,7 +127,12 @@ export function defineCollection<const F extends Fields>(def: CollectionDefiniti
     sort: { field: sortField, order: def.sort?.order ?? 'asc' },
     orderable: def.orderable ?? false,
     reservedSlugs: def.reservedSlugs ?? [],
+    url: def.url,
+    home: def.home,
     ...ops,
+    urlOf(doc) {
+      return urlFor({ url: def.url, home: def.home }, doc);
+    },
     titleOf(doc) {
       const value = title === undefined ? undefined : doc.fields[title];
       return typeof value === 'string' && value.trim() !== '' ? value : doc.slug;

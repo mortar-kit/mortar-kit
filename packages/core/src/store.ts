@@ -27,6 +27,7 @@ import { brickMap, type ActionContext, type AnyBrick } from './brick.ts';
 import { collectionMap, type AnyCollection, type SortOrder } from './collection.ts';
 import { isValidSlug, normalizeDoc, validateDoc, type Doc, type DocIssue, type DocRef, type DocSummary } from './doc.ts';
 import { assetsIn, assetValuesIn, hasAssetFields, referencedCollections, referencesIn, type Fields } from './fields.ts';
+import { takenSlugs } from './urls.ts';
 
 /**
  * Where documents live: raw data by collection name and slug. Implement it
@@ -331,6 +332,9 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
       const result = validateDoc(c, bricks, raw);
       if (!result.success) return { ok: false, issues: result.issues };
       const doc = result.doc;
+      if (takenSlugs(c, options.collections).includes(doc.slug)) {
+        return { ok: false, issues: [{ path: ['slug'], message: `The slug "${doc.slug}" is taken by another collection's URLs` }] };
+      }
       // An asset's URL is filled in on read, so a move to another bucket or domain never leaves stale links.
       eachAssetValue(c, doc, (value) => {
         if (value.asset !== '') value.src = '';

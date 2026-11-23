@@ -23,7 +23,7 @@ export default function Posts() {
         <For each={list()}>
           {(post) => (
             <li>
-              <a href={`/posts/${post.slug}`}>{post.fields.title}</a>
+              <a href={posts.urlOf(post)}>{post.fields.title}</a>
               <time datetime={post.fields.date}>{formatDate(post.fields.date)}</time>
               <p>{post.fields.excerpt}</p>
             </li>
