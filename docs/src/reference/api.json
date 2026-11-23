@@ -4757,6 +4757,94 @@
       ]
     },
     {
+      "name": "seed",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "Saves starter documents into every collection of `docs` that has none\nyet, in the order given (so references can point at documents saved\nearlier). Collections that already have documents are left alone, so it\nis safe to call on every start. Throws, naming the document and its\nproblems, if one doesn't validate.",
+      "signature": "function seed(content: Content, docs: Readonly<Record<string, readonly SeedDoc[]>>): Promise<SeedResult>",
+      "params": [
+        {
+          "name": "content",
+          "type": "Content",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "docs",
+          "type": "Readonly<Record<string, readonly SeedDoc[]>>",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Promise<SeedResult>",
+      "examples": [
+        "```ts\nawait seed(content, {\n  pages: [{ id: 'home', slug: 'home', fields: { title: 'Welcome' }, entries: [] }],\n});\n```"
+      ]
+    },
+    {
+      "name": "SeedDoc",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A starter document: like a `Doc`, but the id may be left out (a random one is made).",
+      "signature": "interface SeedDoc",
+      "members": [
+        {
+          "name": "id",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "slug",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "fields",
+          "optional": true,
+          "readonly": false,
+          "type": "Record<string, unknown>",
+          "doc": ""
+        },
+        {
+          "name": "entries",
+          "optional": true,
+          "readonly": false,
+          "type": "unknown[]",
+          "doc": ""
+        }
+      ]
+    },
+    {
+      "name": "SeedResult",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What `seed` did.",
+      "signature": "interface SeedResult",
+      "members": [
+        {
+          "name": "seeded",
+          "optional": false,
+          "readonly": false,
+          "type": "string[]",
+          "doc": "Collections it filled."
+        },
+        {
+          "name": "skipped",
+          "optional": false,
+          "readonly": false,
+          "type": "string[]",
+          "doc": "Collections it left alone because they already had documents."
+        }
+      ]
+    },
+    {
       "name": "serveBlob",
       "module": "@mortar-kit/core",
       "deprecated": false,

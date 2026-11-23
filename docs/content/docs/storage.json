@@ -27,7 +27,7 @@
       "brick": "markdown",
       "id": "md-3",
       "data": {
-        "source": "## Several processes\n\nWrites are serialized within one `createContent`. If several server processes share a store, the store itself needs to lock.\n\nWant to keep content somewhere else? See [Writing a store](/docs/writing-a-store). Uploaded files have a store of their own: see [Assets](/docs/assets)."
+        "source": "## Several processes\n\nWrites are serialized within one `createContent`. If several server processes share a store, the store itself needs to lock.\n\nWant to keep content somewhere else? See [Writing a store](/docs/writing-a-store). Uploaded files have a store of their own: see [Assets](/docs/assets).\n\n## Starter content\n\n`seed(content, docs)` saves starter documents into collections that are still empty, through `createContent`, so they're validated like an editor's saves. Collections that already have documents are left alone, so it's safe to call every time the server starts. It works with any store, a database as well as the JSON files.\n\n```ts\nawait seed(content, {\n  categories: [{ id: 'news', slug: 'news', fields: { name: 'News' } }],\n  pages: [{ id: 'home', slug: 'home', fields: { title: 'Welcome' }, entries: [] }],\n});\n```\n\nCollections are filled in the order given, so a reference can point at a document seeded before it. Leave out `id` and a random one is made. A document that doesn't validate throws, naming it and its problems. With the JSON-file store you can also just commit the files: they are the seed."
       }
     },
     {
@@ -42,6 +42,13 @@
       "id": "api-5",
       "data": {
         "name": "createContent"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-seed",
+      "data": {
+        "name": "seed"
       }
     },
     {

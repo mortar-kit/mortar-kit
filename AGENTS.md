@@ -45,7 +45,8 @@ further construction puns).
   every rule: normalize on read, validate on save, unique slugs, renames move
   the file and keep the id, list `where/sort/limit`, and delete refused while
   other documents reference the document. Writes through one `createContent`
-  run one at a time (per process). Default adapter: **JSON files**
+  run one at a time (per process). `seed(content, docs)` saves starter documents into
+  empty collections only, validated like editor saves. Default adapter: **JSON files**
   `content/<collection>/<slug>.json` (the slug is the file name, not stored
   inside); listing reads the whole folder (fine for small sites).
 - **Assets** (2026-11-22): uploaded files live in a `BlobStore` adapter
