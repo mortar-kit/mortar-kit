@@ -11,7 +11,8 @@
 //   (redirect URI `<origin>/admin/auth/google/callback`).
 // - RESEND_API_KEY / MORTAR_EMAIL_FROM: send sign-in emails through Resend.
 //   Without them, development prints the emails (code and link) to the
-//   server console.
+//   server console, and a production build has no email sign-in (it
+//   refuses to start if Google isn't set up either).
 // - MORTAR_BASE_URL: the public origin, when running behind a proxy.
 //
 // Pending email sign-ins live in .data/ (git-ignored), apart from the content.
