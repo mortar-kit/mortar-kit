@@ -16,6 +16,7 @@ const out = fileURLToPath(new URL('../src/reference/api.json', import.meta.url))
 const modules = [
   { module: '@mortar-kit/core', file: 'packages/core/src/index.ts' },
   { module: '@mortar-kit/core/server', file: 'packages/core/src/server.ts' },
+  { module: '@mortar-kit/core/render', file: 'packages/core/src/render.tsx' },
   { module: '@mortar-kit/admin', file: 'packages/admin/src/index.ts' },
   { module: '@mortar-kit/admin/preview', file: 'packages/admin/src/preview.tsx' },
   { module: '@mortar-kit/admin/vite', file: 'packages/admin/src/vite.ts' },

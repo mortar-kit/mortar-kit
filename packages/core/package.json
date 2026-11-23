@@ -20,6 +20,10 @@
     "./server": {
       "types": "./src/server.ts",
       "solid": "./src/server.ts"
+    },
+    "./render": {
+      "types": "./src/render.tsx",
+      "solid": "./src/render.tsx"
     }
   },
   "publishConfig": {
@@ -31,6 +35,10 @@
       "./server": {
         "types": "./dist/source/server.d.ts",
         "solid": "./dist/source/server.js"
+      },
+      "./render": {
+        "types": "./dist/source/render.d.ts",
+        "solid": "./dist/source/render.jsx"
       }
     }
   },

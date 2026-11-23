@@ -1,15 +1,12 @@
-// Document shell (see Root.tsx). Pages that hydrate get the hydration
-// bootstrap and the client entry script; the rest get neither.
-import { HydrationScript } from '@solidjs/web';
-import { Show, type ParentProps } from 'solid-js';
+// Document shell (see Root.tsx). <ClientScripts> adds the hydration
+// bootstrap and the client entry on pages that hydrate, and nothing on the
+// rest.
+import { ClientScripts } from '@mortar-kit/core';
+import type { ParentProps } from 'solid-js';
 
 import { faviconHref } from './favicon.ts';
 
-/**
- * @param props.hydrate Whether this page loads the client entry.
- * @param props.nonce The request's CSP script nonce, if any (server only).
- */
-export default function Document(props: ParentProps<{ hydrate: boolean; nonce?: string }>) {
+export default function Document(props: ParentProps) {
   return (
     <html lang="en">
       <head>
@@ -17,11 +14,7 @@ export default function Document(props: ParentProps<{ hydrate: boolean; nonce?: 
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Mortar example</title>
         <link rel="icon" type="image/svg+xml" href={faviconHref} />
-        <Show when={props.hydrate}>
-          <HydrationScript />
-          {/* The plugin rewrites this path to the built entry's URL. */}
-          <script type="module" src="/src/entry-client.tsx" nonce={props.nonce} async />
-        </Show>
+        <ClientScripts />
       </head>
       <body>{props.children}</body>
     </html>

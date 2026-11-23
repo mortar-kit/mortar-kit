@@ -3,6 +3,7 @@
 import * as admin from '@mortar-kit/admin';
 import * as auth from '@mortar-kit/auth';
 import * as core from '@mortar-kit/core';
+import * as render from '@mortar-kit/core/render';
 import * as server from '@mortar-kit/core/server';
 import { describe, expect, it } from 'vitest';
 
@@ -16,6 +17,7 @@ describe('the API reference', () => {
     const exported = [
       ...names(core).map((name) => `@mortar-kit/core ${name}`),
       ...names(server).map((name) => `@mortar-kit/core/server ${name}`),
+      ...names(render).map((name) => `@mortar-kit/core/render ${name}`),
       ...names(admin).map((name) => `@mortar-kit/admin ${name}`),
       ...names(auth).map((name) => `@mortar-kit/auth ${name}`),
     ];

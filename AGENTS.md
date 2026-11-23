@@ -120,6 +120,8 @@ further construction puns).
   plugin. The admin imports `theme-slot.css` (empty); `mortarKit({ theme })`
   serves it with the theme's stylesheet, so a theme lands only in the admin's
   CSS, never on public pages.
+- `@mortar-kit/core/render`: the server entry's `createRender` (and
+  `stylesOnly`), server-only.
 - `@mortar-kit/core/server`: node-only entry (`createJsonFileStore`), kept
   out of the main entry so `node:fs` never reaches a client bundle. The
   storage rules (`createContent`, `createMemoryStore`) are in the main entry.
@@ -130,10 +132,14 @@ further construction puns).
   latest posts, a product grid), and layouts (`src/layouts/`) shared by its
   routes and the admin preview. Its entries are authored (`src/entry-server.tsx`,
   `src/entry-client.tsx`, shared tree in `src/Root.tsx`) so public pages ship
-  **no JavaScript**: `src/client.ts` picks the pages that hydrate (the admin);
-  the rest render under `<NoHydration>` with `noScripts` and a CSS-only
-  manifest (`src/styles-only.ts`). Islands (hydrating single bricks) are
-  planned; `client.ts` notes what they will need. Content is JSON files in
+  **no JavaScript**: the server entry is `createRender({ manifest, app })`
+  from `@mortar-kit/core/render` (`hydrate` default `['/admin']`); other
+  pages render under `<NoHydration>` with `noScripts` and a CSS-only
+  manifest (`stylesOnly`), and `<ClientScripts>` in `Document.tsx` renders
+  nothing on them. It hands the page's settings to `<ClientScripts>` by
+  request (a WeakMap keyed by the request event's Request), never a context
+  provider, which would shift hydration keys. Islands (hydrating single
+  bricks) are planned; `render.tsx` notes what they will need. Content is JSON files in
   `examples/site/content/<collection>/`, read and written by the
   `'use server'` module `src/server/content.ts`; `src/content.ts` wraps it
   (GET reads: cached router queries for routes, fresh for the admin).
