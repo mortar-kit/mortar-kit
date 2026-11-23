@@ -120,7 +120,7 @@
           "optional": true,
           "readonly": false,
           "type": "(url: URL) => { collection: string; slug: string } | undefined",
-          "doc": "Maps a URL of the site to the document it shows, e.g. `/posts/hello` to\n`{ collection: 'posts', slug: 'hello' }` (routing is the app's). With it,\n⌘/Ctrl-clicking a link in the preview opens that document in the admin;\na link it doesn't map (or without it) opens in a new tab."
+          "doc": "Maps a URL of the site to the document it shows, e.g. `/posts/hello` to\n`{ collection: 'posts', slug: 'hello' }`. ⌘/Ctrl-clicking a link in the\npreview opens that document in the admin; a link it doesn't map opens\nin a new tab. Default: the collections' `url` patterns (`resolveUrl`)."
         },
         {
           "name": "user",
@@ -2977,6 +2977,27 @@
           "doc": ""
         },
         {
+          "name": "url",
+          "optional": false,
+          "readonly": true,
+          "type": "string | undefined",
+          "doc": "The document path pattern (see `CollectionDefinition.url`)."
+        },
+        {
+          "name": "home",
+          "optional": false,
+          "readonly": true,
+          "type": "string | undefined",
+          "doc": "The slug of the document at the pattern's prefix (see `CollectionDefinition.home`)."
+        },
+        {
+          "name": "urlOf",
+          "optional": false,
+          "readonly": false,
+          "type": "(doc: { slug: string }) => string | undefined",
+          "doc": "A document's path on the site, from `url`; undefined without one."
+        },
+        {
           "name": "titleOf",
           "optional": false,
           "readonly": false,
@@ -3054,7 +3075,21 @@
           "optional": true,
           "readonly": false,
           "type": "readonly string[]",
-          "doc": "Slugs documents may not use, e.g. the app's own route segments next to `/:slug`."
+          "doc": "Slugs documents may not use, e.g. the app's own route segments next to\n`/:slug` (`admin`). Segments other collections' `url`s start with are\nrefused anyway (see `url`)."
+        },
+        {
+          "name": "url",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where a document is on the site: a path with one `:slug` segment, e.g.\n`/posts/:slug` or `/:slug`. One pattern drives the app's route (the\nsame syntax as @solidjs/router), links (`urlOf`), the admin's preview\nlinks, and the sitemap; next to `/posts/:slug`, a `/:slug` collection\ncan't use the slug `posts`. Mortar doesn't route: the app still\ndeclares its routes, from this."
+        },
+        {
+          "name": "home",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "With `url`: the slug of the document at the pattern's prefix instead, e.g. `home` at `/` for `/:slug`."
         }
       ]
     },
@@ -4582,6 +4617,30 @@
       ]
     },
     {
+      "name": "resolveUrl",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The document a path of the site shows, by the collections' `url`\npatterns: `/posts/hello` → `{ collection: 'posts', slug: 'hello' }`. As\nin routers, the more specific pattern wins (`/posts/:slug` over\n`/:slug`), and paths compare case-insensitively. Undefined when no\npattern matches.",
+      "signature": "function resolveUrl(collections: readonly AnyCollection[], url: string | URL): { collection: string; slug: string } | undefined",
+      "params": [
+        {
+          "name": "collections",
+          "type": "readonly AnyCollection[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "url",
+          "type": "string | URL",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "{ collection: string; slug: string } | undefined",
+      "examples": []
+    },
+    {
       "name": "RunActionOptions",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -4697,6 +4756,69 @@
       ],
       "returns": "Promise<Response>",
       "examples": []
+    },
+    {
+      "name": "sitemap",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A sitemap (sitemaps.org XML) of every document whose collection has a\n`url`, read through `content`. Serve it at `/sitemap.xml`.",
+      "signature": "function sitemap(content: ContentSource, collections: readonly AnyCollection[], options: SitemapOptions): Promise<string>",
+      "params": [
+        {
+          "name": "content",
+          "type": "ContentSource",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "collections",
+          "type": "readonly AnyCollection[]",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "options",
+          "type": "SitemapOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Promise<string>",
+      "examples": [
+        "```ts\nif (path === '/sitemap.xml') return new Response(await sitemap(content, collections, { origin }), { headers: { 'content-type': 'application/xml' } });\n```"
+      ]
+    },
+    {
+      "name": "SitemapOptions",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `sitemap`.",
+      "signature": "interface SitemapOptions",
+      "members": [
+        {
+          "name": "origin",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's public origin, e.g. `https://example.com`."
+        },
+        {
+          "name": "include",
+          "optional": true,
+          "readonly": false,
+          "type": "(collection: AnyCollection, doc: { id: string; slug: string; fields: Record<string, unknown> }) => boolean",
+          "doc": "Leave a document out (e.g. drafts)."
+        },
+        {
+          "name": "extra",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly string[]",
+          "doc": "Paths to list besides the documents', e.g. `['/posts']`."
+        }
+      ]
     },
     {
       "name": "SortOrder",

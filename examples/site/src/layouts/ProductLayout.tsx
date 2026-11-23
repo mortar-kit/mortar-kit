@@ -21,7 +21,7 @@ export function ProductLayout(props: { product: DocOf<typeof products> }) {
         <Loading>
           <Show when={category()}>
             {(c) => (
-              <a class={styles.back} href={`/categories/${c().slug}`}>
+              <a class={styles.back} href={categories.urlOf(c())}>
                 {c().fields.name}
               </a>
             )}

@@ -12,6 +12,7 @@
 import {
   collectionMap,
   isValidSlug,
+  resolveUrl,
   type AssetKind,
   type AnyBrick,
   type AnyCollection,
@@ -61,9 +62,9 @@ export interface AdminProps {
   onDirtyChange?: (dirty: boolean) => void;
   /**
    * Maps a URL of the site to the document it shows, e.g. `/posts/hello` to
-   * `{ collection: 'posts', slug: 'hello' }` (routing is the app's). With it,
-   * ⌘/Ctrl-clicking a link in the preview opens that document in the admin;
-   * a link it doesn't map (or without it) opens in a new tab.
+   * `{ collection: 'posts', slug: 'hello' }`. ⌘/Ctrl-clicking a link in the
+   * preview opens that document in the admin; a link it doesn't map opens
+   * in a new tab. Default: the collections' `url` patterns (`resolveUrl`).
    */
   resolveLink?: (url: URL) => { collection: string; slug: string } | undefined;
   /** The signed-in user (`auth.user()` from `@mortar-kit/auth`): shown at the foot of the rail, with Sign out. */
@@ -245,7 +246,7 @@ export function Admin(props: AdminProps) {
 
   /** A link ⌘/Ctrl-clicked in the preview: open the document it shows, or a new tab. */
   const followLink = async (url: URL) => {
-    const target = props.resolveLink?.(url);
+    const target = props.resolveLink ? props.resolveLink(url) : resolveUrl(props.collections, url);
     const found = target && byName().has(target.collection) ? await props.content.get(target.collection, { slug: target.slug }) : null;
     if (target && found) void go({ collection: target.collection, id: found.id });
     else window.open(url.href, '_blank', 'noopener');

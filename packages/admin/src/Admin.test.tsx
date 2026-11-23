@@ -522,6 +522,20 @@ describe('<Admin> links in the preview', () => {
     expect(onNavigate).toHaveBeenCalledTimes(1);
     openTab.mockRestore();
   });
+
+  it("maps links by the collections' url patterns when there is no resolveLink", async () => {
+    const onNavigate = vi.fn<(to: AdminLocation) => void>();
+    const routed = collections.map((c) => (c.name === 'pages' ? defineCollection({ name: 'pages', fields: c.fields, body: c.body, url: '/:slug', home: 'home' }) : c));
+    const { content } = seed();
+    const { container } = render(() => (
+      <Admin bricks={bricks} collections={routed} content={content} previewUrl="/preview" location={{ collection: 'pages', id: 'about-id' }} onNavigate={onNavigate} />
+    ));
+    await settle();
+    const frame = container.querySelector('iframe')!;
+    window.dispatchEvent(new MessageEvent('message', { data: { type: 'mortar:link', href: `${location.origin}/` }, origin: location.origin, source: frame.contentWindow }));
+    await settle();
+    expect(onNavigate).toHaveBeenCalledWith({ collection: 'pages', id: 'home-id' });
+  });
 });
 
 describe('reordering an orderable collection', () => {

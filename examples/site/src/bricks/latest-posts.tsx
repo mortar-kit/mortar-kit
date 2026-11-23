@@ -25,7 +25,7 @@ export const latestPosts = defineBrick({
           <For each={props.loaded}>
             {(post) => (
               <li>
-                <a href={`/posts/${post.slug}`}>{post.fields.title}</a>
+                <a href={posts.urlOf(post)}>{post.fields.title}</a>
                 <time datetime={post.fields.date}>{formatDate(post.fields.date)}</time>
                 <Show when={post.fields.excerpt}>
                   <p>{post.fields.excerpt}</p>

@@ -2,7 +2,7 @@
 import type { DocSummary, InferFields } from '@mortar-kit/core';
 import { For, Show } from 'solid-js';
 
-import type { products } from '../collections.ts';
+import { products } from '../collections.ts';
 import { formatPrice } from '../format.ts';
 import styles from './layouts.module.css';
 
@@ -18,7 +18,7 @@ export function ProductCards(props: { products: readonly Product[] }) {
               <Show when={product.fields.image.src}>
                 <img src={product.fields.image.src} alt={product.fields.image.alt} />
               </Show>
-              <a href={`/products/${product.slug}`}>{product.fields.name}</a>
+              <a href={products.urlOf(product)}>{product.fields.name}</a>
               <span class={styles.price}>{formatPrice(product.fields.price)}</span>
             </li>
           )}
