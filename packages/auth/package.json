@@ -1,8 +1,14 @@
 {
   "name": "@mortar-kit/auth",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Mortar auth: sign-in methods (Google, email), signed cookie sessions and route guards for the admin",
   "license": "MIT",
+  "homepage": "https://docs.mortar-kit.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mortar-kit/mortar-kit.git",
+    "directory": "packages/auth"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["dist"],

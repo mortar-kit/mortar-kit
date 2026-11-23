@@ -1,0 +1,88 @@
+name: Publish
+
+# Publishes the @mortar-kit packages (packages/*) to npm. Release by
+# bumping every package to one version (`node scripts/release-version.mjs
+# set 0.2.0`), merging that, then pushing a tag for it (`git tag v0.2.0 &&
+# git push origin v0.2.0`). The tag must match the packages' version.
+#
+# Run it by hand (Actions → Publish → Run workflow) for a dry run that packs
+# and checks everything without publishing.
+#
+# npm access, either of:
+# - trusted publishing (no secret): on npmjs.com, each package's Settings →
+#   Trusted publisher → GitHub Actions, repository mortar-kit/mortar-kit,
+#   workflow publish.yml. npm only offers this once a package exists, so the
+#   first release needs the token below.
+# - an NPM_TOKEN repository secret: a granular access token that can
+#   publish to the @mortar-kit scope.
+# Either way the packages get provenance (signed build attestations).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Pack and check, but don't publish
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # For trusted publishing and provenance.
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # The pnpm version comes from package.json's packageManager.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      # Trusted publishing needs npm 11.5 or later.
+      - run: npm install --global npm@^11.5
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check the tag matches the packages' version
+        if: github.ref_type == 'tag'
+        run: node scripts/release-version.mjs check "${GITHUB_REF_NAME#v}"
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # pnpm packs each package: it builds it (prepack), swaps the
+      # publishConfig exports (dist/) in and turns workspace: ranges into
+      # versions. npm publishes the tarballs, since it handles trusted
+      # publishing and provenance. Versions already on npm are skipped, so
+      # a failed run can be run again.
+      - name: Pack
+        run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/packs"
+
+      - name: Publish
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for tarball in "$RUNNER_TEMP"/packs/*.tgz; do
+            name=$(tar -xOzf "$tarball" package/package.json | node -p 'const p = JSON.parse(require("fs").readFileSync(0, "utf8")); `${p.name}@${p.version}`')
+            if npm view "$name" version >/dev/null 2>&1; then
+              echo "$name is already on npm, skipping"
+            elif [ "$DRY_RUN" = "true" ]; then
+              npm publish "$tarball" --access public --dry-run
+            else
+              npm publish "$tarball" --access public --provenance
+            fi
+          done

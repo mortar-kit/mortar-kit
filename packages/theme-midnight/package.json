@@ -1,8 +1,14 @@
 {
   "name": "@mortar-kit/theme-midnight",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Mortar admin theme: dark panels, a soft blue accent and mono details",
   "license": "MIT",
+  "homepage": "https://docs.mortar-kit.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mortar-kit/mortar-kit.git",
+    "directory": "packages/theme-midnight"
+  },
   "type": "module",
   "sideEffects": false,
   "files": ["index.js", "index.d.ts", "theme.css"],
