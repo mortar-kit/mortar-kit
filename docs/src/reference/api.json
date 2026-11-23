@@ -2,6 +2,7 @@
   "modules": [
     "@mortar-kit/core",
     "@mortar-kit/core/server",
+    "@mortar-kit/core/render",
     "@mortar-kit/admin",
     "@mortar-kit/admin/preview",
     "@mortar-kit/admin/vite",
@@ -2842,6 +2843,26 @@
       ]
     },
     {
+      "name": "ClientScripts",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The hydration bootstrap and the client entry script, only on pages that\nhydrate. Put it in the document's `<head>`. `src` is the client entry as\nwritten in your source; the vite plugin rewrites it to the built file.",
+      "signature": "function ClientScripts(props: { src?: string }): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "{ src?: string }",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": [
+        "```tsx\n<head>\n  <meta charset=\"utf-8\" />\n  <ClientScripts />\n</head>\n```"
+      ]
+    },
+    {
       "name": "Collection",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -4316,6 +4337,30 @@
       "signature": "type RemoveResult = { ok: true } | { ok: false; referencedBy: Referrer[] }"
     },
     {
+      "name": "RenderedPage",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "What `createRender` tells the document about the page being rendered.",
+      "signature": "interface RenderedPage",
+      "members": [
+        {
+          "name": "hydrate",
+          "optional": false,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Whether this page hydrates."
+        },
+        {
+          "name": "nonce",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The request's CSP script nonce, if any."
+        }
+      ]
+    },
+    {
       "name": "RunActionOptions",
       "module": "@mortar-kit/core",
       "deprecated": false,
@@ -4589,6 +4634,117 @@
       "kind": "type",
       "summary": "Result of `brick.validate(data)`.",
       "signature": "type ValidateResult<D> = { success: true; data: D } | { success: false; issues: Issue[] }"
+    },
+    {
+      "name": "createRender",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "The server entry's `render`. Pair it with an entry-client that hydrates\nthe same tree (`hydrate(() => <Root />, document)`).",
+      "signature": "function createRender(options: RenderOptions): Render",
+      "params": [
+        {
+          "name": "options",
+          "type": "RenderOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Render",
+      "examples": [
+        "```tsx\n// src/entry-server.tsx\nimport { createRender } from '@mortar-kit/core/render';\nimport manifest from 'virtual:solid-manifest';\nimport { Root } from './Root.tsx';\n\nexport const render = createRender({ manifest, app: () => <Root /> });\n```"
+      ]
+    },
+    {
+      "name": "HydrateOption",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "Which pages hydrate: all, none, these path prefixes, or a test of the path.",
+      "signature": "type HydrateOption = boolean | readonly string[] | ((pathname: string) => boolean)"
+    },
+    {
+      "name": "hydrateTest",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "`hydrate` as a test of a path.",
+      "signature": "function hydrateTest(option: HydrateOption): (pathname: string) => boolean",
+      "params": [
+        {
+          "name": "option",
+          "type": "HydrateOption",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "(pathname: string) => boolean",
+      "examples": []
+    },
+    {
+      "name": "Render",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The server entry's `render`: a stream for pages that hydrate, the settled HTML for the rest.",
+      "signature": "type Render = (request: Request, context?: StartServerRenderContext) => ReturnType<typeof renderToStream> | Promise<string>"
+    },
+    {
+      "name": "RenderManifest",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "The asset manifest the server entry gets from `virtual:solid-manifest`.",
+      "signature": "type RenderManifest = ViteManifest | DevAssetResolver"
+    },
+    {
+      "name": "RenderOptions",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `createRender`.",
+      "signature": "interface RenderOptions",
+      "members": [
+        {
+          "name": "manifest",
+          "optional": false,
+          "readonly": false,
+          "type": "RenderManifest",
+          "doc": "`import manifest from 'virtual:solid-manifest'`."
+        },
+        {
+          "name": "app",
+          "optional": false,
+          "readonly": false,
+          "type": "() => Element",
+          "doc": "The whole document: your Document around your App (with `<ClientScripts />` in its head)."
+        },
+        {
+          "name": "hydrate",
+          "optional": true,
+          "readonly": false,
+          "type": "HydrateOption",
+          "doc": "Which pages load JavaScript and hydrate. Default `['/admin']`: the\neditor and its preview hydrate, public pages are plain HTML. Prefixes\nmatch whole path segments, case-insensitively (as routers do)."
+        }
+      ]
+    },
+    {
+      "name": "stylesOnly",
+      "module": "@mortar-kit/core/render",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A copy of `manifest` that resolves to CSS only. Solid's renderer links\nevery CSS file a rendered module needs and adds a `modulepreload` for\neach JS file the client entry imports; `noScripts` drops the scripts but\nnot those preloads. A build manifest keeps each module's file but folds\nthe CSS of everything it imports into the module itself and drops the\nimports, so nothing is left to preload. The dev resolver answers with the\nsame CSS and no JS.",
+      "signature": "function stylesOnly(manifest: RenderManifest): RenderManifest",
+      "params": [
+        {
+          "name": "manifest",
+          "type": "RenderManifest",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "RenderManifest",
+      "examples": []
     },
     {
       "name": "createFileBlobStore",

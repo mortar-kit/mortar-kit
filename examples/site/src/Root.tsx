@@ -6,10 +6,10 @@ import App from './App.tsx';
 import Document from './Document.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
 
-export function Root(props: { hydrate: boolean; nonce?: string }) {
+export function Root() {
   return (
     <ErrorPage>
-      <Document hydrate={props.hydrate} nonce={props.nonce}>
+      <Document>
         <ErrorPage>
           <App />
         </ErrorPage>

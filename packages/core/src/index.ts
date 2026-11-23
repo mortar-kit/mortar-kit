@@ -72,6 +72,7 @@ export {
 } from './doc.ts';
 export { ContentContext, contentReader, useContent, type ContentReader } from './content.ts';
 export { normalizeEntries, validateEntries, type EntryIssue, type PageEntry } from './entries.ts';
+export { ClientScripts, type RenderedPage } from './ClientScripts.tsx';
 export { PageView, type PageViewProps } from './PageView.tsx';
 export {
   createContent,
