@@ -19,6 +19,7 @@ const modules = [
   { module: '@mortar-kit/core/render', file: 'packages/core/src/render.tsx' },
   { module: '@mortar-kit/admin', file: 'packages/admin/src/index.ts' },
   { module: '@mortar-kit/admin/preview', file: 'packages/admin/src/preview.tsx' },
+  { module: '@mortar-kit/admin/router', file: 'packages/admin/src/router.tsx' },
   { module: '@mortar-kit/admin/vite', file: 'packages/admin/src/vite.ts' },
   { module: '@mortar-kit/auth', file: 'packages/auth/src/index.ts' },
 ];

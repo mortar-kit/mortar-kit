@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     globals: false,
     setupFiles: ['./vitest-setup.ts'],
+    // The router ships preserved JSX (.jsx), which Node can't load: compile it.
+    server: { deps: { inline: ['@solidjs/router'] } },
     projects: [
       {
         extends: true,

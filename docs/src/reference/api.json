@@ -5,6 +5,7 @@
     "@mortar-kit/core/render",
     "@mortar-kit/admin",
     "@mortar-kit/admin/preview",
+    "@mortar-kit/admin/router",
     "@mortar-kit/admin/vite",
     "@mortar-kit/auth"
   ],
@@ -967,6 +968,34 @@
           "doc": ""
         }
       ]
+    },
+    {
+      "name": "AdminRoute",
+      "module": "@mortar-kit/admin/router",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "`<Admin>` as a route of a @solidjs/router app: its location lives in the\nURL's search parameters, and leaving a document with unsaved changes\n(a link, back/forward, switching documents) asks first. A save still in\nflight is waited for before leaving, so the next page reads what was saved.",
+      "signature": "function AdminRoute(props: AdminRouteProps): Element",
+      "params": [
+        {
+          "name": "props",
+          "type": "AdminRouteProps",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Element",
+      "examples": [
+        "```tsx\n// src/routes/admin.tsx, routed at /admin\nexport default function AdminPage() {\n  return <AdminRoute bricks={bricks} collections={collections} content={adminContent} previewUrl=\"/admin/preview\" />;\n}\n```"
+      ]
+    },
+    {
+      "name": "AdminRouteProps",
+      "module": "@mortar-kit/admin/router",
+      "deprecated": false,
+      "kind": "type",
+      "summary": "`<Admin>`'s props, less what the route provides (the location and the leave guard).",
+      "signature": "type AdminRouteProps = Omit<AdminProps, \"location\" | \"onNavigate\" | \"onDirtyChange\"> & { confirmLeave?: (question: string) => boolean }"
     },
     {
       "name": "mortarKit",

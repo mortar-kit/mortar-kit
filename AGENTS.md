@@ -131,7 +131,10 @@ further construction puns).
   labelled fields, then the body) when `PreviewPage` gets `collections`;
   layouts stay in the preview route, not on `defineCollection`, so
   collection files never import UI. The admin's location can live in the
-  app's URL (`location` + `onNavigate`).
+  app's URL (`location` + `onNavigate`); `<AdminRoute>` from
+  `@mortar-kit/admin/router` (optional peer `@solidjs/router`) does that with
+  search parameters and adds the unsaved-changes leave guard (`useBeforeLeave`,
+  waits for a save in flight).
 - **Auth** (2026-11-22): `createAuth({ methods: [google(), email()], authorize, secret })`
   in `@mortar-kit/auth`, Fetch `Request` in, `Response` out (framework-neutral).
   Methods are an array of `{ id, label, input, start, callback }` that verify an
@@ -258,6 +261,8 @@ further construction puns).
   test: the server build of Solid computes once and never updates.
 - No SolidStart (Solid 1 only): start mode lives in `@solidjs/vite-plugin` 3.
 - `@solidjs/testing-library` must be the `next` (1.x) line, not `latest`.
+- `@solidjs/router` ships preserved JSX, so vitest inlines it
+  (`server.deps.inline` in `vitest.config.ts`).
 - Packages that render JSX publish preserved JSX under a `solid` export
   condition and peer-depend on `solid-js` + `@solidjs/web` ^2.
 - Published exports have no `default`/`import` entry: the packages are consumed
