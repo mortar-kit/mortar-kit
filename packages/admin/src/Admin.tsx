@@ -29,6 +29,7 @@ import { AssetLibrary } from './AssetLibrary.tsx';
 import { AdminContext, type AdminApi, type AdminLocation } from './context.ts';
 import { Editor } from './Editor.tsx';
 import common from './common.module.css';
+import { errorMessage } from './errors.ts';
 import { CloseIcon, DownIcon, GripIcon, UpIcon } from './icons.tsx';
 import { Mark } from './Mark.tsx';
 import { referrerLabel } from './referrer.ts';
@@ -180,16 +181,16 @@ export function Admin(props: AdminProps) {
   // move's failure.
   const [dragged, setDragged] = createSignal<string | null>(null);
   const [dropAt, setDropAt] = createSignal<number | null>(null);
-  const [moveError, setMoveError] = createSignal<string | null>(null);
+  const [listError, setListError] = createSignal<string | null>(null);
   const canReorder = (c: AnyCollection) => c.orderable && props.content.move !== undefined;
 
   /** Moves a document to `index` in the manual order, then shows the list as stored. */
   const move = async (c: AnyCollection, id: string, index: number) => {
-    setMoveError(null);
+    setListError(null);
     try {
       await props.content.move?.(c.name, id, index);
     } catch (error) {
-      setMoveError(error instanceof Error ? error.message : String(error));
+      setListError(`Couldn't reorder: ${await errorMessage(error)}`);
     }
     refresh(list);
   };
@@ -220,7 +221,14 @@ export function Admin(props: AdminProps) {
       leaveRemoved(c);
       return;
     }
-    const result = await props.content.remove(c.name, target.id);
+    setListError(null);
+    let result;
+    try {
+      result = await props.content.remove(c.name, target.id);
+    } catch (error) {
+      setListError(`Couldn't delete "${c.titleOf(target)}": ${await errorMessage(error)}`);
+      return;
+    }
     if (!result.ok) {
       setBlocked(result.referencedBy);
       return;
@@ -422,10 +430,10 @@ export function Admin(props: AdminProps) {
                         {(row) => <DraftRow label={c().titleOf(row().doc)} current={loc().id === row().doc.id} onOpen={() => openDoc(row().collection, row().doc.id)} />}
                       </Show>
                     </ol>
-                    <Show when={moveError()}>
+                    <Show when={listError()}>
                       {(message) => (
                         <p role="alert" class={[styles.pad, common.issue]}>
-                          Couldn't reorder: {message()}
+                          {message()}
                         </p>
                       )}
                     </Show>

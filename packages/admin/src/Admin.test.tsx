@@ -618,11 +618,11 @@ describe('reordering an orderable collection', () => {
 
   it('says so when a move fails', async () => {
     const { content } = setupPhotos();
-    const failing: Content = { ...content, move: () => Promise.reject(new Error('Sign in required')) };
+    const failing: Content = { ...content, move: () => Promise.reject(new Response('Not allowed', { status: 403 })) };
     cleanupAndRender(failing);
     await settle();
     await click(docList('Photos').getByRole('button', { name: 'Move Noon up' }));
-    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't reorder: Sign in required");
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't reorder: Not allowed");
     expect(titles()).toEqual(['Dawn', 'Noon', 'Dusk']);
   });
 

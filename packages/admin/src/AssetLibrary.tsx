@@ -12,6 +12,7 @@ import { createMemo, createSignal, For, Loading, Match, onSettled, refresh, Show
 
 import styles from './AssetLibrary.module.css';
 import common from './common.module.css';
+import { errorMessage } from './errors.ts';
 import { useAdmin } from './context.ts';
 import { CloseIcon, CopyIcon, FileIcon, FolderIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon } from './icons.tsx';
 import { referrerLabel } from './referrer.ts';
@@ -92,7 +93,7 @@ export function AssetLibrary(props: AssetLibraryProps) {
         if (result.ok) added.push(result.asset);
         else failed.push(result.message);
       } catch (error) {
-        failed.push(`"${file.name}" didn't upload: ${error instanceof Error ? error.message : String(error)}`);
+        failed.push(`"${file.name}" didn't upload: ${await errorMessage(error)}`);
       } finally {
         setBusy((n) => n - 1);
       }
@@ -107,7 +108,14 @@ export function AssetLibrary(props: AssetLibraryProps) {
   const remove = async (asset: Asset) => {
     if (!window.confirm(`Delete "${asset.name}"? This can't be undone.`)) return;
     setProblems([]);
-    const result = await props.assets.remove(asset.key);
+    let result;
+    try {
+      result = await props.assets.remove(asset.key);
+    } catch (error) {
+      setViewing('');
+      setProblems([`Couldn't delete "${asset.name}": ${await errorMessage(error)}`]);
+      return;
+    }
     if (!result.ok) {
       setViewing('');
       setBlocked({ asset, by: result.referencedBy });
@@ -129,7 +137,12 @@ export function AssetLibrary(props: AssetLibraryProps) {
     const save = props.assets.saveFolder;
     if (!save) return undefined;
     const renaming = naming() === 'rename' ? currentFolder() : undefined;
-    const result = await save(renaming ? { id: renaming.id, name } : { name });
+    let result;
+    try {
+      result = await save(renaming ? { id: renaming.id, name } : { name });
+    } catch (error) {
+      return errorMessage(error);
+    }
     if (!result.ok) return result.message;
     setNaming(null);
     refresh(folders);
@@ -140,7 +153,13 @@ export function AssetLibrary(props: AssetLibraryProps) {
   const removeFolder = async (f: AssetFolder) => {
     if (!props.assets.removeFolder) return;
     if (!window.confirm(`Delete the folder "${f.name}"? Its files are kept, in no folder.`)) return;
-    await props.assets.removeFolder(f.id);
+    setProblems([]);
+    try {
+      await props.assets.removeFolder(f.id);
+    } catch (error) {
+      setProblems([`Couldn't delete the folder "${f.name}": ${await errorMessage(error)}`]);
+      return;
+    }
     setFolder(ALL);
     refresh(folders);
     refresh(all);
@@ -550,7 +569,7 @@ function AssetViewer(props: AssetViewerProps) {
       props.onSaved();
       return result.asset;
     } catch (error) {
-      setProblem(error instanceof Error ? error.message : String(error));
+      setProblem(await errorMessage(error));
       return undefined;
     } finally {
       setSaving(false);
