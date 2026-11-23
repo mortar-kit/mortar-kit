@@ -64,7 +64,9 @@ export function PreviewPage(props: PreviewPageProps) {
     window.parent.postMessage(message, location.origin);
   };
   const versioned: ContentSource = {
-    list: (collection, options) => props.content!.list(collection, options),
+    // Same arity as the caller's: a GET server function sends its arguments
+    // as JSON, where a trailing undefined turns into null.
+    list: (collection, options) => (options === undefined ? props.content!.list(collection) : props.content!.list(collection, options)),
     get: (collection, ref) => props.content!.get(collection, ref),
     track: () => {
       version();
