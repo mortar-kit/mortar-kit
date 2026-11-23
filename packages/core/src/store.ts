@@ -268,9 +268,10 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
   };
 
   return {
-    async list(name, listOptions = {}) {
+    async list(name, listOptions) {
       const c = need(name);
-      const { where, sort, limit } = checkListOptions(c, listOptions);
+      // null too: a trailing undefined argument arrives as null through a GET server function.
+      const { where, sort, limit } = checkListOptions(c, listOptions ?? {});
       const docs = (await all(c)).filter((doc) => Object.entries(where).every(([key, value]) => valueOf(doc, key) === value));
       docs.sort(sort ? bySort(sort) : manualOrder(c));
       return docs.slice(0, limit).map((doc) => withUrls(c, withoutBody(doc)));

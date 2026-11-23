@@ -70,6 +70,12 @@ describe('list', () => {
     expect(list[0]).toEqual({ id: 'p2', slug: 'second', fields: { title: 'Second', date: '2026-03-01' } });
   });
 
+  it('takes null options as none (a GET server function sends a trailing undefined as null)', async () => {
+    const { content } = setup();
+    const list = await content.list('posts', null as never);
+    expect(list.map((d) => d.slug)).toEqual(['second', 'third', 'first']);
+  });
+
   it('filters, sorts and limits', async () => {
     const { content } = setup();
     const slugs = async (o: Parameters<typeof content.list>[1]) => (await content.list('products', o)).map((d) => d.slug);

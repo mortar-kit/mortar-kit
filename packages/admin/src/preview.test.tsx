@@ -314,6 +314,8 @@ describe('<PreviewPage> review fixes', () => {
     await settle();
     expect(list).toHaveBeenCalledTimes(2);
     expect(document.querySelector('.late')).toHaveTextContent('2');
+    // No trailing undefined, which a GET server function would send as null.
+    expect(list.mock.calls[0]).toEqual(['people']);
   });
 });
 
