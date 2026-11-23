@@ -87,12 +87,43 @@ describe('createContentServer', () => {
     await expect(as(true, () => server.remove('posts', 'p-x'))).rejects.toMatchObject({ status: 403 });
     await expect(as(true, () => server.removeAssetFolder('f1'))).resolves.toBeUndefined();
     expect(seen).toEqual([
-      { action: 'save', collection: 'posts', id: 'p-hello', doc: doc('Hello') },
-      { action: 'remove', collection: 'posts', id: 'p-x' },
+      { action: 'save', collection: 'posts', id: 'p-hello', doc: doc('Hello'), stored: null },
+      { action: 'remove', collection: 'posts', id: 'p-x', stored: null },
       { action: 'removeAssetFolder', id: 'f1' },
     ]);
     const refused = await as(true, () => server.save('posts', doc('Hello'))).catch((error: Response) => error.text());
     expect(refused).toBe('Not allowed');
+  });
+
+  it("checks the collection's own canWrite too, with the stored document", async () => {
+    const projects = defineCollection({
+      name: 'projects',
+      fields: { title: fields.text({ label: 'Title' }), members: fields.text({ label: 'Members' }) },
+      canWrite: ({ user, stored, doc: sent }) => {
+        const mine = (fields: Record<string, unknown>) => String(fields.members).split(',').includes(user.email);
+        return (!stored || mine(stored.fields)) && (!sent || mine(sent.fields));
+      },
+    });
+    const content = createContent({ store: createMemoryStore(), collections: [projects, posts], bricks: [] });
+    let serverAllows = true;
+    const server = createContentServer({
+      content,
+      auth: { require: async () => ({ email: 'ada' }) },
+      canWrite: () => serverAllows,
+    });
+    const project = (members: string) => ({ id: 'pr1', slug: 'roof', fields: { title: 'Roof', members } });
+    expect((await as(true, () => server.save('projects', project('ada,bo')))).ok).toBe(true);
+    // Someone else's project, or taking ada out of hers, is refused.
+    await expect(as(true, () => server.save('projects', { ...project('bo'), id: 'pr2', slug: 'shed' }))).rejects.toMatchObject({ status: 403 });
+    await expect(as(true, () => server.save('projects', project('bo')))).rejects.toMatchObject({ status: 403 });
+    expect((await as(true, () => server.save('projects', project('ada,cy')))).ok).toBe(true);
+    // Both must allow: the server's rule refuses even her own project.
+    serverAllows = false;
+    await expect(as(true, () => server.remove('projects', 'pr1'))).rejects.toMatchObject({ status: 403 });
+    serverAllows = true;
+    expect((await as(true, () => server.remove('projects', 'pr1'))).ok).toBe(true);
+    // Collections without a rule follow the server's alone.
+    expect((await as(true, () => server.save('posts', doc('Hi')))).ok).toBe(true);
   });
 
   it('leaves writes open with auth: false', async () => {

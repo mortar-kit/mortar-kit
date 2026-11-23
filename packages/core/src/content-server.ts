@@ -62,6 +62,8 @@ export interface ContentWrite<User> {
   id?: string;
   /** The document being saved (save only). */
   doc?: Doc;
+  /** The document as stored now (document writes; null when a save creates it). */
+  stored?: Doc | null;
 }
 
 /** Options for `createContentServer`. */
@@ -77,7 +79,9 @@ export interface ContentServerOptions<User = unknown> {
   /**
    * Which writes a signed-in editor may make, after `auth` let them in:
    * false refuses the write with a 403 ("Not allowed"), which the admin
-   * shows. Default: every editor may write everything.
+   * shows. Default: every editor may write everything. A collection's own
+   * `canWrite` (`defineCollection`) is checked after this one, and both
+   * must allow.
    *
    * @example
    * ```ts
@@ -131,8 +135,19 @@ export function createContentServer<User = unknown>(options: ContentServerOption
     <A extends unknown[], R>(action: ContentWriteAction, describe: (args: NoInfer<A>) => Omit<ContentWrite<User>, 'user' | 'action'>, fn: (...args: A) => Promise<R>) =>
     async (...args: A): Promise<R> => {
       const user = await signedIn();
-      if (options.canWrite && !(await options.canWrite({ user, action, ...describe(args) }))) {
-        throw new Response('Not allowed', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      const target = describe(args);
+      const collection = target.collection === undefined ? undefined : content.collections?.find((c) => c.name === target.collection);
+      const scoped = collection?.canWrite;
+      if (options.canWrite || scoped) {
+        const write: ContentWrite<User> = { user, action, ...target };
+        // A document write: both rules see the document as stored, to scope by it.
+        if (target.collection !== undefined && target.id !== undefined) {
+          write.stored = await content.get(target.collection, { id: target.id });
+        }
+        const allowed =
+          (!options.canWrite || (await options.canWrite(write))) &&
+          (!scoped || (await scoped({ user, action: action as 'save' | 'remove' | 'move', id: target.id!, doc: target.doc, stored: write.stored ?? null })));
+        if (!allowed) throw new Response('Not allowed', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
       return respond(await fn(...args), { revalidate: '' }) as R;
     };

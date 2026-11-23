@@ -15,6 +15,25 @@ export interface SortOrder<K extends string = string> {
   order?: 'asc' | 'desc';
 }
 
+/** A write to one of a collection's documents, as the collection's `canWrite` sees it. */
+export interface CollectionWrite<F extends Fields = Fields> {
+  /**
+   * Who is writing: the user `auth.require` returned in `createContentServer`
+   * (e.g. what `allowMembers({ fields })` builds). Typed loosely, since
+   * collections are declared without the app's auth.
+   */
+  // oxlint-disable-next-line typescript/no-explicit-any -- the app's own user type.
+  user: any;
+  /** The content server function called. */
+  action: 'save' | 'remove' | 'move';
+  /** The document's id. */
+  id: string;
+  /** The document being saved, as sent (save only; not validated yet). */
+  doc?: Doc;
+  /** The document as stored now; null when a save creates it. Check it too, so a save can't change an owner field to get past the rule. */
+  stored: Doc<InferFields<F>> | null;
+}
+
 /** What a developer passes to `defineCollection`. */
 export interface CollectionDefinition<F extends Fields> {
   /** Stable identifier, also the storage folder. Lowercase, e.g. `posts` or `case-studies`. */
@@ -60,6 +79,21 @@ export interface CollectionDefinition<F extends Fields> {
   url?: string;
   /** With `url`: the slug of the document at the pattern's prefix instead, e.g. `home` at `/` for `/:slug`. */
   home?: string;
+  /**
+   * Who may change this collection's documents, checked by
+   * `createContentServer` after its own `canWrite` (both must allow):
+   * false refuses the write with a 403. Gets the user, the document as
+   * stored and, for a save, the one sent, so a rule can be scoped to the
+   * document (only the projects someone belongs to).
+   *
+   * @example
+   * ```ts
+   * // Editors change only the projects they lead (and can't hand them to someone else).
+   * canWrite: ({ user, stored, doc }) =>
+   *   user.role === 'owner' || ((!stored || stored.fields.lead === user.email) && (!doc || doc.fields.lead === user.email)),
+   * ```
+   */
+  canWrite?: (write: CollectionWrite<F>) => boolean | Promise<boolean>;
 }
 
 /** A registered collection. Its `SchemaOps` apply to a document's `fields` (keys outside the schema are kept). */
@@ -77,6 +111,8 @@ export interface Collection<F extends Fields = Fields> extends SchemaOps<F> {
   readonly url: string | undefined;
   /** The slug of the document at the pattern's prefix (see `CollectionDefinition.home`). */
   readonly home: string | undefined;
+  /** Who may change its documents (see `CollectionDefinition.canWrite`). */
+  readonly canWrite: ((write: CollectionWrite<F>) => boolean | Promise<boolean>) | undefined;
   /** A document's path on the site, from `url`; undefined without one. */
   urlOf(doc: { slug: string }): string | undefined;
   /** A document's label in lists: its title field, or its slug when that is empty or there is no title field. */
@@ -129,6 +165,7 @@ export function defineCollection<const F extends Fields>(def: CollectionDefiniti
     reservedSlugs: def.reservedSlugs ?? [],
     url: def.url,
     home: def.home,
+    canWrite: def.canWrite,
     ...ops,
     urlOf(doc) {
       return urlFor({ url: def.url, home: def.home }, doc);

@@ -3042,6 +3042,13 @@
           "doc": "The slug of the document at the pattern's prefix (see `CollectionDefinition.home`)."
         },
         {
+          "name": "canWrite",
+          "optional": false,
+          "readonly": true,
+          "type": "((write: CollectionWrite<F>) => boolean | Promise<boolean>) | undefined",
+          "doc": "Who may change its documents (see `CollectionDefinition.canWrite`)."
+        },
+        {
           "name": "urlOf",
           "optional": false,
           "readonly": false,
@@ -3141,6 +3148,13 @@
           "readonly": false,
           "type": "string",
           "doc": "With `url`: the slug of the document at the pattern's prefix instead, e.g. `home` at `/` for `/:slug`."
+        },
+        {
+          "name": "canWrite",
+          "optional": true,
+          "readonly": false,
+          "type": "(write: CollectionWrite<F>) => boolean | Promise<boolean>",
+          "doc": "Who may change this collection's documents, checked by\n`createContentServer` after its own `canWrite` (both must allow):\nfalse refuses the write with a 403. Gets the user, the document as\nstored and, for a save, the one sent, so a rule can be scoped to the\ndocument (only the projects someone belongs to)."
         }
       ]
     },
@@ -3161,6 +3175,51 @@
       ],
       "returns": "ReadonlyMap<string, AnyCollection>",
       "examples": []
+    },
+    {
+      "name": "CollectionWrite",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "A write to one of a collection's documents, as the collection's `canWrite` sees it.",
+      "signature": "interface CollectionWrite<F extends Fields = Fields>",
+      "members": [
+        {
+          "name": "user",
+          "optional": false,
+          "readonly": false,
+          "type": "any",
+          "doc": "Who is writing: the user `auth.require` returned in `createContentServer`\n(e.g. what `allowMembers({ fields })` builds). Typed loosely, since\ncollections are declared without the app's auth."
+        },
+        {
+          "name": "action",
+          "optional": false,
+          "readonly": false,
+          "type": "\"save\" | \"remove\" | \"move\"",
+          "doc": "The content server function called."
+        },
+        {
+          "name": "id",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The document's id."
+        },
+        {
+          "name": "doc",
+          "optional": true,
+          "readonly": false,
+          "type": "Doc<Record<string, unknown>>",
+          "doc": "The document being saved, as sent (save only; not validated yet)."
+        },
+        {
+          "name": "stored",
+          "optional": false,
+          "readonly": false,
+          "type": "Doc<InferFields<F>> | null",
+          "doc": "The document as stored now; null when a save creates it. Check it too, so a save can't change an owner field to get past the rule."
+        }
+      ]
     },
     {
       "name": "Content",
@@ -3190,6 +3249,13 @@
           "readonly": false,
           "type": "() => void",
           "doc": "Called before each brick load, where reads are tracked: read a signal\nhere to make every load run again when it changes (the admin preview\ndoes, after each save)."
+        },
+        {
+          "name": "collections",
+          "optional": true,
+          "readonly": true,
+          "type": "readonly AnyCollection[]",
+          "doc": "The collections it serves (`createContent` sets it), for `createContentServer` to find each one's `canWrite`."
         },
         {
           "name": "save",
@@ -3616,6 +3682,13 @@
           "readonly": false,
           "type": "Doc<Record<string, unknown>>",
           "doc": "The document being saved (save only)."
+        },
+        {
+          "name": "stored",
+          "optional": true,
+          "readonly": false,
+          "type": "Doc<Record<string, unknown>> | null",
+          "doc": "The document as stored now (document writes; null when a save creates it)."
         }
       ]
     },
@@ -5490,7 +5563,7 @@
           "optional": true,
           "readonly": false,
           "type": "(write: ContentWrite<User>) => boolean | Promise<boolean>",
-          "doc": "Which writes a signed-in editor may make, after `auth` let them in:\nfalse refuses the write with a 403 (\"Not allowed\"), which the admin\nshows. Default: every editor may write everything."
+          "doc": "Which writes a signed-in editor may make, after `auth` let them in:\nfalse refuses the write with a 403 (\"Not allowed\"), which the admin\nshows. Default: every editor may write everything. A collection's own\n`canWrite` (`defineCollection`) is checked after this one, and both\nmust allow."
         }
       ]
     },

@@ -66,6 +66,7 @@ export {
   type AnyCollection,
   type Collection,
   type CollectionDefinition,
+  type CollectionWrite,
   type DocOf,
   type SortOrder,
 } from './collection.ts';

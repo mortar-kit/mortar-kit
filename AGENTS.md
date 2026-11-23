@@ -56,7 +56,9 @@ further construction puns).
   `removeAsset`, `updateAsset`, `listAssetFolders`, `saveAssetFolder`,
   `removeAssetFolder`). Writes call `auth.require` on the current request
   (`auth: false` opens them), then the optional `canWrite({ user, action,
-  collection, id, doc })` (false: a 403 "Not allowed"), and
+  collection, id, doc, stored })` and the collection's own
+  `defineCollection({ canWrite })` (both must allow; false: a 403 "Not
+  allowed"; `content.collections` finds the collection), and
   `respond(…, { revalidate: '' })`; `list`
   takes null options (a GET sends a trailing undefined as null). It raises
   the server-function body limit from `content.assets.maxSize`, so the
