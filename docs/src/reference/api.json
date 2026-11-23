@@ -1047,6 +1047,64 @@
       ]
     },
     {
+      "name": "allowMembers",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "An `authorize` that lets in anyone whose address is in a document of\n`collection` (compared case-insensitively). Removing the document locks\nthem out on their next request. It lists the collection each time, which\nsuits the handful of members a small site has.",
+      "signature": "function allowMembers(options: AllowMembersOptions): (input: AuthorizeInput) => Promise<EmailUser | null>",
+      "params": [
+        {
+          "name": "options",
+          "type": "AllowMembersOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "(input: AuthorizeInput) => Promise<EmailUser | null>",
+      "examples": [
+        "```ts\nexport const members = defineCollection({\n  name: 'members',\n  label: 'Members',\n  fields: { email: fields.text({ label: 'Email', required: true }), name: fields.text({ label: 'Name' }) },\n});\ncreateAuth({ methods, secret, authorize: allowMembers({ content, collection: 'members' }) });\n```"
+      ]
+    },
+    {
+      "name": "AllowMembersOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `allowMembers`.",
+      "signature": "interface AllowMembersOptions",
+      "members": [
+        {
+          "name": "content",
+          "optional": false,
+          "readonly": false,
+          "type": "ContentSource",
+          "doc": "Where to look members up: usually the app's `createContent(...)`."
+        },
+        {
+          "name": "collection",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The collection's name, e.g. `'members'`."
+        },
+        {
+          "name": "emailField",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The field holding each member's address. Default `email`."
+        },
+        {
+          "name": "nameField",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "A field holding their display name, used over the one the sign-in method gives. Default `name`."
+        }
+      ]
+    },
+    {
       "name": "Auth",
       "module": "@mortar-kit/auth",
       "deprecated": false,
@@ -1098,6 +1156,141 @@
       "kind": "type",
       "summary": "Why a sign-in failed: the `error` parameter of the sign-in page.",
       "signature": "type AuthError = \"denied\" | \"expired\" | \"invalid\" | \"invalid-email\" | \"failed\""
+    },
+    {
+      "name": "authFromEnv",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "`createAuth` set up from the environment: the secret, who may sign in,\nGoogle when its client is configured, and email sign-in through Resend\n(or your `mailer`). Throws at startup when production is missing a\nsecret, an admin list or every sign-in method.",
+      "signature": "function authFromEnv<User = EmailUser>(options?: AuthFromEnvOptions<User>): Auth<User>",
+      "params": [
+        {
+          "name": "options",
+          "type": "AuthFromEnvOptions<User>",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Auth<User>",
+      "examples": [
+        "```ts\n// src/server/auth.ts\nexport const auth = authFromEnv({ store: createJsonFileStore({ dir: '.data' }), siteName: 'My site' });\n```"
+      ]
+    },
+    {
+      "name": "AuthFromEnvOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `authFromEnv`.",
+      "signature": "interface AuthFromEnvOptions<User> extends Partial<Omit<AuthOptions<User>, \"methods\">>",
+      "members": [
+        {
+          "name": "authorize",
+          "optional": true,
+          "readonly": false,
+          "type": "(input: AuthorizeInput) => User | Promise<User | null | undefined> | null | undefined",
+          "doc": ""
+        },
+        {
+          "name": "secret",
+          "optional": true,
+          "readonly": false,
+          "type": "string | readonly string[]",
+          "doc": "Signs the session cookie and the OAuth state, and keys token hashes:\nat least 32 characters, from the environment, never in code. Several\nkeys rotate: the first signs, all are accepted."
+        },
+        {
+          "name": "basePath",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where the auth routes live. Default `/admin/auth`."
+        },
+        {
+          "name": "signInPath",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The app's sign-in page (a route rendering `<SignIn>` from `@mortar-kit/admin`). Default `/admin/sign-in`."
+        },
+        {
+          "name": "protect",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly string[]",
+          "doc": "Paths (prefixes) that need a signed-in user; `handle` redirects (GET) or refuses (401) the rest. Default `['/admin']`."
+        },
+        {
+          "name": "home",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where to go after signing in when no `returnTo` was given. Default `/admin`."
+        },
+        {
+          "name": "maxAge",
+          "optional": true,
+          "readonly": false,
+          "type": "number",
+          "doc": "How long a session lasts, in seconds. Default 14 days."
+        },
+        {
+          "name": "cookieName",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The session cookie's name. Default `mortar_session`."
+        },
+        {
+          "name": "baseUrl",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's public origin, e.g. `https://example.com`: OAuth redirect\nURIs, email links and the same-origin check use it. Set it behind a\nproxy, where the request's own URL may be `http://localhost:3000`.\nDefault: the origin of each request."
+        },
+        {
+          "name": "store",
+          "optional": true,
+          "readonly": false,
+          "type": "ContentStore",
+          "doc": "Keeps pending email sign-ins. Without it there is no email sign-in.\nWith the JSON-file store, use a folder outside your content and git\n(`createJsonFileStore({ dir: '.data' })`)."
+        },
+        {
+          "name": "mailer",
+          "optional": true,
+          "readonly": false,
+          "type": "Mailer",
+          "doc": "Sends sign-in emails. Default: Resend when RESEND_API_KEY and MORTAR_EMAIL_FROM are set, else (in development only) the console."
+        },
+        {
+          "name": "siteName",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "The site's name in sign-in emails."
+        },
+        {
+          "name": "methods",
+          "optional": true,
+          "readonly": false,
+          "type": "readonly AuthMethod[]",
+          "doc": "Methods to offer after the ones from the environment."
+        },
+        {
+          "name": "env",
+          "optional": true,
+          "readonly": false,
+          "type": "Readonly<Record<string, string | undefined>>",
+          "doc": "Where to read variables. Default `process.env`."
+        },
+        {
+          "name": "dev",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Development mode: a fixed secret, `admin@example.com` as the admin\nand emails printed to the console when nothing else is set. Default\nVite's `import.meta.env.DEV`, so a production build never falls back."
+        }
+      ]
     },
     {
       "name": "AuthMethod",
@@ -1701,6 +1894,57 @@
           "readonly": false,
           "type": "string",
           "doc": "HTML body, for clients that show it."
+        }
+      ]
+    },
+    {
+      "name": "resendMailer",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A mailer that sends through Resend. Throws when Resend refuses a message,\nso the sign-in shows an error instead of waiting for an email that won't come.",
+      "signature": "function resendMailer(options: ResendMailerOptions): Mailer",
+      "params": [
+        {
+          "name": "options",
+          "type": "ResendMailerOptions",
+          "optional": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Mailer",
+      "examples": [
+        "```ts\nemail({ mailer: resendMailer({ apiKey: process.env.RESEND_API_KEY!, from: 'Site <admin@example.com>' }), store });\n```"
+      ]
+    },
+    {
+      "name": "ResendMailerOptions",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "interface",
+      "summary": "Options for `resendMailer`.",
+      "signature": "interface ResendMailerOptions",
+      "members": [
+        {
+          "name": "apiKey",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "A Resend API key (`re_…`), from the environment."
+        },
+        {
+          "name": "from",
+          "optional": false,
+          "readonly": false,
+          "type": "string",
+          "doc": "The sender, on a domain verified with Resend, e.g. `'Site <admin@example.com>'`."
+        },
+        {
+          "name": "fetch",
+          "optional": true,
+          "readonly": false,
+          "type": "{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | Request | URL, init?: RequestInit): Promise<Response> }",
+          "doc": "For tests: the fetch to send with."
         }
       ]
     },

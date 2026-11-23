@@ -90,10 +90,15 @@ further construction puns).
   Methods are an array of `{ id, label, input, start, callback }` that verify an
   `Identity` (`{ email, name?, method }`); the app's `authorize({ identity })`
   returns its user or null (Thomas chose this over an allowlist option;
-  `allowEmails([...])` is the ready-made one). It runs at sign-in and on every
-  guarded request. Sessions are a stateless HMAC-signed cookie (Web Crypto;
+  `allowEmails([...])` is the ready-made one, `allowMembers({ content, collection })`
+  reads a collection the site declares). It runs at sign-in and on every
+  guarded request. `authFromEnv({ store })` builds it all from env
+  (`MORTAR_AUTH_SECRET`, `MORTAR_ADMINS`, `GOOGLE_CLIENT_*`, `RESEND_API_KEY` +
+  `MORTAR_EMAIL_FROM`, `MORTAR_BASE_URL`); its dev fallbacks (secret, admin,
+  console mailer) apply only under Vite's `import.meta.env.DEV`. Sessions are a stateless HMAC-signed cookie (Web Crypto;
   `secret` may be an array to rotate). Email sends a code and a link in one
-  message through a `Mailer` (`consoleMailer()` for dev); pending sign-ins are
+  message through a `Mailer` (`consoleMailer()` for dev, `resendMailer()`
+  optional, any provider in a few lines); pending sign-ins are
   hashes in a ContentStore under `mortar-auth-tokens`. The link opens the
   sign-in page, which posts it (mail scanners can't use it up). `auth.handle`
   goes first in `start.middleware` (auth routes under `/admin/auth`, redirects
@@ -153,9 +158,8 @@ further construction puns).
   each page as Markdown (`/index.md`, `/docs/<slug>.md`, `/reference.md`,
   `/reference/<name>.md`). Every brick needs a converter in
   `src/llms/markdown.ts` (a test fails without one).
-- Auth in the example: `src/server/auth.ts` (env: `MORTAR_AUTH_SECRET`,
-  `MORTAR_ADMINS`, optional `GOOGLE_CLIENT_ID`/`_SECRET`, `MORTAR_BASE_URL`;
-  emails print to the console), `src/middleware.ts`, `/admin/sign-in`
+- Auth in the example: `src/server/auth.ts` (`authFromEnv`; without
+  `RESEND_API_KEY` dev emails print to the console), `src/middleware.ts`, `/admin/sign-in`
   (`src/routes/sign-in.tsx`), and `requireAdmin()` in every write (save, delete, upload, remove asset). Pending email
   sign-ins live in `examples/site/.data/` (git-ignored). Dev default admin:
   `admin@example.com`.
