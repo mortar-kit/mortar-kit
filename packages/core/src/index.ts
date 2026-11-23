@@ -102,3 +102,4 @@ export {
   type UploadResult,
 } from './store.ts';
 export { resolveUrl, sitemap, type SitemapOptions } from './urls.ts';
+export { seed, type SeedDoc, type SeedResult } from './seed.ts';
