@@ -20,7 +20,14 @@
       "data": {
         "tone": "note",
         "title": "Server functions belong in your app",
-        "body": "The Solid Vite plugin compiles `'use server'` only outside `node_modules`, so Mortar exports plain functions and your app wraps them in its own server functions."
+        "body": "The Solid Vite plugin compiles `'use server'` only outside `node_modules`, so Mortar exports plain functions and your app re-exports them from its own server-function module. `createContentServer` builds them for you: see below."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "md-server",
+      "data": {
+        "source": "## Calling it from the browser\n\n`createContentServer({ content, auth })` (from `@mortar-kit/core/server`) turns a `Content` into the functions your app's `'use server'` module exports. Reads are open to everyone, since your pages render from them. Every write (saving, deleting, reordering, uploads, asset details and folders) first calls `auth.require` with the request, because middleware can't tell the admin's server-function calls apart, and answers without revalidating, so a save never refetches into the open editor. Upload limits are set once: it raises the server-function body limit to fit `createContent`'s `maxAssetSize`.\n\n```ts\n// src/server/mortar.ts (also imported by serverFunctions.serverSetup)\nimport { createContent } from '@mortar-kit/core';\nimport { createContentServer, createJsonFileStore } from '@mortar-kit/core/server';\n\nimport { auth } from './auth.ts';\n\nexport const content = createContent({ store: createJsonFileStore({ dir: 'content' }), blobs, collections, bricks });\nexport const server = createContentServer({ content, auth });\n```\n\n```ts\n// src/server/content.ts\n'use server';\nimport { server } from './mortar.ts';\n\nexport const list = server.list;\nexport const get = server.get;\nexport const save = server.save;\nexport const remove = server.remove;\nexport const move = server.move;\nexport const listAssets = server.listAssets;\nexport const uploadAsset = server.uploadAsset;\nexport const removeAsset = server.removeAsset;\nexport const updateAsset = server.updateAsset;\nexport const listAssetFolders = server.listAssetFolders;\nexport const saveAssetFolder = server.saveAssetFolder;\nexport const removeAssetFolder = server.removeAssetFolder;\n```\n\nImport `src/server/mortar.ts` from the module you give the plugin as `serverFunctions.serverSetup`, so the body limit is raised before the first upload arrives.\n\nIn the browser, `contentClient(server, options)` (from `@mortar-kit/core`) builds what the rest of the app needs from those functions: `source`, cached reads for routes, layouts and bricks; `freshSource`, uncached reads for the admin's preview; and `content`, the admin's reads and writes, which drops cached reads after every write that went through. Mortar depends on neither the router nor the server-function runtime, so pass their helpers:\n\n```ts\n// src/content.ts\nimport { contentClient } from '@mortar-kit/core';\nimport { query } from '@solidjs/router';\nimport { GET } from '@solidjs/web/server-functions';\n\nimport * as server from './server/content.ts';\n\nexport const { source, freshSource, content } = contentClient(server, { read: GET, cache: query, onWrite: () => query.clear() });\n```\n\n`read: GET` sends reads as GET requests (a POST counts as a mutation and would revalidate every query), and `cache: query` fetches a document once per request during server rendering and reuses it on hydration."
       }
     },
     {
@@ -56,6 +63,20 @@
       "id": "api-6",
       "data": {
         "name": "createJsonFileStore"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-content-server",
+      "data": {
+        "name": "createContentServer"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-content-client",
+      "data": {
+        "name": "contentClient"
       }
     }
   ]
