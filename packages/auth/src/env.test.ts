@@ -70,6 +70,12 @@ describe('resendMailer', () => {
     expect(JSON.parse(init!.body as string)).toEqual({ from: 'Site <a@example.com>', to: ['ada@example.com'], subject: 'Hi', text: 'Hello' });
   });
 
+  it('sends replyTo as reply_to', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response('{"id":"1"}'));
+    await resendMailer({ apiKey: 'k', from: 'f', fetch }).send({ to: 'a@b.co', subject: 's', text: 't', replyTo: 'ada@example.com' });
+    expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)).toMatchObject({ reply_to: 'ada@example.com' });
+  });
+
   it('throws when Resend refuses', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response('bad from', { status: 422 }));
     await expect(resendMailer({ apiKey: 'k', from: 'f', fetch }).send({ to: 'a@b.co', subject: 's', text: 't' })).rejects.toThrow(/422.*bad from/);

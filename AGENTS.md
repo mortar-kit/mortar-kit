@@ -128,7 +128,11 @@ further construction puns).
   no bricks or collections of its own; the example declares pages, posts,
   products (orderable) and categories (`src/collections.ts`), bricks (two load data:
   latest posts, a product grid), and layouts (`src/layouts/`) shared by its
-  routes and the admin preview. Its entries are authored (`src/entry-server.tsx`,
+  routes and the admin preview. The contact-form brick shows form handling
+  without JavaScript: a plain form post to `/contact`, handled in
+  `src/server/contact.ts` (run from the middleware: checks, honeypot,
+  `createLimiter`, mails through a `Mailer` to `CONTACT_TO`) and a 303 back
+  to the page with `?contact=<status>#contact`, which the brick reads. Its entries are authored (`src/entry-server.tsx`,
   `src/entry-client.tsx`, shared tree in `src/Root.tsx`) so public pages ship
   **no JavaScript**: `src/client.ts` picks the pages that hydrate (the admin);
   the rest render under `<NoHydration>` with `noScripts` and a CSS-only

@@ -1,0 +1,66 @@
+/* Styles for the contact form brick. */
+.contact {
+  padding: 4rem 1.5rem;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+.contact h2 {
+  margin: 0 0 0.5rem;
+}
+.contact p {
+  color: #57534e;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.form label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+.form input,
+.form textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d6d3d1;
+  border-radius: 0.5rem;
+  background: white;
+}
+.form input:focus,
+.form textarea:focus {
+  outline: 2px solid #c2410c;
+  outline-offset: 1px;
+}
+/* Off screen rather than display: none, which some bots skip. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.button {
+  justify-self: start;
+  padding: 0.75rem 1.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #c2410c;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+.contact .sent {
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  background: #ecfccb;
+  color: #365314;
+}
+.contact .error {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #fee2e2;
+  color: #991b1b;
+}

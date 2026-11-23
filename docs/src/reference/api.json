@@ -1629,6 +1629,36 @@
       ]
     },
     {
+      "name": "createLimiter",
+      "module": "@mortar-kit/auth",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "A fixed-window counter per key: returns 0 while the key is under `max`\nhits in the current window, else the milliseconds until it resets.\nExpired windows are swept as it goes, so memory stays bounded by the\nclients seen in one window.",
+      "signature": "function createLimiter(max: number, windowMs: number, now?: () => number): (key: string) => number",
+      "params": [
+        {
+          "name": "max",
+          "type": "number",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "windowMs",
+          "type": "number",
+          "optional": false,
+          "doc": ""
+        },
+        {
+          "name": "now",
+          "type": "() => number",
+          "optional": true,
+          "doc": ""
+        }
+      ],
+      "returns": "(key: string) => number",
+      "examples": []
+    },
+    {
       "name": "createMiddleware",
       "module": "@mortar-kit/auth",
       "deprecated": false,
@@ -1921,6 +1951,13 @@
           "readonly": false,
           "type": "string",
           "doc": "HTML body, for clients that show it."
+        },
+        {
+          "name": "replyTo",
+          "optional": true,
+          "readonly": false,
+          "type": "string",
+          "doc": "Where replies go instead of the sender, e.g. the visitor who filled in a contact form."
         }
       ]
     },

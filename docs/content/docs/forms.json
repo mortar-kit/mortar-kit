@@ -1,0 +1,55 @@
+{
+  "id": "forms",
+  "fields": {
+    "title": "Handling forms",
+    "description": "A contact form in a brick: a plain form post, a server handler that emails it, and the result on the page, without JavaScript.",
+    "section": "guides",
+    "order": 60
+  },
+  "entries": [
+    {
+      "brick": "markdown",
+      "id": "md-1",
+      "data": {
+        "source": "A brick can hold a form: a contact form, a newsletter sign-up, a quote request. Mortar doesn't add a form API for this. The brick renders a plain HTML form, a handler on the server takes the post, and the browser is sent back to the page with the outcome. That works on [pages without JavaScript](/docs/no-javascript), and a refresh never posts twice.\n\nThe example site (`examples/site`) has a working contact form, at `/contact`. Its pieces:\n\n- `src/bricks/contact-form.tsx`: the brick. Editors set its heading, intro, button label and the message shown once it's sent.\n- `src/server/contact.ts`: the handler. It checks the post, emails it through a `Mailer` and redirects back.\n- `src/middleware.ts`: runs the handler before Mortar's middleware.\n- `src/contact.ts`: what both sides share (the path, field names and limits), with no UI or server code in it.\n\n## The brick\n\nThe form posts to a fixed path, with the page's own path in a hidden field so the handler knows where to send the visitor back. The brick reads the outcome from the URL the handler redirects to.\n\n```tsx\nimport { defineBrick, fields } from '@mortar-kit/core';\nimport { useLocation, useSearchParams } from '@solidjs/router';\nimport { Show } from 'solid-js';\n\nexport const contactForm = defineBrick({\n  name: 'contact-form',\n  label: 'Contact form',\n  schema: {\n    heading: fields.text({ label: 'Heading', default: 'Get in touch' }),\n    buttonLabel: fields.text({ label: 'Button label', required: true, default: 'Send message' }),\n    sentMessage: fields.textarea({ label: 'After sending', default: 'Thanks! We will reply by email.' }),\n  },\n  component: (props) => {\n    const location = useLocation();\n    const [search] = useSearchParams();\n    return (\n      <section id=\"contact\">\n        <h2>{props.data.heading}</h2>\n        <Show when={search.contact !== 'sent'} fallback={<p role=\"status\">{props.data.sentMessage}</p>}>\n          <Show when={search.contact === 'invalid'}>\n            <p role=\"alert\">Please fill in your name, a valid email address and a message.</p>\n          </Show>\n          <form method=\"post\" action=\"/contact\">\n            <input type=\"hidden\" name=\"return\" value={location.pathname} />\n            <label>Name <input name=\"name\" required maxlength=\"100\" /></label>\n            <label>Email <input name=\"email\" type=\"email\" required maxlength=\"254\" /></label>\n            <label>Message <textarea name=\"message\" required maxlength=\"5000\" /></label>\n            <button type=\"submit\">{props.data.buttonLabel}</button>\n          </form>\n        </Show>\n      </section>\n    );\n  },\n});\n```\n\nThe `required`, `type` and `maxlength` attributes let the browser catch most mistakes before anything is sent. The server checks again, since anyone can post anything."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "md-2",
+      "data": {
+        "source": "## The handler\n\nThe handler is a plain function from a Fetch `Request` to a `Response`. It answers posts to its path and leaves every other request alone. After checking the fields it sends the message, then answers `303 See Other` with the page, a status and the brick's anchor, so the browser loads the page again with a GET and scrolls to the form.\n\n```ts\n// src/server/contact.ts (server only)\nimport { createLimiter, type Mailer } from '@mortar-kit/auth';\n\nexport function createContactHandler(options: { mailer: Mailer; to: string }) {\n  const limiter = createLimiter(5, 10 * 60 * 1000); // 5 per client every 10 minutes\n  return async (request: Request): Promise<Response | undefined> => {\n    const url = new URL(request.url);\n    if (url.pathname !== '/contact' || request.method !== 'POST') return undefined;\n    const form = await request.formData();\n    const page = samePath(form.get('return'), url); // a path on this site, else '/'\n    const back = (status: string) =>\n      new Response(null, { status: 303, headers: { location: `${page}?contact=${status}#contact` } });\n\n    if (form.get('website')) return back('sent'); // the honeypot: a bot filled it in\n    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();\n    if (ip && limiter(ip) > 0) return back('busy');\n    const message = check(form); // trimmed name, email and message, or undefined\n    if (!message) return back('invalid');\n\n    try {\n      await options.mailer.send({\n        to: options.to,\n        replyTo: message.email,\n        subject: `Contact form: ${message.name}`,\n        text: message.message,\n      });\n    } catch {\n      return back('failed');\n    }\n    return back('sent');\n  };\n}\n```\n\nRun it ahead of `createMiddleware`, in the site's `start.middleware`:\n\n```ts\n// src/middleware.ts\nimport { createMiddleware, type Middleware } from '@mortar-kit/auth';\n\nconst mortar = createMiddleware({ auth, blobs });\nconst handleContact = createContactHandler({ mailer, to: process.env.CONTACT_TO! });\n\nconst middleware: Middleware = async (event, next) => (await handleContact(event.request)) ?? mortar(event, next);\nexport default middleware;\n```\n\nAny `Mailer` works: `resendMailer` with the same settings as sign-in emails, `consoleMailer()` in development (it prints each message, reply address included), or a few lines over your own provider. `replyTo` puts the visitor's address on the email, so replying answers them."
+      }
+    },
+    {
+      "brick": "callout",
+      "id": "callout-3",
+      "data": {
+        "tone": "warning",
+        "title": "Keep the recipient on the server",
+        "body": "Don't make the recipient a brick field the form sends along: anyone could post their own address and use your site to send mail. The example reads it from `CONTACT_TO`. Fields the server needs, like a subject or a list to sign up to, can be brick fields shown in the form, but treat whatever the post contains as untrusted."
+      }
+    },
+    {
+      "brick": "markdown",
+      "id": "md-4",
+      "data": {
+        "source": "## Spam and abuse\n\nThe example keeps it simple:\n\n- A hidden honeypot field. People never see it, so a value in it means a bot. The handler answers \"sent\" and sends nothing, so the bot doesn't learn to skip it.\n- A per-client limit with `createLimiter`, the same counter `createMiddleware` uses for sign-in attempts. It keys on `X-Forwarded-For`, which only a proxy in front of the server sets reliably; without one, pass your own key or rely on the honeypot.\n- A cap on the body size and on each field's length.\n\nFor a busy site, add a CAPTCHA (Turnstile, hCaptcha) to the form and verify its token in the handler.\n\n## With JavaScript\n\nThe same handler serves a form that hydrates later (an island, say): post the form with `fetch` and `redirect: 'manual'`, or give the handler a JSON answer when the request asks for one. Starting from the plain form means the page still works when scripts don't load."
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-5",
+      "data": {
+        "name": "Mailer"
+      }
+    },
+    {
+      "brick": "api-entry",
+      "id": "api-6",
+      "data": {
+        "name": "createLimiter"
+      }
+    }
+  ]
+}
