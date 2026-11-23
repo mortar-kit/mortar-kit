@@ -1,6 +1,7 @@
 // The generated reference covers every runtime export of the packages, so
 // a new export without a fresh `pnpm reference` fails here.
 import * as admin from '@mortar-kit/admin';
+import * as adminRouter from '@mortar-kit/admin/router';
 import * as auth from '@mortar-kit/auth';
 import * as core from '@mortar-kit/core';
 import * as render from '@mortar-kit/core/render';
@@ -19,6 +20,7 @@ describe('the API reference', () => {
       ...names(server).map((name) => `@mortar-kit/core/server ${name}`),
       ...names(render).map((name) => `@mortar-kit/core/render ${name}`),
       ...names(admin).map((name) => `@mortar-kit/admin ${name}`),
+      ...names(adminRouter).map((name) => `@mortar-kit/admin/router ${name}`),
       ...names(auth).map((name) => `@mortar-kit/auth ${name}`),
     ];
     expect(exported.filter((e) => !documented.has(e))).toEqual([]);
