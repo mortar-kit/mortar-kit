@@ -4,11 +4,13 @@
 //
 // - /llms.txt: the index: every guide by section and every export, linked
 //   to their Markdown pages.
-// - /llms-full.txt: every guide, then the whole reference, in one file.
-// - /index.md, /docs.md, /docs/<slug>.md, /reference.md, /reference/<name>.md: each
-//   page of the site as Markdown.
+// - /llms-full.txt: every guide, the whole reference, then the changelog
+//   (CHANGELOG.md, with each release's upgrading notes), in one file.
+// - /index.md, /docs.md, /docs/<slug>.md, /reference.md, /reference/<name>.md,
+//   /changelog.md: each page of the site as Markdown.
 import { contentReader, type ContentSource, type DocOf } from '@mortar-kit/core';
 
+import { changelog } from '../changelog.ts';
 import { docs, pages, sections } from '../collections.ts';
 import { firstSentence, type ApiFile } from '../reference/api.ts';
 import { entriesMarkdown, entryMarkdown, markdownHref, siteUrl, type BrickContext } from './markdown.ts';
@@ -70,11 +72,12 @@ export function createLlms(source: ContentSource, api: ApiFile) {
   async function index(): Promise<string> {
     const lines = await intro();
     lines.push(
-      `These docs are also published as Markdown: each link below is a page's Markdown version (drop \`.md\` for the HTML page), and [llms-full.txt](${siteUrl}/llms-full.txt) has every guide and the whole API reference in one file.`,
+      `These docs are also published as Markdown: each link below is a page's Markdown version (drop \`.md\` for the HTML page), and [llms-full.txt](${siteUrl}/llms-full.txt) has every guide, the whole API reference and the changelog in one file.`,
     );
     for (const group of await guideGroups()) {
       lines.push(`## ${group.label}`, group.guides.map((g) => `- [${g.fields.title}](${markdownHref(`/docs/${g.slug}`)})${g.fields.description ? `: ${g.fields.description}` : ''}`).join('\n'));
     }
+    lines.push('## Changelog', `- [Changelog](${markdownHref('/changelog')}): what each release adds, and what to change when upgrading (renamed options, environment variables, new startup checks).`);
     lines.push('## API reference', `- [Every export](${markdownHref('/reference')}): the whole reference on one page, generated from the packages' TypeScript sources.`);
     for (const module of api.modules) {
       const entries = api.entries.filter((e) => e.module === module);
@@ -89,6 +92,7 @@ export function createLlms(source: ContentSource, api: ApiFile) {
       for (const guide of group.guides) parts.push(`Source: ${siteUrl}/docs/${guide.slug}`, guideMarkdown(guide));
     }
     parts.push('# API reference', `Source: ${siteUrl}/reference`, referenceMarkdown(2));
+    parts.push(`Source: ${siteUrl}/changelog`, changelog.trim());
     return parts.filter(Boolean).join('\n\n');
   }
 
@@ -100,6 +104,7 @@ export function createLlms(source: ContentSource, api: ApiFile) {
       const page = await home();
       return page && markdown(entriesMarkdown(page.entries ?? [], context));
     }
+    if (pathname === '/changelog.md') return markdown(changelog);
     if (pathname === '/reference.md') return markdown(`# API reference\n\nEvery export of the Mortar packages, generated from their TypeScript sources and comments.\n\n${referenceMarkdown(2)}`);
     const ref = pathname.match(/^\/reference\/([^/]+)\.md$/);
     if (ref) {

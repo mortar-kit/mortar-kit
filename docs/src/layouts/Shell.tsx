@@ -16,6 +16,7 @@ export function Shell(props: { children: JSX.Element }) {
         <nav class={styles.nav} aria-label="Site">
           <NavLink href="/docs">Docs</NavLink>
           <NavLink href="/reference">Reference</NavLink>
+          <NavLink href="/changelog">Changelog</NavLink>
           <a href="/admin">Edit this site</a>
         </nav>
       </header>

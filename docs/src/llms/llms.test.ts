@@ -45,13 +45,16 @@ describe('the llms files', () => {
     const index = (await read('/llms.txt'))!;
     expect(index).toMatch(/^# Mortar\n\n> /);
     expect(index).toContain(`[Quick start](${siteUrl}/docs/quick-start.md)`);
+    expect(index).toContain(`[Changelog](${siteUrl}/changelog.md)`);
     for (const entry of (api as ApiFile).entries) expect(index).toContain(`[${entry.name}](`);
     const links = [...index.matchAll(/\]\((https:\/\/docs\.mortar-kit\.dev\/[^)#]+)/g)].map((m) => m[1]!.slice(siteUrl.length));
     for (const path of new Set(links)) expect(await read(path), path).not.toBeNull();
   });
 
-  it('put every guide and the reference in llms-full.txt', async () => {
+  it('put every guide, the reference and the changelog in llms-full.txt', async () => {
     const full = (await read('/llms-full.txt'))!;
+    expect(full).toContain(`Source: ${siteUrl}/changelog\n\n# Changelog`);
+    expect(full).toContain('### Upgrading from 0.1');
     expect(full).toContain('# Quick start\n\n> A brick, a collection');
     expect(full).toContain('# API reference');
     expect(full).toContain('### `createJsonFileStore` (function)');
@@ -62,6 +65,7 @@ describe('the llms files', () => {
     expect(await read('/docs.md')).toMatch(/^# Introduction/);
     expect(await read('/index.md')).toMatch(/^# Build sites from bricks/);
     expect(await read('/reference/defineBrick.md')).toMatch(/^# `defineBrick` \(function\)/);
+    expect(await read('/changelog.md')).toMatch(/^# Changelog\n/);
     expect((await llms.file('/docs/quick-start.md'))?.type).toBe('text/markdown; charset=utf-8');
     expect((await llms.file('/llms.txt'))?.type).toBe('text/plain; charset=utf-8');
   });
