@@ -4,7 +4,7 @@ All `@mortar-kit` packages release together, at the same version. Each
 release lists what it adds and, under **Upgrading**, anything that can stop
 an existing site from building or starting.
 
-## Unreleased
+## 0.3.0 (2026-11-24)
 
 These come from feedback on a site built with 0.2.0.
 

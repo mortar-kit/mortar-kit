@@ -1,6 +1,6 @@
 {
   "name": "@mortar-kit/admin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mortar admin: schema-driven editor for collections and bricks, with live preview, for Solid 2",
   "license": "MIT",
   "homepage": "https://docs.mortar-kit.dev",
