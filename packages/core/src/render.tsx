@@ -70,7 +70,7 @@ export function createRender(options: RenderOptions): Render {
     const hydrate = hydrates(new URL(request.url).pathname);
     const nonce = typeof context.nonce === 'string' ? context.nonce : context.nonce?.script || undefined;
     const key = getRequestEvent()?.request ?? request;
-    setRenderedPage(key, { hydrate, nonce: hydrate ? nonce : undefined });
+    setRenderedPage(key, nonce ? { hydrate, nonce } : { hydrate });
     const stream = renderToStream(() => (hydrate ? options.app() : <NoHydration>{options.app()}</NoHydration>), {
       manifest: hydrate ? options.manifest : staticManifest,
       nonce: context.nonce ?? undefined,

@@ -6,7 +6,7 @@ import { createRequestEvent, renderToStream } from '@solidjs/web';
 import { provideRequestEvent } from '@solidjs/web/storage';
 import { describe, expect, it } from 'vitest';
 
-import { ClientScripts } from './ClientScripts.tsx';
+import { ClientScripts, useRenderedPage } from './ClientScripts.tsx';
 import { createRender, hydrateTest, stylesOnly } from './render.tsx';
 
 const manifest = {
@@ -30,12 +30,19 @@ function Page() {
   );
 }
 
+/** Prints what useRenderedPage says, as an app's own script tag would read it. */
+function Probe() {
+  const page = useRenderedPage();
+  return <meta name="probe" content={`hydrate=${page.hydrate} nonce=${page.nonce ?? ''}`} />;
+}
+
 /** A document with the client scripts in its head, as an app's would be. */
 function Doc() {
   return (
     <html>
       <head>
         <ClientScripts />
+        <Probe />
       </head>
       <body>
         <p>Hello</p>
@@ -88,6 +95,15 @@ describe('createRender', () => {
     expect(html).not.toContain('<script');
     expect(html).not.toContain('modulepreload');
     expect(html).not.toContain('_hk=');
+  });
+
+  it('tells the app how the page renders, with the nonce on static pages too', async () => {
+    expect(await render(new Request('http://site.test/about'), context)).toContain('content="hydrate=false nonce=n0nce"');
+    expect(await render(new Request('http://site.test/admin'), context)).toContain('content="hydrate=true nonce=n0nce"');
+    const outside = await provideRequestEvent(Object.assign(createRequestEvent(new Request('http://site.test/')), { nonce: 'ev' }), () =>
+      renderToStream(() => <Probe />),
+    );
+    expect(outside).toContain('content="hydrate=true nonce=ev"');
   });
 
   it('hydrates the admin, with the client entry and the nonce', async () => {

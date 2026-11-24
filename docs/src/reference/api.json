@@ -4992,14 +4992,14 @@
           "optional": false,
           "readonly": false,
           "type": "boolean",
-          "doc": "Whether this page hydrates."
+          "doc": "Whether this page hydrates (loads the app's JavaScript)."
         },
         {
           "name": "nonce",
           "optional": true,
           "readonly": false,
           "type": "string",
-          "doc": "The request's CSP script nonce, if any."
+          "doc": "The request's CSP script nonce, if any: put it on the page's own scripts."
         }
       ]
     },
@@ -5383,6 +5383,19 @@
       "params": [],
       "returns": "ContentReader",
       "examples": []
+    },
+    {
+      "name": "useRenderedPage",
+      "module": "@mortar-kit/core",
+      "deprecated": false,
+      "kind": "function",
+      "summary": "How the page being rendered is sent: whether it hydrates, and the CSP\nnonce for its scripts, so the app can put the nonce on its own scripts\n(analytics, an inline snippet) and leave out what only works with\nJavaScript. Read it in a component or layout.\n\nOn the server it's what `createRender` decided for the request (outside\ncreateRender: hydrating, with the request's `nonce`). In the browser it\nsays the page hydrates, since only hydrating code runs there, with the\nnonce the page's scripts carry.",
+      "signature": "function useRenderedPage(): RenderedPage",
+      "params": [],
+      "returns": "RenderedPage",
+      "examples": [
+        "```tsx\nfunction Analytics() {\n  const page = useRenderedPage();\n  return <script src=\"https://stats.example.com/script.js\" nonce={page.nonce} defer />;\n}\n```"
+      ]
     },
     {
       "name": "validateDoc",

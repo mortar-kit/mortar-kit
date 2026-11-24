@@ -215,7 +215,8 @@ further construction puns).
   manifest (`stylesOnly`), and `<ClientScripts>` in `Document.tsx` renders
   nothing on them. It hands the page's settings to `<ClientScripts>` by
   request (a WeakMap keyed by the request event's Request), never a context
-  provider, which would shift hydration keys. The contact form is an island
+  provider, which would shift hydration keys; `useRenderedPage()` (core)
+  gives the app the same `{ hydrate, nonce }` for its own scripts. The contact form is an island
   (see Islands): `src/entry-client.tsx` imports `src/islands.ts` on pages
   with islands and `Root.tsx` otherwise, each lazily. Content is JSON files in
   `examples/site/content/<collection>/`: `src/server/mortar.ts` builds
@@ -268,7 +269,9 @@ further construction puns).
   `.github/workflows/notify-config.yml` asks config to bump it on merge.
 - Publishing: the `@mortar-kit` packages release to npm in lockstep from
   `.github/workflows/publish.yml`. Bump them all with
-  `node scripts/release-version.mjs set <version>`, merge, then push the tag
+  `node scripts/release-version.mjs set <version>` and move `CHANGELOG.md`'s
+  Unreleased notes under the version (with **Upgrading** for anything that
+  can break a site), merge, then push the tag
   `v<version>`; the workflow checks the tag against the versions, runs
   typecheck/lint/test, packs each package with pnpm (`prepack` builds;
   `publishConfig` and `workspace:` ranges are applied) and publishes with
@@ -309,6 +312,11 @@ and, for API changes, `pnpm reference`. The llms.txt output
 from that content and reference, so it follows on its own; when you add a
 docs brick, give it a Markdown converter in `docs/src/llms/markdown.ts`.
 Check the result with `pnpm docs` and `curl localhost:3100/llms-full.txt`.
+
+A change a site can notice also goes under **Unreleased** in
+`CHANGELOG.md` in the same PR; anything that can break a site (renamed
+options or environment variables, new startup checks) goes under
+**Upgrading**.
 
 ## Code style
 
