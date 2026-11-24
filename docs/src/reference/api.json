@@ -1700,7 +1700,7 @@
       "module": "@mortar-kit/auth",
       "deprecated": false,
       "kind": "function",
-      "summary": "The site's middleware: put it in `start.middleware`. Order: rate limit on\nsign-in posts, then `auth.handle` (auth routes, the `/admin` guard), then\nuploaded files, then the page (with a CSP) or server function.",
+      "summary": "The site's middleware: put it in `start.middleware`. Order: rate limit on\nsign-in posts, then `auth.handle` (auth routes, the `/admin` guard), then\n`/sitemap.xml` and `/robots.txt` when asked for, then uploaded files,\nthen the page (with a CSP) or server function. Every response gets the\n`headers`.",
       "signature": "function createMiddleware(options: MiddlewareOptions): Middleware",
       "params": [
         {
@@ -1712,7 +1712,7 @@
       ],
       "returns": "Middleware",
       "examples": [
-        "```ts\n// src/middleware.ts (vite.config: solid({ start: { middleware: './src/middleware.ts' } }))\nexport default createMiddleware({ auth, blobs });\n```"
+        "```ts\n// src/middleware.ts (vite.config: solid({ start: { middleware: './src/middleware.ts' } }))\nexport default createMiddleware({ auth, blobs, sitemap: { content, collections }, robots: true });\n```"
       ]
     },
     {
@@ -2065,7 +2065,7 @@
           "optional": true,
           "readonly": false,
           "type": "false | { max: number; window: number }",
-          "doc": "Limits sign-in attempts (posts to the auth routes) per client: `max`\nin each `window` of seconds, then 429 with Retry-After. Default\n`{ max: 10, window: 600 }`; `false` turns it off. Kept in memory, per\nserver process."
+          "doc": "Limits sign-in attempts (posts to the auth routes) per client: `max`\nin each `window` of seconds, then 429 with Retry-After. Asking for a\ncode or link and trying one count separately, so a client that used\nup its sends can still type the code it got. Default\n`{ max: 10, window: 600 }` for each; `false` turns it off. Kept in\nmemory, per server process."
         },
         {
           "name": "clientKey",
@@ -2079,7 +2079,35 @@
           "optional": true,
           "readonly": false,
           "type": "string | boolean",
-          "doc": "A Content-Security-Policy for HTML responses. `true` (default) sends\n`script-src 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'`,\nwith a fresh nonce per request that the page render puts on its\nscripts; a string is your own policy, where `{nonce}` is replaced by\nthat nonce; `false` sends none. The server entry must pass the nonce\nto `renderToStream` (the plugin's generated entries do)."
+          "doc": "A Content-Security-Policy for HTML responses. `true` (default) sends\n`script-src 'nonce-…' 'strict-dynamic'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'`,\nwith a fresh nonce per request that the page render puts on its\nscripts; a string is your own policy, where `{nonce}` is replaced by\nthat nonce; `false` sends none. The server entry must pass the nonce\nto `renderToStream` (the plugin's generated entries do). Default\noff on the dev server (`dev`), since Vite's dev scripts carry no nonce."
+        },
+        {
+          "name": "headers",
+          "optional": true,
+          "readonly": false,
+          "type": "false | Readonly<Record<string, string | null>>",
+          "doc": "Headers for every response, unless it set them itself. Default\n`X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`\nand `X-Frame-Options: SAMEORIGIN` (the admin's preview is a same-origin\nframe). Yours are added to those; a header set to `null` is left out;\n`false` adds none."
+        },
+        {
+          "name": "sitemap",
+          "optional": true,
+          "readonly": false,
+          "type": "{ content: ContentSource; collections: readonly AnyCollection[] } & Omit<SitemapOptions, \"origin\"> & { origin?: string }",
+          "doc": "Answers `GET /sitemap.xml` with `sitemap(content, collections, options)`\nfrom `@mortar-kit/core`. `origin` defaults to the request's; set it\nbehind a proxy (e.g. from `MORTAR_BASE_URL`)."
+        },
+        {
+          "name": "robots",
+          "optional": true,
+          "readonly": false,
+          "type": "string | boolean",
+          "doc": "Answers `GET /robots.txt`. `true` lets crawlers in everywhere but\nthe auth's protected paths (`/admin`) and points them at the sitemap\nwhen `sitemap` is set; a string is the whole file. Default: not served."
+        },
+        {
+          "name": "dev",
+          "optional": true,
+          "readonly": false,
+          "type": "boolean",
+          "doc": "Development: no CSP by default. Default Vite's `import.meta.env.DEV`."
         }
       ]
     },
@@ -5264,6 +5292,13 @@
           "readonly": false,
           "type": "readonly string[]",
           "doc": "Paths to list besides the documents', e.g. `['/posts']`."
+        },
+        {
+          "name": "lastmod",
+          "optional": true,
+          "readonly": false,
+          "type": "string | ((collection: AnyCollection, doc: { id: string; slug: string; fields: Record<string, unknown> }) => string | Date | null | undefined)",
+          "doc": "When each document last changed, as its `<lastmod>`: the name of a\nfield holding a date (`fields.date`'s `YYYY-MM-DD`, or a full ISO\ntime), or a function returning one (a string or a Date). Documents\nwithout one get no `<lastmod>`."
         }
       ]
     },

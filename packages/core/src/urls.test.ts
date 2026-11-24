@@ -77,4 +77,25 @@ describe('sitemap', () => {
     const filtered = await sitemap(content, collections, { origin: 'https://site.test', include: (_c, doc) => doc.slug !== 'about' });
     expect(filtered).not.toContain('/about');
   });
+
+  it('adds lastmod from a field or a function', async () => {
+    const content = createContent({
+      store: createMemoryStore({
+        posts: [
+          { id: 'a', slug: 'a', fields: { updated: '2026-11-20' } },
+          { id: 'b', slug: 'b', fields: { updated: '2026-11-21T10:00:00+02:00' } },
+          { id: 'c', slug: 'c', fields: { updated: 'last week' } },
+        ],
+      }),
+      collections,
+      bricks: [],
+    });
+    const xml = await sitemap(content, collections, { origin: 'https://site.test', lastmod: 'updated' });
+    expect(xml).toContain('<loc>https://site.test/posts/a</loc><lastmod>2026-11-20</lastmod>');
+    expect(xml).toContain('<loc>https://site.test/posts/b</loc><lastmod>2026-11-21T08:00:00.000Z</lastmod>');
+    expect(xml).toContain('<loc>https://site.test/posts/c</loc></url>');
+    const byFn = await sitemap(content, collections, { origin: 'https://site.test', lastmod: (_c, doc) => (doc.slug === 'c' ? new Date(Date.UTC(2026, 0, 2)) : null) });
+    expect(byFn).toContain('<loc>https://site.test/posts/c</loc><lastmod>2026-01-02T00:00:00.000Z</lastmod>');
+    expect(byFn).toContain('<loc>https://site.test/posts/a</loc></url>');
+  });
 });

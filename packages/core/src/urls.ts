@@ -79,6 +79,13 @@ export interface SitemapOptions {
   include?: (collection: AnyCollection, doc: { id: string; slug: string; fields: Record<string, unknown> }) => boolean;
   /** Paths to list besides the documents', e.g. `['/posts']`. */
   extra?: readonly string[];
+  /**
+   * When each document last changed, as its `<lastmod>`: the name of a
+   * field holding a date (`fields.date`'s `YYYY-MM-DD`, or a full ISO
+   * time), or a function returning one (a string or a Date). Documents
+   * without one get no `<lastmod>`.
+   */
+  lastmod?: string | ((collection: AnyCollection, doc: { id: string; slug: string; fields: Record<string, unknown> }) => string | Date | null | undefined);
 }
 
 /**
@@ -92,15 +99,24 @@ export interface SitemapOptions {
  */
 export async function sitemap(content: ContentSource, collections: readonly AnyCollection[], options: SitemapOptions): Promise<string> {
   const origin = new URL(options.origin).origin;
-  const paths = new Set<string>(options.extra);
+  // Path → lastmod (empty: none); the first entry for a path wins.
+  const paths = new Map<string, string>();
+  for (const path of options.extra ?? []) paths.set(path, '');
+  const { lastmod } = options;
   for (const c of collections) {
     if (c.url === undefined) continue;
     for (const doc of await content.list(c.name)) {
       if (options.include && !options.include(c, doc)) continue;
-      paths.add(urlFor(c, doc)!);
+      const path = urlFor(c, doc)!;
+      if (paths.has(path)) continue;
+      const raw = typeof lastmod === 'function' ? lastmod(c, doc) : typeof lastmod === 'string' ? doc.fields[lastmod] : undefined;
+      paths.set(path, w3cDate(raw));
     }
   }
-  const urls = [...paths].map((path) => `  <url><loc>${escapeXml(new URL(path, origin).href)}</loc></url>`);
+  const urls = [...paths].map(([path, modified]) => {
+    const mod = modified ? `<lastmod>${escapeXml(modified)}</lastmod>` : '';
+    return `  <url><loc>${escapeXml(new URL(path, origin).href)}</loc>${mod}</url>`;
+  });
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
 }
 
@@ -108,6 +124,17 @@ export async function sitemap(content: ContentSource, collections: readonly AnyC
 function byStaticSegments(collections: readonly AnyCollection[]): AnyCollection[] {
   const statics = (c: AnyCollection) => c.url!.split('/').filter((s) => s !== '' && s !== SLUG).length;
   return collections.filter((c) => c.url !== undefined).sort((a, b) => statics(b) - statics(a) || b.url!.length - a.url!.length);
+}
+
+/** A sitemap date (`YYYY-MM-DD` or an ISO time) from a Date or a string; '' when it isn't one. */
+function w3cDate(value: unknown): string {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : value.toISOString();
+  if (typeof value !== 'string') return '';
+  const text = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(text)) return '';
+  const time = new Date(text);
+  return Number.isNaN(time.getTime()) ? '' : time.toISOString();
 }
 
 function escapeXml(text: string): string {
