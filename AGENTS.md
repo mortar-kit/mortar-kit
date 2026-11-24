@@ -213,7 +213,8 @@ further construction puns).
   manifest (`stylesOnly`), and `<ClientScripts>` in `Document.tsx` renders
   nothing on them. It hands the page's settings to `<ClientScripts>` by
   request (a WeakMap keyed by the request event's Request), never a context
-  provider, which would shift hydration keys. The contact form is an island
+  provider, which would shift hydration keys; `useRenderedPage()` (core)
+  gives the app the same `{ hydrate, nonce }` for its own scripts. The contact form is an island
   (see Islands): `src/entry-client.tsx` imports `src/islands.ts` on pages
   with islands and `Root.tsx` otherwise, each lazily. Content is JSON files in
   `examples/site/content/<collection>/`: `src/server/mortar.ts` builds
