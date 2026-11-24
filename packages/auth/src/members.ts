@@ -7,7 +7,7 @@ import type { EmailUser } from './allow.ts';
 import type { AuthorizeInput } from './auth.ts';
 
 /** Options for `allowMembers`. */
-export interface AllowMembersOptions {
+export interface AllowMembersOptions<Field extends string = never> {
   /** Where to look members up: usually the app's `createContent(...)`. */
   content: ContentSource;
   /** The collection's name, e.g. `'members'`. */
@@ -16,7 +16,15 @@ export interface AllowMembersOptions {
   emailField?: string;
   /** A field holding their display name, used over the one the sign-in method gives. Default `name`. */
   nameField?: string;
+  /**
+   * More of the member's fields to put on the user, as stored (e.g.
+   * `['role']`), for `canWrite` and the rest of the app to read.
+   */
+  fields?: readonly Field[];
 }
+
+/** The user `allowMembers` signs in: the address, a name, and the `fields` asked for. */
+export type MemberUser<Field extends string = never> = EmailUser & { [K in Field]?: unknown };
 
 /**
  * An `authorize` that lets in anyone whose address is in a document of
@@ -32,9 +40,12 @@ export interface AllowMembersOptions {
  *   fields: { email: fields.text({ label: 'Email', required: true }), name: fields.text({ label: 'Name' }) },
  * });
  * createAuth({ methods, secret, authorize: allowMembers({ content, collection: 'members' }) });
+ *
+ * // With roles: the user gets the member's `role` too.
+ * authorize: allowMembers({ content, collection: 'members', fields: ['role'] }),
  * ```
  */
-export function allowMembers(options: AllowMembersOptions): (input: AuthorizeInput) => Promise<EmailUser | null> {
+export function allowMembers<Field extends string = never>(options: AllowMembersOptions<Field>): (input: AuthorizeInput) => Promise<MemberUser<Field> | null> {
   const emailField = options.emailField ?? 'email';
   const nameField = options.nameField ?? 'name';
   return async ({ identity }) => {
@@ -47,6 +58,10 @@ export function allowMembers(options: AllowMembersOptions): (input: AuthorizeInp
     if (!member) return null;
     const stored = member.fields[nameField];
     const name = typeof stored === 'string' && stored.trim() ? stored.trim() : identity.name;
-    return name ? { email, name } : { email };
+    const user: Record<string, unknown> = {};
+    for (const field of options.fields ?? []) if (member.fields[field] !== undefined) user[field] = member.fields[field];
+    user.email = email;
+    if (name) user.name = name;
+    return user as MemberUser<Field>;
   };
 }

@@ -128,6 +128,8 @@ export interface Assets {
 
 /** Reading and writing documents: what the admin needs. */
 export interface Content extends ContentSource {
+  /** The collections it serves (`createContent` sets it), for `createContentServer` to find each one's `canWrite`. */
+  readonly collections?: readonly AnyCollection[];
   /**
    * Validates a document (from an untrusted client) and stores it. Problems
    * are returned, not thrown. Renaming its slug moves it. Writes through one
@@ -291,6 +293,7 @@ export function createContent(options: ContentOptions): Content & Pick<Required<
   };
 
   return {
+    collections: options.collections,
     async list(name, listOptions) {
       const c = need(name);
       // null too: a trailing undefined argument arrives as null through a GET server function.
