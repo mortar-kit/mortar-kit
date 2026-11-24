@@ -267,7 +267,9 @@ further construction puns).
   `.github/workflows/notify-config.yml` asks config to bump it on merge.
 - Publishing: the `@mortar-kit` packages release to npm in lockstep from
   `.github/workflows/publish.yml`. Bump them all with
-  `node scripts/release-version.mjs set <version>`, merge, then push the tag
+  `node scripts/release-version.mjs set <version>` and move `CHANGELOG.md`'s
+  Unreleased notes under the version (with **Upgrading** for anything that
+  can break a site), merge, then push the tag
   `v<version>`; the workflow checks the tag against the versions, runs
   typecheck/lint/test, packs each package with pnpm (`prepack` builds;
   `publishConfig` and `workspace:` ranges are applied) and publishes with
@@ -308,6 +310,11 @@ and, for API changes, `pnpm reference`. The llms.txt output
 from that content and reference, so it follows on its own; when you add a
 docs brick, give it a Markdown converter in `docs/src/llms/markdown.ts`.
 Check the result with `pnpm docs` and `curl localhost:3100/llms-full.txt`.
+
+A change a site can notice also goes under **Unreleased** in
+`CHANGELOG.md` in the same PR; anything that can break a site (renamed
+options or environment variables, new startup checks) goes under
+**Upgrading**.
 
 ## Code style
 
