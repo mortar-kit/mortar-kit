@@ -17,6 +17,7 @@ import { action, createEffect, createMemo, createOptimistic, createSignal, For, 
 
 import styles from './SaveBar.module.css';
 import common from './common.module.css';
+import { errorMessage } from './errors.ts';
 import { FIELDS, type EditorStore } from './state.ts';
 
 export interface SaveBarProps {
@@ -64,7 +65,7 @@ export function SaveBar(props: SaveBarProps) {
         props.onSaved?.(doc);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError((yield errorMessage(e)) as string);
     }
   });
 
