@@ -1206,7 +1206,7 @@
       "module": "@mortar-kit/auth",
       "deprecated": false,
       "kind": "function",
-      "summary": "`createAuth` set up from the environment: the secret, who may sign in,\nGoogle when its client is configured, and email sign-in through Resend\n(or your `mailer`). Throws at startup when production is missing a\nsecret, an admin list or every sign-in method.",
+      "summary": "`createAuth` set up from the environment: the secret, who may sign in,\nGoogle when its client is configured, and email sign-in through Resend\n(or your `mailer`). Throws at startup when production is missing a\nsecret, an admin list or every sign-in method. `MORTAR_ADMINS` may always\nsign in, as well as whoever a given `authorize` accepts (asked first).",
       "signature": "function authFromEnv<User = EmailUser>(options?: AuthFromEnvOptions<User>): Auth<User>",
       "params": [
         {

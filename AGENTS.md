@@ -164,7 +164,8 @@ further construction puns).
   the user). It runs at sign-in and on every
   guarded request. `authFromEnv({ store })` builds it all from env
   (`MORTAR_AUTH_SECRET`, `MORTAR_ADMINS`, `GOOGLE_CLIENT_*`, `RESEND_API_KEY` +
-  `MORTAR_EMAIL_FROM`, `MORTAR_BASE_URL`); its dev fallbacks (secret, admin,
+  `MORTAR_EMAIL_FROM`, `MORTAR_BASE_URL`; `MORTAR_ADMINS` gets in alongside a
+  given `authorize`, which is asked first); its dev fallbacks (secret, admin,
   console mailer) apply only under Vite's `import.meta.env.DEV`. Sessions are a stateless HMAC-signed cookie (Web Crypto;
   `secret` may be an array to rotate). Email sends a code and a link in one
   message through a `Mailer` (`consoleMailer()` for dev, `resendMailer()`
