@@ -1,6 +1,6 @@
 {
   "name": "@mortar-kit/auth",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mortar auth: sign-in methods (Google, email), signed cookie sessions and route guards for the admin",
   "license": "MIT",
   "homepage": "https://docs.mortar-kit.dev",

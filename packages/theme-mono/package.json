@@ -1,6 +1,6 @@
 {
   "name": "@mortar-kit/theme-mono",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mortar admin theme: square corners, black rules, monospace labels and a yellow highlight",
   "license": "MIT",
   "homepage": "https://docs.mortar-kit.dev",
