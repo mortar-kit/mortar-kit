@@ -3,7 +3,7 @@
 // Everything it reads can also be passed as an option, which wins.
 //
 //   MORTAR_AUTH_SECRET     signs sessions; comma-separate to rotate (required outside dev)
-//   MORTAR_ADMINS          addresses and *@domains that may sign in (unless `authorize` is passed)
+//   MORTAR_ADMINS          addresses and *@domains that may always sign in (as well as whoever `authorize` lets in)
 //   MORTAR_BASE_URL        the public origin, behind a proxy
 //   GOOGLE_CLIENT_ID       with GOOGLE_CLIENT_SECRET: Sign in with Google
 //   RESEND_API_KEY         with MORTAR_EMAIL_FROM: email sign-in sends through Resend
@@ -53,7 +53,8 @@ const DEV_ADMIN = 'admin@example.com';
  * `createAuth` set up from the environment: the secret, who may sign in,
  * Google when its client is configured, and email sign-in through Resend
  * (or your `mailer`). Throws at startup when production is missing a
- * secret, an admin list or every sign-in method.
+ * secret, an admin list or every sign-in method. `MORTAR_ADMINS` may always
+ * sign in, as well as whoever a given `authorize` accepts (asked first).
  *
  * @example
  * ```ts
@@ -70,12 +71,14 @@ export function authFromEnv<User = EmailUser>(options: AuthFromEnvOptions<User> 
   const secret = rest.secret ?? read('MORTAR_AUTH_SECRET')?.split(',').map((s) => s.trim()).filter(Boolean) ?? (dev ? DEV_SECRET : undefined);
   if (!secret) throw new Error('Mortar auth: set MORTAR_AUTH_SECRET (at least 32 characters, e.g. `openssl rand -base64 32`).');
 
-  let authorize = rest.authorize;
-  if (!authorize) {
-    const admins = read('MORTAR_ADMINS') ?? (dev ? DEV_ADMIN : undefined);
-    if (!admins) throw new Error('Mortar auth: set MORTAR_ADMINS (comma-separated addresses or *@domains), or pass `authorize`.');
-    authorize = allowEmails(admins.split(',')) as unknown as AuthOptions<User>['authorize'];
-  }
+  // MORTAR_ADMINS always gets in; `authorize` lets in whoever else it
+  // likes (and is asked first, so its user wins for someone in both).
+  const given = rest.authorize;
+  const admins = read('MORTAR_ADMINS') ?? (dev && !given ? DEV_ADMIN : undefined);
+  if (!admins && !given) throw new Error('Mortar auth: set MORTAR_ADMINS (comma-separated addresses or *@domains), or pass `authorize`.');
+  const envAdmins = admins ? (allowEmails(admins.split(',')) as unknown as AuthOptions<User>['authorize']) : undefined;
+  const authorize: AuthOptions<User>['authorize'] =
+    given && envAdmins ? async (input) => (await given(input)) ?? envAdmins(input) : (given ?? envAdmins)!;
 
   const methods: AuthMethod[] = [];
   const clientId = read('GOOGLE_CLIENT_ID');

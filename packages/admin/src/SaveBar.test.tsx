@@ -142,6 +142,26 @@ describe('saving', () => {
     expect(saveButton()).toBeEnabled();
   });
 
+  it('shows the text of a Response the server threw, not [object Response]', async () => {
+    setup(async () => {
+      throw new Response('Not allowed', { status: 403 });
+    });
+    type('Changed');
+    fireEvent.click(saveButton());
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't save: Not allowed");
+  });
+
+  it('says a signed-out save needs signing in again', async () => {
+    setup(async () => {
+      throw new Response('Sign in required', { status: 401 });
+    });
+    type('Changed');
+    fireEvent.click(saveButton());
+    await settle();
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't save: You are signed out. Sign in again");
+  });
+
   it('saves with Ctrl+S or Cmd+S, only when there are changes', async () => {
     const save = setup(async () => ({ ok: true }));
     fireEvent.keyDown(window, { key: 's', metaKey: true });
