@@ -96,4 +96,15 @@ describe('allowMembers', () => {
     expect(await authorize(identity('ada@example.com', 'Ada'))).toEqual({ email: 'ada@example.com', name: 'Ada L.' });
     expect(await authorize(identity('eve@example.com'))).toBeNull();
   });
+
+  it('puts the fields asked for on the user', async () => {
+    const content = createContent({ store: createMemoryStore(), collections: [members], bricks: [] });
+    await content.save('members', { id: 'm1', slug: 'ada', fields: { email: 'ada@example.com', role: 'owner' } });
+    await content.save('members', { id: 'm2', slug: 'bo', fields: { email: 'bo@example.com' } });
+    const authorize = allowMembers({ content, collection: 'members', fields: ['role'] });
+    const ada = await authorize(identity('ada@example.com'));
+    expect(ada).toEqual({ email: 'ada@example.com', role: 'owner' });
+    expect(ada?.role).toBe('owner');
+    expect(await authorize(identity('bo@example.com', 'Bo'))).toEqual({ email: 'bo@example.com', name: 'Bo' });
+  });
 });
