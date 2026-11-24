@@ -17,7 +17,7 @@ export function markdownHref(href: string): string {
   if (!href.startsWith('/') || href.startsWith('//')) return href;
   const [, path = '/', rest = ''] = href.match(/^([^?#]*)(.*)$/) ?? [];
   const page = path.replace(/\/$/, '') || '/';
-  const md = page === '/' ? '/index.md' : /^\/(docs|reference)(\/[^/]+)?$/.test(page) ? `${page}.md` : null;
+  const md = page === '/' ? '/index.md' : /^\/(docs|reference)(\/[^/]+)?$/.test(page) || page === '/changelog' ? `${page}.md` : null;
   return `${siteUrl}${md ?? path}${rest}`;
 }
 

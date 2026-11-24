@@ -6,8 +6,7 @@ an existing site from building or starting.
 
 ## Unreleased
 
-These come from feedback on a site built with 0.2.0. Each is its own pull
-request (#29 to #33), so drop any line whose PR hasn't merged by release.
+These come from feedback on a site built with 0.2.0.
 
 ### Added
 

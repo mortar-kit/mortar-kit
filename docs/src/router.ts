@@ -5,6 +5,7 @@ import { lazy } from 'solid-js';
 
 import { NotFoundRoute } from './routes/not-found.tsx';
 import Guide, { GuideIndex } from './routes/guide.tsx';
+import Changelog from './routes/changelog.tsx';
 import Home from './routes/home.tsx';
 import { ReferenceEntry, ReferenceIndex } from './routes/reference.tsx';
 
@@ -15,6 +16,7 @@ export const Router = createRouter({
     { path: '/docs/:slug', component: Guide },
     { path: '/reference', component: ReferenceIndex },
     { path: '/reference/:name', component: ReferenceEntry },
+    { path: '/changelog', component: Changelog },
     { path: '/admin', component: lazy(() => import('./routes/admin.tsx')) },
     { path: '/admin/preview', component: lazy(() => import('./routes/admin-preview.tsx')) },
     { path: '*', component: NotFoundRoute },

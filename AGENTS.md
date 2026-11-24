@@ -249,7 +249,9 @@ further construction puns).
   llms.txt files from the same content and reference on request
   (`src/llms/`): `/llms.txt` (index), `/llms-full.txt` (everything), and
   each page as Markdown (`/index.md`, `/docs/<slug>.md`, `/reference.md`,
-  `/reference/<name>.md`). Every brick needs a converter in
+  `/reference/<name>.md`, `/changelog.md`). `/changelog` renders the
+  repository's `CHANGELOG.md` (imported `?raw` in `src/changelog.ts`; the
+  nix build's fileset includes it), and the llms files include it too. Every brick needs a converter in
   `src/llms/markdown.ts` (a test fails without one).
 - Auth in the example: `src/server/auth.ts` (`authFromEnv`; without
   `RESEND_API_KEY` dev emails print to the console), `src/middleware.ts`, `/admin/sign-in`
@@ -316,7 +318,9 @@ Check the result with `pnpm docs` and `curl localhost:3100/llms-full.txt`.
 A change a site can notice also goes under **Unreleased** in
 `CHANGELOG.md` in the same PR; anything that can break a site (renamed
 options or environment variables, new startup checks) goes under
-**Upgrading**.
+**Upgrading**, with what to change. The docs site renders that file at
+`/changelog` and in the llms files, so the upgrade notes are published with
+no extra step.
 
 ## Code style
 

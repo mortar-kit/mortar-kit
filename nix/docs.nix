@@ -22,6 +22,7 @@ stdenv.mkDerivation (finalAttrs: {
     root = ../.;
     fileset = lib.fileset.unions [
       ../package.json
+      ../CHANGELOG.md
       ../pnpm-lock.yaml
       ../pnpm-workspace.yaml
       ../.npmrc
